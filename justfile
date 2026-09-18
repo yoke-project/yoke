@@ -11,7 +11,7 @@ test:
 
 # This repository's static checks.
 lint:
-    @bash -n checks/run.sh checks/*/*.sh && echo "lint: every shell script parses"
+    @bash -n checks/run.sh checks/*/*.sh ci/*.sh && echo "lint: every shell script parses"
 
 # Fail, naming each file, when the tree is not formatted.
 fmt:
