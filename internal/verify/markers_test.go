@@ -113,3 +113,22 @@ func lineNaming(out, id string) string {
 	}
 	return ""
 }
+
+// std: yoke:descriptions-and-markers.11
+func TestAMarkerQuotedInAFixtureIsNotAMarker(t *testing.T) {
+	root := tree(t, map[string]string{
+		"sample.std.md": description(caseBlock("yoke:sample.01", "the case a test performs", fields())),
+		"sample_test.go": "package sample\n\n" +
+			"// std: yoke:sample.01\n" +
+			"func TestTheCase() {\n" +
+			"\tfixture := \"// std: yoke:sample.02\\nfunc TestQuoted() {}\\n\"\n" +
+			"\t_ = fixture\n" +
+			"}\n",
+	})
+
+	out := accepted(t, "markers", root)
+
+	if strings.Contains(out, "yoke:sample.02") {
+		t.Errorf("a marker quoted inside a fixture was read as one: %s", out)
+	}
+}

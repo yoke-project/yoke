@@ -11,6 +11,9 @@ test:
     set -euo pipefail
     bash checks/run.sh
     go test ./...
+    go run ./cmd/yoke-verify descriptions --repository yoke . > /dev/null
+    go run ./cmd/yoke-verify markers --repository yoke . > /dev/null
+    echo "test: every description holds its form, and every case has exactly one test"
 
 # This repository's static checks.
 lint:

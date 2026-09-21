@@ -134,3 +134,16 @@
 | **Precondition** | two trees: one whose description gives a live case the number a struck case above it holds, and one whose test carries a marker naming that struck case |
 | **Action** | run `yoke-verify descriptions` over the first and `yoke-verify markers` over the second |
 | **Expected** | each exits non-zero naming the identifier — a number is taken by having been used, and a record written against a reused identifier would answer to a case nobody could find |
+
+## yoke:descriptions-and-markers.11 — a marker quoted in a fixture is not a marker
+
+| Field | Value |
+| --- | --- |
+| **Cites** | testing/30 §Joining a case to its test |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a tree whose test carries its own marker as a comment line, and builds a fixture whose text holds another marker inside a string |
+| **Action** | run `yoke-verify markers` over that tree |
+| **Expected** | only the comment line is read, and the quoted one enters no map and raises no finding — a marker is the whole of a comment line, which is what lets a scan tell one from a fixture quoting one |
