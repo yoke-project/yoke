@@ -3,15 +3,22 @@
 
 # Build this repository's codebase.
 build:
-    @echo "build: nothing to build in yoke yet — the first Go code arrives with yoke-project/yoke#5"
+    @go build ./... && echo "build: every package builds"
 
 # Run this repository's own checks, with no sibling present.
 test:
-    @bash checks/run.sh
+    #!/usr/bin/env bash
+    set -euo pipefail
+    bash checks/run.sh
+    go test ./...
 
 # This repository's static checks.
 lint:
-    @bash -n checks/run.sh checks/*/*.sh ci/*.sh && echo "lint: every shell script parses"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    bash -n checks/run.sh checks/*/*.sh ci/*.sh
+    go vet ./...
+    echo "lint: every shell script parses and go vet is clean"
 
 # Fail, naming each file, when the tree is not formatted.
 fmt:
