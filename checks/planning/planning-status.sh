@@ -52,14 +52,14 @@ check_an_item_moves_forward_only() {
   source "$planning_script"
 
   local from target got
-  for from in "Todo" "In Progress" "In Review" "Done"; do
+  for from in "" "Todo" "In Progress" "In Review" "Done"; do
     for target in "In Progress" "In Review"; do
       got="$(forward "$from" "$target")"
       case "$from|$target" in
-        "Todo|In Progress"|"Todo|In Review"|"In Progress|In Review")
-          [[ "$got" == "$target" ]] || { echo "$from does not move to $target"; return 1; } ;;
+        "|In Progress"|"|In Review"|"Todo|In Progress"|"Todo|In Review"|"In Progress|In Review")
+          [[ "$got" == "$target" ]] || { echo "${from:-no state} does not move to $target"; return 1; } ;;
         *)
-          [[ -z "$got" ]] || { echo "$from moves to $got, and that is not forward"; return 1; } ;;
+          [[ -z "$got" ]] || { echo "${from:-no state} moves to $got, and that is not forward"; return 1; } ;;
       esac
     done
   done
