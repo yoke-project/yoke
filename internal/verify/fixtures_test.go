@@ -1,6 +1,7 @@
 package verify_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -108,4 +109,59 @@ func accepted(t *testing.T, subcommand, root string) string {
 		t.Errorf("%s reported a finding on a tree that holds: %s", subcommand, findings)
 	}
 	return out
+}
+
+// runWith performs one subcommand with the arguments given, over a tree.
+func runWith(t *testing.T, subcommand string, args ...string) (status int, out, findings string) {
+	t.Helper()
+	var o, e strings.Builder
+	status = verify.Run(append([]string{subcommand}, args...), &o, &e)
+	return status, o.String(), e.String()
+}
+
+// recordOf writes a record over a tree and reads it back, failing unless one was written.
+func recordOf(t *testing.T, root string, args ...string) map[string]any {
+	t.Helper()
+	status, out, findings := runWith(t, "record", append(args, "--repository", "yoke", root)...)
+	if status != 0 {
+		t.Fatalf("record refused the run: %s", findings)
+	}
+	var record map[string]any
+	if err := json.Unmarshal([]byte(out), &record); err != nil {
+		t.Fatalf("the record is not one JSON object: %v\n%s", err, out)
+	}
+	return record
+}
+
+// entries returns a record's cases by identifier, in the order the record gives them.
+func entries(t *testing.T, record map[string]any) (map[string]map[string]any, []string) {
+	t.Helper()
+	raw, ok := record["cases"].([]any)
+	if !ok {
+		t.Fatalf("the record carries no cases: %v", record["cases"])
+	}
+	byID := map[string]map[string]any{}
+	var order []string
+	for _, e := range raw {
+		entry, ok := e.(map[string]any)
+		if !ok {
+			t.Fatalf("a case entry is not an object: %v", e)
+		}
+		id, _ := entry["id"].(string)
+		byID[id] = entry
+		order = append(order, id)
+	}
+	return byID, order
+}
+
+// resultIs fails the test unless a case was recorded with the result given.
+func resultIs(t *testing.T, byID map[string]map[string]any, id, want string) {
+	t.Helper()
+	entry, declared := byID[id]
+	if !declared {
+		t.Fatalf("the record holds no entry for %s", id)
+	}
+	if got, _ := entry["result"].(string); got != want {
+		t.Errorf("%s is recorded %q, want %q", id, got, want)
+	}
 }
