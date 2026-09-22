@@ -41,8 +41,8 @@
 | **Not applicable in** | — |
 | **Label** | blocking |
 | **Precondition** | the script's own ordering of the states an item passes through |
-| **Action** | ask it, for each state an item may be in, what a push and a proposed change would move it to |
-| **Expected** | Todo moves to either; In Progress moves only to In Review; In Review and Done move to nothing, and no state moves to Done — the work's direction is the only thing this workflow knows, and a board it could move backwards would be worse than one nobody moves |
+| **Action** | ask it, for each state an item may be in — including none, which an item just added to the plan is in — what a push and a proposed change would move it to |
+| **Expected** | an item with no state moves to either, and so does Todo; In Progress moves only to In Review; In Review and Done move to nothing, and no state moves to Done — the work's direction is the only thing this workflow knows, and a board it could move backwards would be worse than one nobody moves |
 
 ## yoke:planning-status.04 — the items are read from the change, and never invented
 

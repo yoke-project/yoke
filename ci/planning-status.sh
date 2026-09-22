@@ -13,15 +13,16 @@ set -uo pipefail
 # The states this workflow moves an item through, in order. Done is deliberately absent.
 planning_states=("Todo" "In Progress" "In Review")
 
-# forward prints the state to move to, or nothing when the item is already there or past it.
+# forward prints the state to move to, or nothing when the item is already there or past it. An item
+# with no state at all — one just added to the plan — is before every state, and so moves to either.
 forward() {
   local current="$1" target="$2" i place=-1 destination=-1
   for i in "${!planning_states[@]}"; do
     [[ "${planning_states[$i]}" == "$current" ]] && place=$i
     [[ "${planning_states[$i]}" == "$target" ]] && destination=$i
   done
-  (( destination < 0 )) && return 0          # not a state this workflow moves an item to
-  (( place < 0 )) && return 0                # Done, or a state nobody here knows
+  (( destination < 0 )) && return 0                        # not a state this workflow moves an item to
+  [[ -n "$current" ]] && (( place < 0 )) && return 0       # Done, or a state nobody here moves through
   (( destination > place )) && echo "$target"
   return 0
 }
@@ -68,12 +69,14 @@ planning_field() {
              | @tsv" 2>/dev/null
 }
 
-# item_in_project prints the identifier of an issue's item in the project, and the state it is in.
+# item_in_project prints the identifier of an issue's item in the plan, and the state it is in. An
+# issue commonly sits in more than one project, so the plan's own number is what picks its item out.
 item_in_project() {
   local repository="$1" number="$2" project="$3"
+  [[ "$project" =~ ^[0-9]+$ ]] || return 0
   gh api graphql -f owner="${repository%%/*}" -f name="${repository##*/}" -F number="$number" \
-    -F project="$project" -f query='
-    query($owner:String!,$name:String!,$number:Int!,$project:Int!){
+    -f query='
+    query($owner:String!,$name:String!,$number:Int!){
       repository(owner:$owner,name:$name){
         issue(number:$number){
           projectItems(first:20){
@@ -87,9 +90,9 @@ item_in_project() {
           }
         }
       }
-    }' --jq '[.data.repository.issue.projectItems.nodes[]
-              | select(.project.number==($ENV.PLANNING_PROJECT|tonumber))
-              | [.id, (.fieldValueByName.name // "")]][0] | @tsv' 2>/dev/null
+    }' --jq "[.data.repository.issue.projectItems.nodes[]
+              | select(.project.number==$project)
+              | [.id, (.fieldValueByName.name // \"\")]][0] | @tsv" 2>/dev/null
 }
 
 # move sets one item's state, and says what it did either way.
