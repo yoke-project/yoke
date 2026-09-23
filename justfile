@@ -8,12 +8,19 @@ build:
 # Run this repository's own checks, with no sibling present.
 test:
     #!/usr/bin/env bash
-    set -euo pipefail
-    bash checks/run.sh
-    go test ./...
-    go run ./cmd/yoke-verify descriptions --repository yoke . > /dev/null
-    go run ./cmd/yoke-verify markers --repository yoke . > /dev/null
-    echo "test: every description holds its form, and every case has exactly one test"
+    # A run leaves its results where the record writer reads them, whatever it decides (yoke#36).
+    set -uo pipefail
+    mkdir -p .results
+    date -u +%Y-%m-%dT%H:%M:%SZ > .results/started
+    status=0
+    bash checks/run.sh | tee .results/checks.txt || status=1
+    go test -json ./... > .results/go.json || status=1
+    go test ./... || status=1
+    go run ./cmd/yoke-verify descriptions --repository yoke . > /dev/null || status=1
+    go run ./cmd/yoke-verify markers --repository yoke . > /dev/null || status=1
+    date -u +%Y-%m-%dT%H:%M:%SZ > .results/finished
+    (( status == 0 )) && echo "test: every description holds its form, and every case has exactly one test"
+    exit "$status"
 
 # This repository's static checks.
 lint:
