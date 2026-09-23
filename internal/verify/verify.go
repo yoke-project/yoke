@@ -36,6 +36,7 @@ func Run(args []string, out, errOut io.Writer) int {
 	flags := flag.NewFlagSet("yoke-verify "+subcommand, flag.ContinueOnError)
 	flags.SetOutput(errOut)
 	repository := flags.String("repository", "", "the repository the identifiers name; the root's own name by default")
+	emit := flags.String("emit", "", "what to write when every check holds: `json`, the cases as they were parsed (473)")
 	var options recordOptions
 	if subcommand == "record" {
 		options.register(flags)
@@ -64,6 +65,19 @@ func Run(args []string, out, errOut io.Writer) int {
 		findings = append(findings, checkDescriptions(descriptions, *repository)...)
 		if len(findings) > 0 {
 			return report(errOut, findings)
+		}
+		if *emit == "json" {
+			written, err := json.MarshalIndent(emitted(descriptions), "", "  ")
+			if err != nil {
+				fmt.Fprintf(errOut, "yoke-verify: %v\n", err)
+				return 2
+			}
+			fmt.Fprintln(out, string(written))
+			return 0
+		}
+		if *emit != "" {
+			fmt.Fprintf(errOut, "yoke-verify: no such emission %q; expected json\n", *emit)
+			return 2
 		}
 		for _, description := range descriptions {
 			for _, c := range description.cases {

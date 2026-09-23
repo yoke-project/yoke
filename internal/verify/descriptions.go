@@ -377,3 +377,38 @@ func contains(values []string, value string) bool {
 	}
 	return false
 }
+
+// An EmittedCase is one case as the tool read it, for a reader that resolves what the tool cannot:
+// the citations come out as they were written, because what one means is known where the corpora are
+// and never here (473).
+type EmittedCase struct {
+	ID     string            `json:"id"`
+	File   string            `json:"file"`
+	Title  string            `json:"title"`
+	Struck bool              `json:"struck,omitempty"`
+	Cites  []string          `json:"cites,omitempty"`
+	Fields map[string]string `json:"fields,omitempty"`
+}
+
+// emitted turns what was parsed into what is emitted, in the order the descriptions give.
+func emitted(descriptions []description) []EmittedCase {
+	cases := []EmittedCase{}
+	for _, d := range descriptions {
+		for _, c := range d.cases {
+			each := EmittedCase{ID: c.id, File: d.path, Title: c.title, Struck: c.struck}
+			if !c.struck {
+				each.Fields = map[string]string{}
+				for _, f := range c.fields {
+					each.Fields[f.name] = f.value
+				}
+				for _, citation := range strings.Split(value(c, "Cites"), " · ") {
+					if citation = strings.TrimSpace(citation); citation != "" {
+						each.Cites = append(each.Cites, citation)
+					}
+				}
+			}
+			cases = append(cases, each)
+		}
+	}
+	return cases
+}
