@@ -5,7 +5,7 @@
 | **Feature** | a run leaves its results where the writer reads them, the record is assembled from them, and the workflow hands it over even when the run failed |
 | **Planning item** | yoke-project/yoke#36 |
 
-## yoke:the-record-of-a-run.01 — a run leaves its results, and its instants, where the writer reads them
+## yoke:the-record-of-a-run.01 — the verb undertakes to leave its results, whatever it decided
 
 | Field | Value |
 | --- | --- |
@@ -14,9 +14,9 @@
 | **Method** | check |
 | **Not applicable in** | — |
 | **Label** | blocking |
-| **Precondition** | a clean checkout, and a run of this repository's `test` verb |
-| **Action** | read the directory the run leaves its results in |
-| **Expected** | it holds the lines the checks wrote, the runner's own machine-readable output, and the instants the run started and finished — the two forms 470 names, and the two things no runner records about itself |
+| **Precondition** | a clean checkout |
+| **Action** | read the `test` verb: what it writes, and what it does when something it runs fails |
+| **Expected** | it writes the lines the checks wrote, the runner's own machine-readable output, and the instants it started and finished — the two forms 470 names and the two things no runner records about itself — and it carries a failure to its own exit rather than abandoning the rest, so a failing run leaves as much as a passing one. **This case reads the verb and never the results**: a check runs inside the run it would be inspecting, and one that read the directory would be reading either a half-written run or the leavings of the last one. That the leaving happens is `.04`'s artifact, in the run itself |
 
 ## yoke:the-record-of-a-run.02 — the record is assembled from them, and names what no runner knows
 
