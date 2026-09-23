@@ -9,21 +9,27 @@ record_script="$root/ci/record.sh"
 record_results="$root/.results"
 
 # std: yoke:the-record-of-a-run.01
+# It reads the verb and never the results: this check runs inside the run it would be inspecting.
 check_a_run_leaves_its_results() {
-  [[ -d "$record_results" ]] || { echo "the run left no results in .results"; return 1; }
+  local recipe
+  recipe="$(cd "$root" && just --show test 2>/dev/null)"
+  [[ -n "$recipe" ]] || { echo "no test verb"; return 1; }
+
   local each
-  for each in checks.txt go.json started finished; do
-    [[ -s "$record_results/$each" ]] || { echo "the run left no $each"; return 1; }
+  for each in '\.results/started' '\.results/finished' '\.results/checks\.txt' '\.results/go\.json'; do
+    grep -qE "$each" <<<"$recipe" || { echo "the verb does not write ${each//\\/}"; return 1; }
   done
-  grep -qE '^(pass|FAIL)  ' "$record_results/checks.txt" \
-    || { echo "checks.txt holds no result a check wrote"; return 1; }
-  grep -q '"Action"' "$record_results/go.json" \
-    || { echo "go.json is not the runner's own output"; return 1; }
-  local each_instant
-  for each_instant in started finished; do
-    grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]+Z$' "$record_results/$each_instant" \
-      || { echo "$each_instant is not an instant in UTC: $(cat "$record_results/$each_instant")"; return 1; }
-  done
+  grep -qE 'tee \.results/checks\.txt' <<<"$recipe" \
+    || { echo "the checks' lines are not kept as they are written"; return 1; }
+  grep -qE 'go test -json' <<<"$recipe" \
+    || { echo "the runner's own output is not kept"; return 1; }
+  grep -qE 'date -u .*started' <<<"$recipe" && grep -qE 'date -u .*finished' <<<"$recipe" \
+    || { echo "the run does not record when it began and ended"; return 1; }
+
+  grep -qE '\|\| status=1' <<<"$recipe" || { echo "a failure abandons the rest of the run"; return 1; }
+  grep -qE 'exit "\$status"' <<<"$recipe" || { echo "the verb does not carry the failure to its own exit"; return 1; }
+  grep -qE '^[[:space:]]*set -euo' <<<"$recipe" && { echo "the verb aborts on the first failure, and leaves the rest unwritten"; return 1; }
+  return 0
 }
 
 # A directory of results, with the verdict given for one case of this repository's own descriptions.
@@ -111,7 +117,8 @@ check_the_workflow_hands_it_over() {
 check_nothing_a_run_writes_enters_the_tree() {
   [[ -f "$root/.gitignore" ]] || { echo "no .gitignore"; return 1; }
   grep -qE '^\.results' "$root/.gitignore" || { echo ".gitignore does not ignore the results"; return 1; }
-  (cd "$root" && git check-ignore -q .results) || { echo "the results are not ignored"; return 1; }
+  # A path under it, not the directory itself: a directory rule matches nothing when nothing is there.
+  (cd "$root" && git check-ignore -q .results/checks.txt) || { echo "the results are not ignored"; return 1; }
   local seen
   seen="$(cd "$root" && git status --porcelain | grep -F '.results' || true)"
   [[ -z "$seen" ]] || { echo "a run left the results in the tree: $seen"; return 1; }
