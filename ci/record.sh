@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Assembles the record of a run from what that run left behind, and writes it to standard output.
-# It runs nothing: a record is evidence of a run that already happened (testing/40 §A record).
+# It runs nothing: a record is evidence of a run that already happened.
 # Usage: record.sh [results directory]
 set -uo pipefail
 
@@ -11,7 +11,7 @@ for each in checks.txt started finished; do
   [[ -f "$results/$each" ]] || { echo "record: the run left no $each in $results" >&2; exit 1; }
 done
 
-# The architecture as the environment's dimension names it (testing/20 §The environments).
+# The architecture as the environment's dimension names it.
 case "$(uname -m)" in
   x86_64) architecture=amd64 ;;
   aarch64 | arm64) architecture=arm64 ;;

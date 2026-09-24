@@ -1,4 +1,4 @@
-// Package verify reads the descriptions a repository carries, checks the form testing/30 fixes, and
+// Package verify reads the descriptions a repository carries, checks the form a description takes, and
 // joins each case to the test that performs it.
 package verify
 
@@ -36,7 +36,7 @@ func Run(args []string, out, errOut io.Writer) int {
 	flags := flag.NewFlagSet("yoke-verify "+subcommand, flag.ContinueOnError)
 	flags.SetOutput(errOut)
 	repository := flags.String("repository", "", "the repository the identifiers name; the root's own name by default")
-	emit := flags.String("emit", "", "what to write when every check holds: `json`, the cases as they were parsed (473)")
+	emit := flags.String("emit", "", "what to write when every check holds: `json`, the cases as they were parsed")
 	var options recordOptions
 	if subcommand == "record" {
 		options.register(flags)

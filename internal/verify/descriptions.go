@@ -9,15 +9,15 @@ import (
 	"strings"
 )
 
-// The eight fields of a case, in the order testing/30 fixes and no other.
+// The eight fields of a case, in the order a description fixes and no other.
 var theFields = []string{
 	"Cites", "Level", "Method", "Not applicable in", "Label", "Precondition", "Action", "Expected",
 }
 
-// The levels a description written by hand may name: L2 is the suite's own rendering (testing/20).
+// The levels a description written by hand may name: L2 is the suite's own rendering.
 var theLevels = []string{"L0", "L1", "L3", "L4", "L5"}
 
-// The five environment dimensions, with the values each takes (testing/20 §The environments).
+// The five environment dimensions, with the values each takes.
 var theDimensions = map[string][]string{
 	"architecture":             {"amd64", "arm64"},
 	"deployment form":          {"service", "application"},
@@ -164,7 +164,7 @@ func parseRow(line string) (name, value string, ok bool) {
 	return strings.Trim(name, "*"), strings.TrimSpace(cells[1]), true
 }
 
-// checkDescriptions is every rule testing/30 states about a description, and the only place any of
+// checkDescriptions is every rule the form states about a description, and the only place any of
 // them is enforced.
 func checkDescriptions(descriptions []description, repository string) []Finding {
 	var findings []Finding
@@ -380,7 +380,7 @@ func contains(values []string, value string) bool {
 
 // An EmittedCase is one case as the tool read it, for a reader that resolves what the tool cannot:
 // the citations come out as they were written, because what one means is known where the corpora are
-// and never here (473).
+// and never here.
 type EmittedCase struct {
 	ID     string            `json:"id"`
 	File   string            `json:"file"`
