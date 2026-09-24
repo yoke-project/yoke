@@ -1,0 +1,9 @@
+// A contract whose path says v2 and which states 3: what the check must reject (yoke:plugin-contract.03).
+syntax = "proto3";
+
+package yoke.sample.v2;
+
+enum Contract {
+  CONTRACT_UNSPECIFIED = 0;
+  CONTRACT_VERSION = 3;
+}
