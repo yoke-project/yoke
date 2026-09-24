@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The path filter: reads the paths a change touched, one per line, and prints the jobs it selects.
 # A job runs when its inputs moved; the suite and the version comparison are never skipped when the
-# definitions move (prj_structure/95 §Continuous integration).
+# definitions move.
 set -euo pipefail
 
 verify=0

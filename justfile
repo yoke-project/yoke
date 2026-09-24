@@ -1,4 +1,4 @@
-# The six verbs every repository defines (prj_structure/95 §The verbs).
+# The six verbs every repository defines.
 # A verb with nothing to do says so in one line, so a fan-out can tell a gap from a statement.
 
 # Build this repository's codebase, the definitions included: a contract whose two version statements
@@ -40,13 +40,13 @@ fmt:
     if [[ -n "$files" ]]; then printf 'fmt: not formatted:\n%s\n' "$files"; exit 1; fi
     echo "fmt: every Go file is formatted"
 
-# Verify the toolchain against the floor the workspace's fan-out passes (466).
+# Verify the toolchain against the floor the workspace's fan-out passes.
 develop floor="":
     #!/usr/bin/env bash
     set -euo pipefail
     found="$(just --version | awk '{print $2}')"
     if [[ -z "{{floor}}" ]]; then
-        echo "develop: no floor given, so none verified — the workspace passes it (466); found just $found"
+        echo "develop: no floor given, so none verified — the workspace passes it; found just $found"
         exit 0
     fi
     if ! [[ "{{floor}}" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
@@ -60,6 +60,6 @@ develop floor="":
     fi
     echo "develop: just $found meets the floor {{floor}}"
 
-# Publish into this repository's ecosystems, one manifest line per publication (393).
+# Publish into this repository's ecosystems, one manifest line per publication.
 release:
     @echo "release: nothing to publish yet — the release verb arrives with yoke-project/yoke#20"

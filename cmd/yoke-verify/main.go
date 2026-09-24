@@ -1,5 +1,5 @@
 // Command yoke-verify checks this project's own test descriptions and the markers that join a case
-// to the test performing it, and writes the record of a run (prj_structure/95 §The verbs, 464, 467).
+// to the test performing it, and writes the record of a run.
 package main
 
 import (

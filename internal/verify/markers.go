@@ -11,8 +11,7 @@ import (
 	"strings"
 )
 
-// A pair is one case and the test performing it: the map a level's run reads its results through
-// (testing/40 §From a test's result to its case).
+// A pair is one case and the test performing it: the map a level's run reads its results through.
 type pair struct {
 	id   string
 	test string
@@ -20,7 +19,7 @@ type pair struct {
 }
 
 // The marker is `std: <identifier>`, and it is the whole of a comment line — the one construct every
-// language of the project has (testing/30 §Joining a case to its test, 469). A comment that opens the
+// language of the project has. A comment that opens the
 // line is what tells a marker from a fixture quoting one, which is a file this very tool has.
 var marker = regexp.MustCompile(`^std:\s*([A-Za-z0-9_-]+:[A-Za-z0-9._-]+)`)
 

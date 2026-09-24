@@ -12,7 +12,7 @@ import (
 )
 
 // The record schema's version. It moves when a field is added, removed or given a new meaning, so a
-// reader a year from now knows what it is holding (testing/40 §A record).
+// reader a year from now knows what it is holding.
 const schema = 1
 
 // A Record is what one run of one level observed, and the only thing this project keeps of a run.
@@ -48,7 +48,7 @@ type CaseResult struct {
 	Detail string `json:"detail,omitempty"`
 }
 
-// The four results a case takes (testing/40 §A record).
+// The four results a case takes.
 const (
 	pass          = "pass"
 	fail          = "fail"
@@ -56,7 +56,7 @@ const (
 	notApplicable = "not applicable"
 )
 
-// The three states a level takes (testing/20 §The order between levels).
+// The three states a level takes.
 const (
 	passed     = "passed"
 	failed     = "failed"
@@ -70,7 +70,7 @@ func (r *repeated) String() string     { return strings.Join(*r, ", ") }
 func (r *repeated) Set(v string) error { *r = append(*r, v); return nil }
 
 // recordOptions are the things no runner knows: whoever starts the run states them, and nothing about
-// a forge or a workflow reaches this tool (427).
+// a forge or a workflow reaches this tool.
 type recordOptions struct {
 	level       string
 	tier        string
@@ -212,7 +212,7 @@ func buildRecord(root, repository string, descriptions []description, pairs []pa
 
 // readResults reads either form a run of this project emits: a Go runner's own machine-readable
 // output, keyed by the test's name, or the lines a check writes, keyed by the case's identifier. A
-// check has no runner to translate it, so the tool reads what it already prints (testing/40).
+// check has no runner to translate it, so the tool reads what it already prints.
 func readResults(content string) map[string]outcome {
 	for _, line := range strings.Split(content, "\n") {
 		if strings.TrimSpace(line) == "" {
@@ -305,7 +305,7 @@ func checkResults(content string) map[string]outcome {
 }
 
 // excluded is the one place not applicable is decided: from the description's declaration against the
-// environment the run fixed, and never from anything a runner said (testing/40 §A record).
+// environment the run fixed, and never from anything a runner said.
 func excluded(c stdCase, environment map[string]string) bool {
 	declaration := value(c, "Not applicable in")
 	if declaration == "" || declaration == "—" {
