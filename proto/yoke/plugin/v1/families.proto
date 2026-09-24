@@ -1,0 +1,133 @@
+// The eight payloads, one per family. An opaque payload is carried and
+// never decoded, bounded at 1 MiB; a line is for a person, bounded at 1 KiB.
+syntax = "proto3";
+
+package yoke.plugin.v1;
+
+option go_package = "github.com/yoke-project/yoke/proto/yoke/plugin/v1;pluginv1";
+
+message SessionMessage {
+  // The first envelope on the stream, from the unit.
+  message Open {}
+  // The unit's orderly departure.
+  message Close {}
+  // The Core ending the Session, and why.
+  message Revoked {
+    enum Cause {
+      CAUSE_UNSPECIFIED = 0;
+      CAUSE_LIVENESS_LOST = 1;
+      CAUSE_PLUGIN_DISABLED = 2;
+      CAUSE_SCOPE_EXCEEDED = 3;
+      CAUSE_PROTOCOL_FAILURE = 4;
+    }
+    Cause cause = 1;
+    string line = 2;
+  }
+
+  oneof kind {
+    Open open = 1;
+    Close close = 2;
+    Revoked revoked = 3;
+  }
+}
+
+// From the Core: what this unit should do.
+message Control {
+  // A command type the unit declared, and its payload.
+  message Command {
+    string type = 1;
+    bytes payload = 2;
+  }
+  // A stream's activation: what the unit connects to, and how it frames what it sends.
+  message Activate {
+    enum Transport {
+      TRANSPORT_UNSPECIFIED = 0;
+      TRANSPORT_ORDERED = 1;
+      TRANSPORT_FRAMED = 2;
+      TRANSPORT_SHARED_OBJECT = 3;
+    }
+    string stream = 1;
+    Transport transport = 2;
+    string address = 3;
+  }
+  // The instruction that stops a stream.
+  message Stop {
+    string stream = 1;
+  }
+
+  oneof kind {
+    Command command = 1;
+    Activate activate = 2;
+    Stop stop = 3;
+  }
+}
+
+// From the unit, correlated: what became of that instruction. An acceptance is followed by at most one
+// final answer, and no acknowledgement carries a domain result.
+message Ack {
+  enum Outcome {
+    OUTCOME_UNSPECIFIED = 0;
+    OUTCOME_ACCEPTED = 1;
+    OUTCOME_DONE = 2;
+    OUTCOME_FAILED = 3;
+  }
+  Outcome outcome = 1;
+  string line = 2;
+}
+
+// A question from the Core, and the unit's answer, correlated to it.
+message Query {
+  message Question {
+    string type = 1;
+    bytes payload = 2;
+  }
+  message Answer {
+    bytes payload = 1;
+  }
+
+  oneof kind {
+    Question question = 1;
+    Answer answer = 2;
+  }
+}
+
+// What a stream produces. Never on the Session: only on its own ordered transport, which names the
+// stream. The sequence is per stream, from 1, never reused within an activation.
+message Data {
+  uint64 sequence = 1;
+  bytes payload = 2;
+}
+
+// Alive, and how well: a grade from 0 to 99, and a line.
+message Health {
+  uint32 grade = 1;
+  string line = 2;
+}
+
+// What just happened: a class the unit declared and was granted, a severity from 0 to 99 the unit
+// declares, a line, and a detail the Core carries into the event unchanged.
+message Event {
+  string occurrence = 1;
+  uint32 severity = 2;
+  string line = 3;
+  bytes detail = 4;
+}
+
+// What went wrong: a code, one of Code's names; a message for a person; a detail typed per code.
+message Error {
+  // Each item that differs between a process and its Manifest.
+  message Divergence {
+    repeated string items = 1;
+  }
+  // The item declared and not authorised.
+  message Withheld {
+    string item = 1;
+  }
+
+  string code = 1;
+  string message = 2;
+  oneof detail {
+    Divergence divergent = 3;
+    Withheld withheld = 4;
+  }
+}

@@ -35,7 +35,7 @@ check_document_selects_nothing() {
 check_definitions_select_suite_and_comparison() {
   [[ -x "$root/ci/select-jobs.sh" ]] || { echo "no path filter"; return 1; }
   local selected job
-  selected="$(printf 'definitions/yoke/plugin/v1/plugin.proto\n' | "$root/ci/select-jobs.sh")"
+  selected="$(printf 'proto/yoke/plugin/v1/session.proto\n' | "$root/ci/select-jobs.sh")"
   for job in verify suite version-comparison; do
     grep -qx "$job" <<<"$selected" || { echo "a definitions change did not select '$job'"; return 1; }
   done

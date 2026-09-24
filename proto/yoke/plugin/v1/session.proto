@@ -1,0 +1,35 @@
+// The Session: one bidirectional stream, which is the Session.
+syntax = "proto3";
+
+package yoke.plugin.v1;
+
+import "yoke/plugin/v1/families.proto";
+
+option go_package = "github.com/yoke-project/yoke/proto/yoke/plugin/v1;pluginv1";
+
+service Session {
+  rpc Open(stream Envelope) returns (stream Envelope);
+}
+
+// Four header fields and exactly one payload. The payload that is set is the family.
+message Envelope {
+  // Unique within the Session.
+  string message_id = 1;
+  // The identity admission issued.
+  string session_id = 2;
+  // The sender's clock at emission, in nanoseconds since the epoch.
+  int64 sent_at_unix_nano = 3;
+  // The message identity of what this answers; empty where the family never correlates.
+  string correlation_id = 4;
+
+  oneof payload {
+    SessionMessage session = 5;
+    Control control = 6;
+    Ack ack = 7;
+    Query query = 8;
+    Data data = 9;
+    Health health = 10;
+    Event event = 11;
+    Error error = 12;
+  }
+}

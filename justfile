@@ -1,9 +1,11 @@
 # The six verbs every repository defines (prj_structure/95 §The verbs).
 # A verb with nothing to do says so in one line, so a fan-out can tell a gap from a statement.
 
-# Build this repository's codebase.
+# Build this repository's codebase, the definitions included: a contract whose two version statements
+# disagree is rejected here, where the definitions are built.
 build:
     @go build ./... && echo "build: every package builds"
+    @bash ci/definitions.sh check
 
 # Run this repository's own checks, with no sibling present.
 test:
