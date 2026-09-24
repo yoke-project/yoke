@@ -10,7 +10,7 @@ while IFS= read -r path; do
   [[ -n "$path" ]] || continue
   case "$path" in
     checks/*) verify=1 ;;
-    definitions/*) verify=1; definitions=1 ;;
+    proto/*) verify=1; definitions=1 ;;
     *.md | LICENSE | NOTICE) ;;
     *) verify=1 ;;
   esac

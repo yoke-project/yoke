@@ -1,0 +1,81 @@
+// Registration: one question with one answer.
+syntax = "proto3";
+
+package yoke.plugin.v1;
+
+import "google/protobuf/duration.proto";
+
+option go_package = "github.com/yoke-project/yoke/proto/yoke/plugin/v1;pluginv1";
+
+service Register {
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+}
+
+// What a unit claims. No address, no Session identity and no state.
+message RegisterRequest {
+  // The plugin and unit identities, exactly as the environment supplied them.
+  string plugin = 1;
+  string unit = 2;
+  // The bootstrap token: opaque, never logged and never stored.
+  string token = 3;
+  // The protocol version: the Contract this unit was built against.
+  uint32 protocol = 4;
+  // Recorded and reported, and never weighed.
+  string artifact_version = 5;
+  string language = 6;
+  string sdk_line = 7;
+  // The declared surface.
+  Surface declared = 8;
+}
+
+// Four lists of identifiers: a declared surface, a granted scope, or what was withheld from one.
+message Surface {
+  repeated string capabilities = 1;
+  repeated string streams = 2;
+  repeated string commands = 3;
+  repeated string queries = 4;
+}
+
+message RegisterResponse {
+  enum Outcome {
+    OUTCOME_UNSPECIFIED = 0;
+    OUTCOME_ACCEPTED = 1;
+    OUTCOME_ACCEPTED_WITH_RESTRICTIONS = 2;
+    OUTCOME_REFUSED = 3;
+  }
+
+  Outcome outcome = 1;
+  // On a refusal: how far the request got, which decides whether the token was spent.
+  Stage stage = 2;
+  // On a refusal: the machine's answer, one of Code's names, and the person's.
+  string code = 3;
+  string message = 4;
+  // On an acceptance: opaque, assigned by the Core, and not guessable.
+  string session_id = 5;
+  // On an acceptance: the four lists after the intersection.
+  Surface granted = 6;
+  // On a restricted acceptance: item by item, never a count.
+  Surface withheld = 7;
+  // The terms the Core assigned.
+  HeartbeatTerms heartbeat = 8;
+}
+
+// The nine stages of admission, in the order they are evaluated.
+enum Stage {
+  STAGE_UNSPECIFIED = 0;
+  STAGE_STRUCTURAL = 1;
+  STAGE_IDENTITY = 2;
+  STAGE_ADMINISTRATIVE_STATE = 3;
+  STAGE_AUTHENTICATION = 4;
+  STAGE_COMPATIBILITY = 5;
+  STAGE_DECLARATION_CONSISTENCY = 6;
+  STAGE_AUTHORISATION = 7;
+  STAGE_UNIT_CONFLICT = 8;
+  STAGE_SESSION_PREPARATION = 9;
+}
+
+message HeartbeatTerms {
+  google.protobuf.Duration interval = 1;
+  // How many consecutive misses the Core tolerates.
+  uint32 tolerance = 2;
+}

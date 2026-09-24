@@ -1,0 +1,12 @@
+// The plugin contract's version, stated inside the contract. It is the integer a unit sends at registration, and it is the `v1` of this path: a
+// contract whose two differ is rejected where the definitions are built.
+syntax = "proto3";
+
+package yoke.plugin.v1;
+
+option go_package = "github.com/yoke-project/yoke/proto/yoke/plugin/v1;pluginv1";
+
+enum Contract {
+  CONTRACT_UNSPECIFIED = 0;
+  CONTRACT_VERSION = 1;
+}
