@@ -19,7 +19,7 @@ const holdRoot = "YOKE_TEST_HOLD_ROOT"
 
 func TestMain(m *testing.M) {
 	if root := os.Getenv(holdRoot); root != "" {
-		if _, err := instance.Claim(root); err != nil {
+		if _, err := instance.Claim(root, 0o700); err != nil {
 			os.Stdout.WriteString("refused " + err.Error() + "\n")
 			os.Exit(3)
 		}
@@ -106,7 +106,7 @@ func TestEveryPathIsDerivedFromTheName(t *testing.T) {
 func TestASecondProcessIsRefusedNamingTheHolder(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "bench-a")
 	other := holder(t, root)
-	_, err := instance.Claim(root)
+	_, err := instance.Claim(root, 0o700)
 	var running *instance.AlreadyRunning
 	if !errors.As(err, &running) {
 		t.Fatalf("a held instance is claimed, or refused for another reason: %v", err)
@@ -127,7 +127,7 @@ func TestTheClaimIsReleasedWhenItsHolderDies(t *testing.T) {
 		t.Fatal(err)
 	}
 	other.Wait()
-	claim, err := instance.Claim(root)
+	claim, err := instance.Claim(root, 0o700)
 	if err != nil {
 		t.Fatalf("the claim outlived its holder: %v", err)
 	}
@@ -140,12 +140,12 @@ func TestTheClaimIsReleasedWhenItsHolderDies(t *testing.T) {
 // std: yoke:the-core-process.11
 func TestASecondClaimInTheHolderNeitherSucceedsNorReleases(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "bench-a")
-	first, err := instance.Claim(root)
+	first, err := instance.Claim(root, 0o700)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer first.Release()
-	if second, err := instance.Claim(root); err == nil {
+	if second, err := instance.Claim(root, 0o700); err == nil {
 		second.Release()
 		t.Fatal("a second claim in the holding process succeeded")
 	}
