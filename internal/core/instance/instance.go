@@ -92,8 +92,9 @@ var (
 	claimed   = map[string]bool{}
 )
 
-// Claim creates root if it is absent and takes the instance: it succeeds, or it fails saying who holds it.
-func Claim(root string) (*Held, error) {
+// Claim creates root if it is absent, gives it mode — set explicitly, never taken from a umask — and
+// takes the instance: it succeeds, or it fails saying who holds it.
+func Claim(root string, mode os.FileMode) (*Held, error) {
 	absolute, err := filepath.Abs(root)
 	if err != nil {
 		return nil, err
@@ -104,8 +105,14 @@ func Claim(root string) (*Held, error) {
 		return nil, fmt.Errorf("the instance at %s is already claimed by this process", absolute)
 	}
 
-	if err := os.MkdirAll(absolute, 0o700); err != nil {
+	if err := os.MkdirAll(absolute, mode.Perm()); err != nil {
 		return nil, fmt.Errorf("the instance root %s cannot be created: %w", absolute, err)
+	}
+	if err := os.Lchown(absolute, os.Getuid(), os.Getgid()); err != nil {
+		return nil, fmt.Errorf("the instance root %s cannot be owned by this process: %w", absolute, err)
+	}
+	if err := os.Chmod(absolute, mode); err != nil {
+		return nil, fmt.Errorf("the instance root %s cannot be given its mode: %w", absolute, err)
 	}
 	file, err := os.OpenFile(filepath.Join(absolute, LockName), os.O_RDWR|os.O_CREATE, 0o600)
 	if err != nil {

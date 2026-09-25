@@ -200,11 +200,8 @@ func TestAChannelThatCannotBeBoundIsFatal(t *testing.T) {
 			return err
 		}
 		// A root deep enough that its channel's path is 108 characters.
-		deep := st.Paths.Root
-		for len(filepath.Join(deep, "plugin.sock")) < 108 {
-			deep += "/d"
-		}
-		deep = deep[:len(deep)-(len(filepath.Join(deep, "plugin.sock"))-108)]
+		root := st.Paths.Root
+		deep := filepath.Join(root, strings.Repeat("d", 108-len(root)-len("//plugin.sock")))
 		st.Paths = instance.ServicePaths(deep, st.Paths.State)
 		return nil
 	}), &started)
@@ -305,12 +302,8 @@ func TestTheRootsModeIsTheFormsWhateverTheUmask(t *testing.T) {
 func TestAChannelsSocketTakesTheFormsModeAndThePathTheCeiling(t *testing.T) {
 	for form, want := range map[trunk.Form]os.FileMode{trunk.Service: 0o660, trunk.Application: 0o600} {
 		dir := t.TempDir()
-		path := dir
-		for len(path+"/x.sock") < 107 {
-			path += "/d"
-		}
-		path = path[:len(path)-(len(path+"/x.sock")-107)] + "/x.sock"
-		os.MkdirAll(filepath.Dir(path), 0o700)
+		// A name of as many characters as brings the path to 107, the ceiling.
+		path := filepath.Join(dir, strings.Repeat("a", 107-len(dir)-len("/.sock"))+".sock")
 		listener, err := trunk.Bind(path, form)
 		if err != nil {
 			t.Fatalf("a path of %d characters was refused: %v", len(path), err)
@@ -321,7 +314,7 @@ func TestAChannelsSocketTakesTheFormsModeAndThePathTheCeiling(t *testing.T) {
 		}
 		listener.Close()
 
-		longer := filepath.Join(filepath.Dir(path), "xy.sock")
+		longer := strings.TrimSuffix(path, ".sock") + "a.sock"
 		if l, err := trunk.Bind(longer, form); err == nil {
 			l.Close()
 			t.Errorf("a path of %d characters was bound", len(longer))

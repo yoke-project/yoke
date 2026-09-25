@@ -2,8 +2,8 @@
 // never interprets a payload.
 //
 // In the service form it is executed with the composition in force and reads everything else from
-// `core.yaml`. It validates its configuration, derives its paths, takes the claim on its instance, and
-// holds it until it is told to stop.
+// `core.yaml`. It runs the startup chain to readiness, serves until it is told to stop, and then undoes
+// what it set up.
 package main
 
 import (
@@ -14,7 +14,7 @@ import (
 	"syscall"
 
 	"github.com/yoke-project/yoke/internal/core/config"
-	"github.com/yoke-project/yoke/internal/core/instance"
+	"github.com/yoke-project/yoke/internal/core/trunk"
 )
 
 func main() {
@@ -27,27 +27,19 @@ func run(args []string) int {
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
-
-	// Identity and paths, and the parameters: nothing is created before both pass.
-	settings, err := config.Load(os.Getenv)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "yoke-core:", err)
-		return 1
-	}
 	// The composition in force is chosen now, and read when the deployment is.
 	_ = config.Composition(*composition, os.Getenv)
-	paths := instance.ServicePaths(settings.RuntimeDir, settings.StateDir)
 
-	// The claim: either this process serves the instance, or the refusal says which one does.
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
-	claim, err := instance.Claim(paths.Root)
-	if err != nil {
+
+	st := &trunk.State{Form: trunk.Service, Env: os.Getenv, Stderr: os.Stderr}
+	if err := trunk.Run(st, trunk.Steps()); err != nil {
 		fmt.Fprintln(os.Stderr, "yoke-core:", err)
 		return 1
 	}
 	<-stop
-	if err := claim.Release(); err != nil {
+	if err := st.Stop(); err != nil {
 		fmt.Fprintln(os.Stderr, "yoke-core:", err)
 		return 1
 	}

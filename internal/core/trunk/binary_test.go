@@ -72,11 +72,14 @@ func TestTheProcessLoggerWritesTextGovernedByTheLevel(t *testing.T) {
 	command, said := ready(t, binary, env)
 	command.Process.Signal(syscall.SIGTERM)
 	command.Wait()
-	joined := strings.Join(said, "\n")
-	for _, step := range theEleven[2:10] {
-		if !strings.Contains(joined, `step="`+step+`"`) {
+	joined := strings.Join(said, "\n") + "\n"
+	for _, step := range theEleven[2:9] {
+		if !strings.Contains(joined, `step="`+step+`"`) && !strings.Contains(joined, "step="+step+"\n") {
 			t.Errorf("no line names the step %q: %s", step, joined)
 		}
+	}
+	if !strings.Contains(joined, "msg=ready") {
+		t.Errorf("no line says the Core is ready: %s", joined)
 	}
 	for _, line := range said {
 		if !strings.Contains(line, "level=") || !strings.Contains(line, "msg=") {
