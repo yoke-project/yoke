@@ -2,9 +2,10 @@
 # A verb with nothing to do says so in one line, so a fan-out can tell a gap from a statement.
 
 # Build this repository's codebase, the definitions included: a contract whose two version statements
-# disagree is rejected here, where the definitions are built.
+# disagree is rejected here, where the definitions are built. The definitions are a module of their own,
+# outside the root's `./...`, so each module is built.
 build:
-    @go build ./... && echo "build: every package builds"
+    @go build ./... && go build -C proto ./... && echo "build: every package of both modules builds"
     @bash ci/definitions.sh check
 
 # Run this repository's own checks, with no sibling present.
@@ -17,7 +18,9 @@ test:
     status=0
     bash checks/run.sh | tee .results/checks.txt || status=1
     go test -json ./... > .results/go.json || status=1
+    go test -C proto -json ./... >> .results/go.json || status=1
     go test ./... || status=1
+    go test -C proto ./... || status=1
     go run ./cmd/yoke-verify descriptions --repository yoke . > /dev/null || status=1
     go run ./cmd/yoke-verify markers --repository yoke . > /dev/null || status=1
     date -u +%Y-%m-%dT%H:%M:%SZ > .results/finished
@@ -30,7 +33,8 @@ lint:
     set -euo pipefail
     bash -n checks/run.sh checks/*/*.sh ci/*.sh
     go vet ./...
-    echo "lint: every shell script parses and go vet is clean"
+    go vet -C proto ./...
+    echo "lint: every shell script parses and go vet is clean in both modules"
 
 # Fail, naming each file, when the tree is not formatted.
 fmt:
