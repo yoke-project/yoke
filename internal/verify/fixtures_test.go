@@ -11,7 +11,7 @@ import (
 	"github.com/yoke-project/yoke/internal/verify"
 )
 
-// The eight fields of a case, in the order testing/30 fixes, with values that hold.
+// The eight fields of a case, in the order a description's form fixes, with values that hold.
 func fields() [][2]string {
 	return [][2]string{
 		{"Cites", "testing/30 §A case"},

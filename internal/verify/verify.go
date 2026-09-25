@@ -1,5 +1,8 @@
 // Package verify reads the descriptions a repository carries, checks the form a description takes, and
 // joins each case to the test that performs it.
+//
+// The form of a description, the markers and the record are described at
+// https://docs.yoke-project.dev/contributing/descriptions-and-records/.
 package verify
 
 import (
