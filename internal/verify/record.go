@@ -121,11 +121,17 @@ func buildRecord(root, repository string, descriptions []description, pairs []pa
 		byTest[p.test] = p.id
 	}
 
-	declared := map[string]stdCase{}
+	// One run may perform several levels: this level's record takes its own cases, and leaves a result
+	// for a case declared at another level to that level's record.
+	declared, elsewhere := map[string]stdCase{}, map[string]bool{}
 	for _, d := range descriptions {
 		for _, c := range d.cases {
-			if !c.struck && value(c, "Level") == o.level {
+			switch {
+			case c.struck:
+			case value(c, "Level") == o.level:
 				declared[c.id] = c
+			default:
+				elsewhere[c.id] = true
 			}
 		}
 	}
@@ -143,7 +149,9 @@ func buildRecord(root, repository string, descriptions []description, pairs []pa
 				id = key
 			}
 			if _, isDeclared := declared[id]; !isDeclared {
-				at(file, "%s answers for no case this level declares", key)
+				if !elsewhere[id] {
+					at(file, "%s answers for no case any level declares", key)
+				}
 				continue
 			}
 			if before, twice := reported[id]; twice && before.result != got.result {

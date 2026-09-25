@@ -54,7 +54,7 @@ check_the_record_is_assembled_from_them() {
   local tmp written
   tmp="$(mktemp -d)"
   record_fixture "$tmp" pass "yoke:verbs-and-licence.01"
-  if ! written="$("$record_script" "$tmp" 2>&1)"; then
+  if ! written="$("$record_script" L1 "$tmp" 2>&1)"; then
     echo "the script refused the results: $written"; rm -rf "$tmp"; return 1
   fi
   rm -rf "$tmp"
@@ -86,7 +86,7 @@ check_a_failing_run_is_recorded_as_one() {
   local tmp written
   tmp="$(mktemp -d)"
   record_fixture "$tmp" fail "yoke:verbs-and-licence.01"
-  written="$("$record_script" "$tmp" 2>&1)" || { echo "the script refused the results: $written"; rm -rf "$tmp"; return 1; }
+  written="$("$record_script" L1 "$tmp" 2>&1)" || { echo "the script refused the results: $written"; rm -rf "$tmp"; return 1; }
   rm -rf "$tmp"
 
   python3 - "$written" <<'PY' || return 1
