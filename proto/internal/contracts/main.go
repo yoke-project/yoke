@@ -3,6 +3,8 @@
 // `CONTRACT_VERSION`. They are one number, and a contract whose two differ is malformed and is rejected
 // where the definitions are built, never where two parties meet.
 //
+// The rule is at https://docs.yoke-project.dev/reference/plugin-surface/the-wire/#the-version.
+//
 // Usage: contracts <root>
 package main
 

@@ -1,7 +1,10 @@
-// The plugin contract's version, stated inside the contract. It is the integer a unit sends at registration, and it is the `v1` of this path: a
-// contract whose two differ is rejected where the definitions are built.
+// The plugin contract's version, stated inside the contract. It is the integer a unit sends at
+// registration, and it is the `v1` of this path: a contract whose two differ is rejected where the
+// definitions are built.
 syntax = "proto3";
 
+// The plugin contract, v1: what each message carries and why is described at
+// https://docs.yoke-project.dev/reference/plugin-surface/the-wire/.
 package yoke.plugin.v1;
 
 option go_package = "github.com/yoke-project/yoke/proto/yoke/plugin/v1;pluginv1";
