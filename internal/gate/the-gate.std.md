@@ -105,9 +105,9 @@
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
-| **Precondition** | a policy with `startup_window: 30`, `retention.bytes: 50mb`, `heartbeat.tolerance: 0.5`; a unit whose `manifest_digest` is `md5:ab`; and a unit whose `args` are `[no, 1.0, 01]` |
+| **Precondition** | a policy with `startup_window: 30`, and one with `retention.bytes: 50mb`; a unit whose `manifest_digest` is `md5:ab`; and a unit whose `args` are `[no, 1.0, 01]` |
 | **Action** | check each |
-| **Expected** | `format.duration`, `format.size`, `field.value` and `format.digest` respectively; the last passes, its arguments read as the strings `no`, `1.0` and `01` |
+| **Expected** | `format.duration`, `format.size` and `format.digest` respectively; the last passes, its arguments read as the strings `no`, `1.0` and `01` |
 
 ## yoke:the-gate.09 — a name is validated and never transformed
 
@@ -212,3 +212,17 @@
 | **Precondition** | a document with `policy: { startup_window: 60s, retention: { entries: 0 } }`, a plugin unit `slow` with `policy: { startup_window: 90s }`, a plugin unit `plain`, and a oneshot with `policy: { restart: { on_failure: true } }`; then documents with `restart.on_failure` at the deployment's scope, on a plugin unit, and `restart.attempts` anywhere |
 | **Action** | check each, and read the deployment the first produces |
 | **Expected** | the first passes: `plain` has a 60 s startup window and every other figure at its written default — `10s`, `3`, `10s`, `5s`, `5m`, `60s`, `7d`, `50MB` — with `entries` held at 0, not the default; `slow` has 90 s and the rest as `plain`; the oneshot restarts on failure. Each of the others is refused with `key.unknown` |
+
+## yoke:the-gate.17 — the heartbeat's tolerance is a whole number of missed intervals, at least one
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/14.35 · arch/15-gate/03 §`policy` · arch/50-plugin-surface/04 §Revocation |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | policies with `heartbeat.tolerance` at `2.5`, at `0`, and at `5` |
+| **Action** | check each |
+| **Expected** | `field.type` for `2.5` and `field.value` for `0`; the last passes, with a tolerance of 5 |
+
