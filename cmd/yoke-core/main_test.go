@@ -44,7 +44,7 @@ func holds(lock string) bool {
 	return false
 }
 
-// std: yoke:the-core-process.12
+// std: yoke:the-core-binary.01
 func TestTheCoreServesOneInstanceAtATime(t *testing.T) {
 	binary, root := build(t), t.TempDir()
 	env := configured(t, root, "")
@@ -100,7 +100,7 @@ func TestTheCoreServesOneInstanceAtATime(t *testing.T) {
 	}
 }
 
-// std: yoke:the-core-process.13
+// std: yoke:the-core-binary.02
 func TestAConfigurationThatDoesNotPassPreventsStartup(t *testing.T) {
 	binary, root := build(t), t.TempDir()
 	command := exec.Command(binary)
