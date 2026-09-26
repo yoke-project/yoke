@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -64,15 +65,30 @@ func TestTheRegistryIsRegistryDBInTheStateDirectory(t *testing.T) {
 }
 
 // std: yoke:the-registry.05
-func TestTheTrunkStopsAtAStoreWrittenByANewerCore(t *testing.T) {
+func TestAHigherNumberIsRefusedNamingBothNumbers(t *testing.T) {
 	st, dir := service(t)
 	os.MkdirAll(filepath.Join(dir, "state"), 0o700)
-	db, _ := sql.Open("sqlite", filepath.Join(dir, "state", registry.File))
+	path := filepath.Join(dir, "state", registry.File)
+	db, _ := sql.Open("sqlite", path)
 	if _, err := db.Exec("PRAGMA user_version = 99"); err != nil {
 		t.Fatal(err)
 	}
 	db.Close()
-	err := trunk.Run(st, trunk.Steps())
+	before, _ := os.ReadFile(path)
+	_, err := registry.Open(path)
+	if err == nil {
+		t.Fatal("a store written by a newer Core was opened")
+	}
+	said := strings.ReplaceAll(err.Error(), path, "")
+	for _, number := range []string{"99", strconv.Itoa(registry.Schema())} {
+		if !strings.Contains(said, number) {
+			t.Errorf("the refusal %q does not name %s", err, number)
+		}
+	}
+	if after, _ := os.ReadFile(path); !bytes.Equal(before, after) {
+		t.Fatal("the refused file was changed")
+	}
+	err = trunk.Run(st, trunk.Steps())
 	defer st.Stop()
 	if err == nil || !strings.Contains(err.Error(), "stores") {
 		t.Fatalf("the trunk gave %v, want it stopped at stores", err)
