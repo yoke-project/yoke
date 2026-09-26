@@ -6,13 +6,20 @@
 package release
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -128,6 +135,22 @@ func Run(cfg Config) int {
 			Digests: []string{digest}, Where: goProxy, Authenticated: goSumDB, Licence: licence,
 			Notices: []string{}, Day: cfg.Today().UTC().Format(time.DateOnly)})
 	}
+
+	// A programs tag also hands over files: the artifacts and the source archive, uploaded to its release.
+	for _, m := range modules {
+		if m.subdir != "" || (len(cfg.Artifacts) == 0 && cfg.Source == "") {
+			continue
+		}
+		handed, err := handOver(cfg, m.tag, strings.TrimPrefix(m.version, "v"))
+		if err != nil {
+			return fail("the files of %s could not be handed over: %v", m.tag, err)
+		}
+		for _, f := range handed {
+			lines = append(lines, Line{Line: "publication", Published: f.published, Version: m.version, Commit: commit,
+				Digests: []string{f.digest}, Where: cfg.Releases + m.tag, Authenticated: origin(cfg.Releases),
+				Licence: licence, Notices: []string{}, Day: cfg.Today().UTC().Format(time.DateOnly)})
+		}
+	}
 	out := json.NewEncoder(cfg.Out)
 	out.SetEscapeHTML(false)
 	for _, l := range lines {
@@ -211,4 +234,162 @@ func environmentWithout(names ...string) []string {
 		}
 	}
 	return env
+}
+
+// The architectures every artifact is built for.
+var architectures = []string{"amd64", "arm64"}
+
+// A file handed over: what it publishes, and the digest of its bytes.
+type handed struct {
+	published, path, digest string
+}
+
+// handOver builds every artifact for every architecture and the source archive, from the tagged tree,
+// and uploads them to the tag's release. Every archive is written the same way from the same tree —
+// its entries' times the tag's commit's, their owners nobody, the compression's header empty — so two
+// builds give the same bytes.
+func handOver(cfg Config, tag, version string) ([]handed, error) {
+	dir, err := os.MkdirTemp("", "yoke-release-files-")
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(dir)
+	stamp, err := gitIn(cfg.Root, "log", "-1", "--format=%ct", tag)
+	if err != nil {
+		return nil, err
+	}
+	seconds, err := strconv.ParseInt(stamp, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	when := time.Unix(seconds, 0).UTC()
+	notice, err := os.ReadFile(filepath.Join(cfg.Root, "LICENSE"))
+	if err != nil {
+		return nil, err
+	}
+
+	var files []handed
+	for _, a := range cfg.Artifacts {
+		for _, arch := range architectures {
+			var entries []entry
+			for _, pkg := range a.Packages {
+				program := filepath.Join(dir, arch, filepath.Base(pkg))
+				build := exec.Command("go", "build", "-trimpath", "-ldflags=-s -w -buildid=", "-o", program, pkg)
+				build.Dir = cfg.Root
+				build.Env = append(os.Environ(), "CGO_ENABLED=0", "GOOS=linux", "GOARCH="+arch)
+				if said, err := build.CombinedOutput(); err != nil {
+					return nil, fmt.Errorf("%s for %s does not build: %v\n%s", pkg, arch, err, said)
+				}
+				data, err := os.ReadFile(program)
+				if err != nil {
+					return nil, err
+				}
+				entries = append(entries, entry{name: filepath.Base(pkg), mode: 0o755, data: data})
+			}
+			entries = append(entries, entry{name: "LICENSE", mode: 0o644, data: notice})
+			name := fmt.Sprintf("%s-%s-linux-%s.tar.gz", a.Name, version, arch)
+			if err := writeArchive(filepath.Join(dir, name), entries, when); err != nil {
+				return nil, err
+			}
+			files = append(files, handed{published: fmt.Sprintf("%s-linux-%s", a.Name, arch), path: filepath.Join(dir, name)})
+		}
+	}
+	if cfg.Source != "" {
+		// The archive of the tagged tree git makes, compressed as every other archive here is.
+		archive := exec.Command("git", "-C", cfg.Root, "archive", "--format=tar", "--prefix="+cfg.Source+"-"+version+"/", tag)
+		tarred, err := archive.Output()
+		if err != nil {
+			return nil, fmt.Errorf("the source archive cannot be made: %v", err)
+		}
+		name := fmt.Sprintf("%s-%s-source.tar.gz", cfg.Source, version)
+		if err := writeCompressed(filepath.Join(dir, name), tarred); err != nil {
+			return nil, err
+		}
+		files = append(files, handed{published: cfg.Source + "-source", path: filepath.Join(dir, name)})
+	}
+
+	var paths []string
+	for i, f := range files {
+		data, err := os.ReadFile(f.path)
+		if err != nil {
+			return nil, err
+		}
+		sum := sha256.Sum256(data)
+		files[i].digest = "sha256:" + hex.EncodeToString(sum[:])
+		paths = append(paths, f.path)
+	}
+	if err := cfg.Upload(tag, paths); err != nil {
+		return nil, err
+	}
+	return files, nil
+}
+
+type entry struct {
+	name string
+	mode int64
+	data []byte
+}
+
+// writeArchive writes the entries as a gzipped tar, every header fixed but the name, the mode and the size.
+func writeArchive(path string, entries []entry, when time.Time) error {
+	var tarred bytes.Buffer
+	w := tar.NewWriter(&tarred)
+	for _, e := range entries {
+		h := &tar.Header{Name: e.name, Mode: e.mode, Size: int64(len(e.data)), ModTime: when, Typeflag: tar.TypeReg, Format: tar.FormatPAX}
+		if err := w.WriteHeader(h); err != nil {
+			return err
+		}
+		if _, err := w.Write(e.data); err != nil {
+			return err
+		}
+	}
+	if err := w.Close(); err != nil {
+		return err
+	}
+	return writeCompressed(path, tarred.Bytes())
+}
+
+// writeCompressed gzips data with an empty header, so the bytes depend on the data alone.
+func writeCompressed(path string, data []byte) error {
+	var out bytes.Buffer
+	z, err := gzip.NewWriterLevel(&out, gzip.BestCompression)
+	if err != nil {
+		return err
+	}
+	if _, err := z.Write(data); err != nil {
+		return err
+	}
+	if err := z.Close(); err != nil {
+		return err
+	}
+	return os.WriteFile(path, out.Bytes(), 0o644)
+}
+
+// origin is the scheme and host of where releases live: what authenticates a file served there.
+func origin(releases string) string {
+	u, err := url.Parse(releases)
+	if err != nil || u.Host == "" {
+		return releases
+	}
+	return u.Scheme + "://" + u.Host
+}
+
+// ToForge uploads the files to the tag's release on the forge, making the release when it does not yet
+// exist; a file already there is replaced, which changes nothing, since a build gives the same bytes.
+func ToForge(tag string, files []string) error {
+	var repository []string
+	if r := os.Getenv("GITHUB_REPOSITORY"); r != "" {
+		repository = []string{"-R", r}
+	}
+	gh := func(args ...string) error {
+		said, err := exec.Command("gh", append(args, repository...)...).CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("gh %s: %v\n%s", args[0], err, said)
+		}
+		return nil
+	}
+	if gh("release", "view", tag) != nil {
+		return gh(append([]string{"release", "create", tag, "--verify-tag", "--title", tag, "--notes", ""}, files...)...)
+	}
+	return gh(append([]string{"release", "upload", tag, "--clobber"}, files...)...)
 }
