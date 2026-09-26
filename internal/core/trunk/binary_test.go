@@ -23,6 +23,10 @@ func core(t *testing.T, dir, level string) (binary string, env []string) {
 	if err := os.WriteFile(path, []byte(document), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	// A clean start composes something, if only nothing: a composition that is absent is refused.
+	if err := os.WriteFile(filepath.Join(dir, "deployment.yaml"), []byte("units: {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	return binary, append(os.Environ(), "YOKE_CONFIG="+path, "YOKE_COMPOSITION="+dir+"/deployment.yaml")
 }
 

@@ -7,6 +7,7 @@
 package trunk
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -15,9 +16,11 @@ import (
 	"path/filepath"
 
 	"github.com/yoke-project/yoke/internal/core/config"
+	"github.com/yoke-project/yoke/internal/core/discovery"
 	"github.com/yoke-project/yoke/internal/core/instance"
 	"github.com/yoke-project/yoke/internal/core/registry"
 	"github.com/yoke-project/yoke/internal/core/supervisor"
+	"github.com/yoke-project/yoke/internal/gate"
 )
 
 // Form is the deployment form, which decides where parameters come from and what the modes are.
@@ -61,10 +64,15 @@ type State struct {
 	Channels []Channel
 	Units    []supervisor.Unit // the units the deployment declares, launched at step 11
 
-	Config   config.Config
-	Paths    instance.Paths
-	Log      *slog.Logger
-	Registry *registry.Registry
+	// Composition is the composition document in force, in the service form; empty reads none.
+	Composition string
+
+	Config     config.Config
+	Paths      instance.Paths
+	Log        *slog.Logger
+	Registry   *registry.Registry
+	Discovery  *discovery.Discovery
+	Deployment *gate.Deployment // what the composition in force declares, once it passed the gate
 
 	stoppers []func() error
 }
@@ -104,7 +112,7 @@ func Steps() []Step {
 		{"debris", func(st *State) error { return ClearDebris(st.Paths.Root) }},
 		{"stores", stores},
 		{"inherited runtime facts", nothingYet},
-		{"declarations", nothingYet},
+		{"declarations", declarations},
 		{"channels", channels},
 		{ready, func(st *State) error { st.Log.Info(ready, "root", st.Paths.Root); return nil }},
 		{"units", units},
@@ -201,6 +209,46 @@ func stores(st *State) error {
 	}
 	st.Registry = r
 	st.OnStop(r.Close)
+	return nil
+}
+
+// declarations scans the Plugin directory into the Registry and keeps scanning it, then reads the
+// composition in force through the gate. In the service form a failure here leaves a deployment — the
+// Plugins found are declared — so it is reported rather than fatal.
+func declarations(st *State) error {
+	if st.Form != Service {
+		// The descriptor's units are ingested by the part of the Core that reads it.
+		return nil
+	}
+	plugins := st.Config.Plugins
+	d := discovery.New(plugins.Manifests, st.Registry, st.Log)
+	d.Scan()
+	st.Discovery = d
+	if plugins.ScanInterval > 0 {
+		stop := d.Every(plugins.ScanInterval)
+		st.OnStop(func() error { stop(); return nil })
+	}
+	if st.Composition == "" {
+		return nil
+	}
+	report, dep := gate.Check(gate.Input{
+		Document:  gate.Read(st.Composition, gate.Composition),
+		Moment:    gate.Starting,
+		Manifests: plugins.Manifests,
+		Host:      &gate.Host{Executables: plugins.Executables, StateDir: st.Paths.State, RuntimeRoot: st.Paths.Root},
+	})
+	for _, f := range report.Findings {
+		level := slog.LevelError
+		if f.Class == gate.Weaker {
+			level = slog.LevelWarn
+		}
+		st.Log.Log(context.Background(), level, "finding", "document", f.Document, "code", f.Code, "location", f.Location, "finding", f.Message)
+	}
+	if dep == nil {
+		return fmt.Errorf("the composition %s is refused", st.Composition)
+	}
+	st.Deployment = dep
+	st.Units = discovery.Units(dep, d.Manifest, plugins.Executables, st.Paths.State)
 	return nil
 }
 

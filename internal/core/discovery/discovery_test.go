@@ -155,13 +155,20 @@ func TestALaterScanReconcilesInBothDirections(t *testing.T) {
 // deployment is a service-form trunk over dir, with the Plugin directory, executables and composition
 // the test writes.
 type deployment struct {
-	dir, manifests, executables, composition string
+	dir, run, manifests, executables, composition string
 }
 
 func newDeployment(t *testing.T, plugins ...string) deployment {
 	t.Helper()
 	dir := t.TempDir()
-	d := deployment{dir: dir, manifests: filepath.Join(dir, "plugins.d"), executables: filepath.Join(dir, "plugins"), composition: filepath.Join(dir, "bench.yaml")}
+	// The runtime root is kept short, as the service form's /run/yoke is: the gate refuses a deployment
+	// whose longest socket path would not fit, and a test's own directory spends most of the budget.
+	run, err := os.MkdirTemp("", "yk")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(run) })
+	d := deployment{dir: dir, run: run, manifests: filepath.Join(dir, "plugins.d"), executables: filepath.Join(dir, "plugins"), composition: filepath.Join(dir, "bench.yaml")}
 	os.MkdirAll(d.manifests, 0o755)
 	os.MkdirAll(d.executables, 0o755)
 	for _, id := range plugins {
@@ -176,7 +183,7 @@ func (d deployment) ready(t *testing.T, composition string) (*trunk.State, *byte
 	t.Helper()
 	os.WriteFile(d.composition, []byte(composition), 0o644)
 	core := filepath.Join(d.dir, "core.yaml")
-	os.WriteFile(core, []byte(fmt.Sprintf("state_dir: %s/state\nruntime_dir: %s/run\nplugins:\n  manifests: %s\n  executables: %s\n", d.dir, d.dir, d.manifests, d.executables)), 0o644)
+	os.WriteFile(core, []byte(fmt.Sprintf("state_dir: %s/state\nruntime_dir: %s/run\nplugins:\n  manifests: %s\n  executables: %s\n", d.dir, d.run, d.manifests, d.executables)), 0o644)
 	env := map[string]string{"YOKE_CONFIG": core}
 	logged := &bytes.Buffer{}
 	st := &trunk.State{Form: trunk.Service, Env: func(k string) string { return env[k] }, Stderr: logged, Composition: d.composition}
@@ -279,7 +286,7 @@ func TestTheCoreDeclaresWhatItFindsAndRunsWhatTheCompositionSays(t *testing.T) {
 	write(t, d.manifests, "com.example.broken", "manifest: [unclosed")
 	os.WriteFile(d.composition, []byte("units:\n  hello: { kind: oneshot, exec: /bin/echo, args: [ from-the-oneshot ] }\n"), 0o644)
 	core := filepath.Join(d.dir, "core.yaml")
-	os.WriteFile(core, []byte(fmt.Sprintf("state_dir: %s/state\nruntime_dir: %s/run\nplugins:\n  manifests: %s\n  executables: %s\n", d.dir, d.dir, d.manifests, d.executables)), 0o644)
+	os.WriteFile(core, []byte(fmt.Sprintf("state_dir: %s/state\nruntime_dir: %s/run\nplugins:\n  manifests: %s\n  executables: %s\n", d.dir, d.run, d.manifests, d.executables)), 0o644)
 	command := exec.Command(binary)
 	command.Env = append(os.Environ(), "YOKE_CONFIG="+core, "YOKE_COMPOSITION="+d.composition)
 	out, _ := command.StderrPipe()
