@@ -148,31 +148,9 @@
 | **Action** | claim it again from this process; then claim it from another process |
 | **Expected** | the second claim in this process is refused, and the other process is still refused — a record lock is released when any descriptor on its file closes, so the file is opened once and never again |
 
-## yoke:the-core-process.12 — the Core serves one instance at a time, and says who does
+## ~~yoke:the-core-process.12 — the Core serves one instance at a time, and says who does~~ — moved to `cmd/yoke-core/the-core-binary.std.md` as `yoke:the-core-binary.01`, beside its test
 
-| Field | Value |
-| --- | --- |
-| **Cites** | specs/25.10 · specs/25.13 · arch/30-core/01 §The service form · arch/30-core/02 §The claim |
-| **Level** | L1 |
-| **Method** | test |
-| **Not applicable in** | — |
-| **Label** | blocking |
-| **Precondition** | `yoke-core` built, and a `core.yaml` named by `YOKE_CONFIG` whose `runtime_dir` and `state_dir` are in a directory of the test's own |
-| **Action** | start it; start it a second time; stop the first with `SIGTERM`; start it a third time |
-| **Expected** | the first creates the runtime directory and holds the claim; the second exits non-zero, saying the instance is already running as the first's process identifier, and removes nothing; the first exits zero; the third holds the claim |
-
-## yoke:the-core-process.13 — a configuration that does not pass prevents startup
-
-| Field | Value |
-| --- | --- |
-| **Cites** | specs/20.5 · specs/20.7 · arch/30-core/01 §Configuration |
-| **Level** | L1 |
-| **Method** | test |
-| **Not applicable in** | — |
-| **Label** | blocking |
-| **Precondition** | `yoke-core` built, and a `core.yaml` with an unknown key whose `runtime_dir` is in a directory of the test's own |
-| **Action** | start it |
-| **Expected** | it exits non-zero naming the key, before the runtime directory exists — validation is a gate, and nothing is created by a process that will not run |
+## ~~yoke:the-core-process.13 — a configuration that does not pass prevents startup~~ — moved to `cmd/yoke-core/the-core-binary.std.md` as `yoke:the-core-binary.02`, beside its test
 
 ## yoke:the-core-process.14 — log.level is one of four levels, and nothing else
 
