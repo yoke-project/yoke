@@ -1,10 +1,26 @@
 // Package release is `yoke`'s release verb: it publishes what the tags on this commit name into this
 // repository's own ecosystems, and emits one manifest line per publication.
+//
+// It runs where a release's tag is seen. It reads its own tree and nothing else — no sibling, and never
+// the manifest, which the release command reads and appends to.
 package release
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sort"
+	"strings"
 	"time"
+
+	"golang.org/x/mod/modfile"
+	"golang.org/x/mod/module"
+	"golang.org/x/mod/semver"
+	"golang.org/x/mod/sumdb/dirhash"
+	"golang.org/x/mod/zip"
 )
 
 // Config is what the verb runs with.
@@ -18,7 +34,167 @@ type Config struct {
 	Err   io.Writer
 }
 
-// Run performs the verb, and returns its exit status.
+// Line is one publication, in the manifest's fixed shape and order.
+type Line struct {
+	Line          string   `json:"line"` // "publication"
+	Published     string   `json:"published"`
+	Version       string   `json:"version"`
+	Commit        string   `json:"commit"`
+	Digests       []string `json:"digests"`
+	Where         string   `json:"where"`
+	Authenticated string   `json:"authenticated"` // the mechanism a reader verifies it by
+	Licence       string   `json:"licence"`
+	Notices       []string `json:"notices"`
+	Day           string   `json:"day"`
+}
+
+// The licence `yoke`'s role assigns, which every artifact it publishes carries.
+const licence = "Apache-2.0"
+
+// A Go module is published by the proxy serving it, and authenticated by the checksum database.
+const (
+	goProxy = "https://proxy.golang.org"
+	goSumDB = "https://sum.golang.org"
+)
+
+// A module a tag names: `vX.Y.Z` the programs, the root module; `proto/vX.Y.Z` the definitions.
+type tagged struct {
+	tag, subdir, version string
+}
+
+// Run performs the verb, and returns its exit status. Every publication is checked before any line is
+// written, so a refusal leaves no line behind.
 func Run(cfg Config) int {
+	fail := func(format string, a ...any) int {
+		fmt.Fprintf(cfg.Err, "release: "+format+"\n", a...)
+		return 1
+	}
+	listed, err := gitIn(cfg.Root, "tag", "--points-at", "HEAD")
+	if err != nil {
+		return fail("the tags on this commit cannot be read: %v", err)
+	}
+	commit, err := gitIn(cfg.Root, "rev-parse", "HEAD")
+	if err != nil {
+		return fail("the commit cannot be read: %v", err)
+	}
+	var modules []tagged
+	for _, tag := range strings.Fields(listed) {
+		version, subdir := tag, ""
+		if rest, isDefinitions := strings.CutPrefix(tag, "proto/"); isDefinitions {
+			version, subdir = rest, "proto"
+		}
+		if semver.IsValid(version) && semver.Canonical(version) == version {
+			modules = append(modules, tagged{tag: tag, subdir: subdir, version: version})
+		}
+	}
+	if len(modules) == 0 {
+		fmt.Fprintln(cfg.Err, "release: nothing is published from this commit — no release tag names it")
+		return 0
+	}
+	sort.Slice(modules, func(i, j int) bool { return modules[i].subdir < modules[j].subdir })
+
+	var lines []Line
+	for _, m := range modules {
+		path, err := modulePath(filepath.Join(cfg.Root, m.subdir, "go.mod"))
+		if err != nil {
+			return fail("the module %s names cannot be read: %v", m.tag, err)
+		}
+		digest, err := treeDigest(cfg.Root, module.Version{Path: path, Version: m.version}, m.tag, m.subdir)
+		if err != nil {
+			return fail("the digest of %s@%s cannot be computed: %v", path, m.version, err)
+		}
+		served, err := cfg.Proxy(path, m.version)
+		if err != nil {
+			return fail("the proxy did not serve %s@%s: %v", path, m.version, err)
+		}
+		if served != digest {
+			return fail("the proxy serves %s@%s as %s, which differs from the tree's %s", path, m.version, served, digest)
+		}
+		lines = append(lines, Line{Line: "publication", Published: path, Version: m.version, Commit: commit,
+			Digests: []string{digest}, Where: goProxy, Authenticated: goSumDB, Licence: licence,
+			Notices: []string{}, Day: cfg.Today().UTC().Format(time.DateOnly)})
+	}
+	out := json.NewEncoder(cfg.Out)
+	out.SetEscapeHTML(false)
+	for _, l := range lines {
+		if err := out.Encode(l); err != nil {
+			return fail("a line could not be written: %v", err)
+		}
+	}
 	return 0
+}
+
+func gitIn(root string, args ...string) (string, error) {
+	out, err := exec.Command("git", append([]string{"-C", root}, args...)...).Output()
+	return strings.TrimSpace(string(out)), err
+}
+
+func modulePath(goMod string) (string, error) {
+	data, err := os.ReadFile(goMod)
+	if err != nil {
+		return "", err
+	}
+	if path := modfile.ModulePath(data); path != "" {
+		return path, nil
+	}
+	return "", fmt.Errorf("%s declares no module", goMod)
+}
+
+// treeDigest is the digest Go's checksum database records for a module: its zip, made from the tagged
+// tree as the proxy makes it, hashed.
+func treeDigest(root string, m module.Version, revision, subdir string) (string, error) {
+	file, err := os.CreateTemp("", "yoke-release-*.zip")
+	if err != nil {
+		return "", err
+	}
+	defer os.Remove(file.Name())
+	if err := zip.CreateFromVCS(file, m, root, revision, subdir); err != nil {
+		file.Close()
+		return "", err
+	}
+	if err := file.Close(); err != nil {
+		return "", err
+	}
+	return dirhash.HashZip(file.Name(), dirhash.Hash1)
+}
+
+// FromProxy asks the public module proxy for a module at a version, with a module cache of its own and
+// nothing exempted from the checksum database, and returns the digest it served.
+func FromProxy(path, version string) (string, error) {
+	cache, err := os.MkdirTemp("", "yoke-release-cache-")
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		filepath.WalkDir(cache, func(p string, d os.DirEntry, _ error) error { os.Chmod(p, 0o700); return nil })
+		os.RemoveAll(cache)
+	}()
+	command := exec.Command("go", "mod", "download", "-json", path+"@"+version)
+	command.Dir = cache
+	command.Env = append(environmentWithout("GOPRIVATE", "GONOPROXY", "GONOSUMDB", "GONOSUMCHECK", "GOINSECURE", "GOFLAGS"),
+		"GOPROXY="+goProxy, "GOSUMDB=sum.golang.org", "GOMODCACHE="+cache, "GOWORK=off")
+	out, err := command.Output()
+	var answer struct{ Sum, Error string }
+	if json.Unmarshal(out, &answer) != nil && err != nil {
+		return "", err
+	}
+	if answer.Error != "" {
+		return "", fmt.Errorf("%s", answer.Error)
+	}
+	return answer.Sum, nil
+}
+
+func environmentWithout(names ...string) []string {
+	var env []string
+	for _, variable := range os.Environ() {
+		name, _, _ := strings.Cut(variable, "=")
+		keep := true
+		for _, n := range names {
+			keep = keep && name != n
+		}
+		if keep {
+			env = append(env, variable)
+		}
+	}
+	return env
 }
