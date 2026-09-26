@@ -301,6 +301,10 @@ func TestAMessageThatAnswersIsCorrelated(t *testing.T) {
 	h.admit("sid-1", "acquire", time.Second, 3)
 	st := h.stream(t, "sid-1")
 	st.send(t, open)
+	// The Core can send on a Session only once it has opened.
+	for deadline := time.Now().Add(2 * time.Second); len(h.toldOf("acquire")) == 0 && time.Now().Before(deadline); {
+		time.Sleep(10 * time.Millisecond)
+	}
 	command, err := h.svc.Send("sid-1", &pluginv1.Envelope{Payload: &pluginv1.Envelope_Control{Control: &pluginv1.Control{
 		Kind: &pluginv1.Control_Command_{Command: &pluginv1.Control_Command{Type: "calibrate"}}}}})
 	if err != nil {
