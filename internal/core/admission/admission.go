@@ -204,7 +204,7 @@ func (a *Admission) decide(req *pluginv1.RegisterRequest) (*pluginv1.RegisterRes
 	if err := a.cfg.Registry.Record(req.Plugin, registry.Registration{Version: req.ArtifactVersion, Language: req.Language, SDK: req.SdkLine}); err != nil {
 		return nil, refuse(pluginv1.Stage_STAGE_SESSION_PREPARATION, pluginv1.Code_CODE_ADMISSION_SESSION_UNAVAILABLE, "the registration could not be recorded: %v", err), examined
 	}
-	terms := &pluginv1.HeartbeatTerms{Interval: durationpb.New(composed.Policy.HeartbeatInterval), Tolerance: uint32(composed.Policy.HeartbeatTolerance)}
+	terms := &pluginv1.HeartbeatTerms{Interval: durationpb.New(composed.Policy.HeartbeatInterval), Tolerance: composed.Policy.HeartbeatTolerance}
 	a.live[req.Unit] = id
 	a.sessions[id] = &Session{ID: id, Unit: req.Unit, Plugin: req.Plugin, Granted: granted, Heartbeat: terms}
 	resp := &pluginv1.RegisterResponse{Outcome: pluginv1.RegisterResponse_OUTCOME_ACCEPTED, SessionId: id, Granted: granted, Heartbeat: terms}

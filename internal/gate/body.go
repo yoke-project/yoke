@@ -81,7 +81,7 @@ type Rule struct {
 // its encoding; an explicit zero on a retention limit means no constraint.
 type Policy struct {
 	HeartbeatInterval  time.Duration
-	HeartbeatTolerance float64
+	HeartbeatTolerance uint32 // how many consecutive intervals may be missed
 	StartupWindow      time.Duration
 	StopWindow         time.Duration
 	Backoff            time.Duration
@@ -105,7 +105,7 @@ func Defaults() Policy {
 // overrides are the fields one scope wrote.
 type overrides struct {
 	heartbeatInterval, startupWindow, stopWindow, backoff, ceiling, stability, age *time.Duration
-	tolerance                                                                      *float64
+	tolerance                                                                      *uint32
 	bytes, entries                                                                 *int64
 	onFailure                                                                      bool
 }
@@ -512,15 +512,17 @@ func (c *checker) policy(n *node, location, kind string) overrides {
 				if !ok {
 					return
 				}
-				t, err := strconv.ParseFloat(s, 64)
+				// How many consecutive intervals may be missed: a whole number, at least one.
+				n, err := strconv.ParseUint(s, 10, 32)
 				if err != nil {
-					c.refuse("field.type", at, "%s is %q, not a number", at, s)
+					c.refuse("field.type", at, "%s is %q, not a whole number of intervals", at, s)
 					return
 				}
-				if t < 1 {
-					c.refuse("field.value", at, "%s is %s, and its minimum is 1.0", at, s)
+				if n < 1 {
+					c.refuse("field.value", at, "%s is %s, and its minimum is 1", at, s)
 					return
 				}
+				t := uint32(n)
 				o.tolerance = &t
 			})
 		case "restart":
