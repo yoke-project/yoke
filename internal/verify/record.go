@@ -165,11 +165,16 @@ func buildRecord(root, repository string, descriptions []description, pairs []pa
 		return Record{}, findings
 	}
 
+	commit, err := commitOf(root, o.commit)
+	if err != nil {
+		at("", "the record names no commit, and a record that names none cannot be joined to anything: %v", err)
+		return Record{}, findings
+	}
 	environment, findings := pairsOf(o.environment, "=", "environment", findings)
 	record := Record{
 		Schema:      schema,
 		Repository:  repository,
-		Commit:      commitOf(root, o.commit),
+		Commit:      commit,
 		Level:       o.level,
 		Tier:        o.tier,
 		Environment: environment,
@@ -382,22 +387,67 @@ func instant(given string) string {
 	return time.Now().UTC().Format(time.RFC3339)
 }
 
-// commitOf reads the commit from the tree itself, so that nothing about a forge reaches this tool.
-func commitOf(root, given string) string {
+// commitOf reads the commit from the tree itself, so that nothing about a forge reaches this tool. It
+// reads the layouts git makes: `.git` a directory, or a file naming a worktree's directory whose
+// references live in a common one; and a reference as a file of its own, or as a line of `packed-refs`.
+func commitOf(root, given string) (string, error) {
 	if given != "" {
-		return given
+		return given, nil
 	}
-	head, err := os.ReadFile(filepath.Join(root, ".git", "HEAD"))
+	gitDir := filepath.Join(root, ".git")
+	info, err := os.Stat(gitDir)
 	if err != nil {
-		return ""
+		return "", fmt.Errorf("%s is not a repository", root)
+	}
+	if !info.IsDir() {
+		pointer, err := os.ReadFile(gitDir)
+		if err != nil {
+			return "", err
+		}
+		named, isPointer := strings.CutPrefix(strings.TrimSpace(string(pointer)), "gitdir: ")
+		if !isPointer {
+			return "", fmt.Errorf("%s names no directory", gitDir)
+		}
+		if !filepath.IsAbs(named) {
+			named = filepath.Join(root, named)
+		}
+		gitDir = named
+	}
+	commonDir := gitDir
+	if common, err := os.ReadFile(filepath.Join(gitDir, "commondir")); err == nil {
+		commonDir = strings.TrimSpace(string(common))
+		if !filepath.IsAbs(commonDir) {
+			commonDir = filepath.Join(gitDir, commonDir)
+		}
+	}
+	head, err := os.ReadFile(filepath.Join(gitDir, "HEAD"))
+	if err != nil {
+		return "", err
 	}
 	pointer := strings.TrimSpace(string(head))
-	if reference, isReference := strings.CutPrefix(pointer, "ref: "); isReference {
-		resolved, err := os.ReadFile(filepath.Join(root, ".git", filepath.FromSlash(reference)))
-		if err != nil {
-			return ""
-		}
-		return strings.TrimSpace(string(resolved))
+	reference, isReference := strings.CutPrefix(pointer, "ref: ")
+	if !isReference {
+		return commitIn(pointer, "HEAD")
 	}
-	return pointer
+	for _, dir := range []string{gitDir, commonDir} {
+		if loose, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(reference))); err == nil {
+			return commitIn(strings.TrimSpace(string(loose)), reference)
+		}
+	}
+	if packed, err := os.ReadFile(filepath.Join(commonDir, "packed-refs")); err == nil {
+		for _, line := range strings.Split(string(packed), "\n") {
+			if sha, name, found := strings.Cut(strings.TrimSpace(line), " "); found && name == reference {
+				return commitIn(sha, reference)
+			}
+		}
+	}
+	return "", fmt.Errorf("the reference %s names no commit", reference)
+}
+
+// commitIn accepts what a reference holds only when it is an object name.
+func commitIn(value, from string) (string, error) {
+	if len(value) != 40 && len(value) != 64 || strings.Trim(value, "0123456789abcdef") != "" {
+		return "", fmt.Errorf("%s holds %q, which is no commit", from, value)
+	}
+	return value, nil
 }
