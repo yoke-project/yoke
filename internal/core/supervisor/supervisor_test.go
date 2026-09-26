@@ -81,11 +81,12 @@ func self(t *testing.T) (string, string) {
 	return os.Args[0], "sha256:" + hex.EncodeToString(sum[:])
 }
 
-// declared is a unit playing part, of kind, with the test binary's own digest.
+// declared is a unit playing part, of kind, with the test binary's own digest. Under the race detector
+// a process lingers a second on its way out unless told not to, which would be a second no exit takes.
 func declared(t *testing.T, id string, kind unit.Kind, part string) supervisor.Unit {
 	exec, digest := self(t)
 	return supervisor.Unit{ID: id, Kind: kind, Plugin: "com.yoke.test", Exec: exec, Digest: digest,
-		Env: map[string]string{role: part}}
+		Env: map[string]string{role: part, "GORACE": "atexit_sleep_ms=0"}}
 }
 
 // output collects what units write, safely across goroutines.

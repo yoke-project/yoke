@@ -32,7 +32,8 @@ type Unit struct {
 	Digest           string // `sha256:<hex>`, the identity the executable must have
 	Args             []string
 	Env              map[string]string
-	RestartOnFailure bool // `restart.on_failure`, a unit that runs to completion's to declare
+	RestartOnFailure bool    // `restart.on_failure`, a unit that runs to completion's to declare
+	Policy           *Policy // the unit's own figures; nil takes the deployment's
 }
 
 // Policy holds the deployment's figures.
@@ -196,7 +197,7 @@ func (s *Supervisor) attempt(m *managed) {
 	m.status.Incarnation, m.status.PID, m.status.Token = incarnation, command.Process.Pid, token
 	s.apply(m, unit.ProcessStarted{})
 
-	exited, window := m.exited, time.AfterFunc(s.cfg.Policy.StartupWindow, func() { s.windowElapsed(m, incarnation) })
+	exited, window := m.exited, time.AfterFunc(s.policy(m).StartupWindow, func() { s.windowElapsed(m, incarnation) })
 	go func() {
 		command.Wait()
 		lines.flush()
@@ -272,6 +273,14 @@ func (s *Supervisor) apply(m *managed, in unit.Input) {
 	}
 }
 
+// policy is the unit's own figures where it has them, and the deployment's otherwise.
+func (s *Supervisor) policy(m *managed) Policy {
+	if m.decl.Policy != nil {
+		return *m.decl.Policy
+	}
+	return s.cfg.Policy
+}
+
 // settle reads the terminal state the machine reached and schedules the next attempt, if there is one.
 // Lock held.
 func (s *Supervisor) settle(m *managed) {
@@ -279,17 +288,18 @@ func (s *Supervisor) settle(m *managed) {
 	if s.stopping || !state.Terminal() || !unit.Restarts(m.decl.Kind, state, m.decl.RestartOnFailure) {
 		return
 	}
-	if !m.readyAt.IsZero() && time.Since(m.readyAt) >= s.cfg.Policy.StabilityWindow {
+	policy := s.policy(m)
+	if !m.readyAt.IsZero() && time.Since(m.readyAt) >= policy.StabilityWindow {
 		m.failures = 0
 	}
 	m.readyAt = time.Time{}
 	m.failures++
-	wait := s.cfg.Policy.Backoff
-	for i := 1; i < m.failures && wait < s.cfg.Policy.Ceiling; i++ {
+	wait := policy.Backoff
+	for i := 1; i < m.failures && wait < policy.Ceiling; i++ {
 		wait *= 2
 	}
-	if wait > s.cfg.Policy.Ceiling {
-		wait = s.cfg.Policy.Ceiling
+	if wait > policy.Ceiling {
+		wait = policy.Ceiling
 	}
 	m.status.Waiting, m.status.Attempt, m.status.Wait, m.status.NextAt = true, m.failures, wait, time.Now().Add(wait)
 	m.restart = time.AfterFunc(wait, func() {
@@ -396,7 +406,7 @@ func (s *Supervisor) stopOne(m *managed) {
 	if m.restart != nil {
 		m.restart.Stop()
 	}
-	process, exited := m.process, m.exited
+	process, exited, window := m.process, m.exited, s.policy(m).StopWindow
 	if process == nil {
 		s.mu.Unlock()
 		return
@@ -408,7 +418,7 @@ func (s *Supervisor) stopOne(m *managed) {
 	syscall.Kill(-process.Pid, syscall.SIGTERM)
 	select {
 	case <-exited:
-	case <-time.After(s.cfg.Policy.StopWindow):
+	case <-time.After(window):
 		syscall.Kill(-process.Pid, syscall.SIGKILL)
 		<-exited
 	}
