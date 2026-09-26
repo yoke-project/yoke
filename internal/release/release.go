@@ -32,6 +32,20 @@ type Config struct {
 	Today func() time.Time
 	Out   io.Writer // the lines, and nothing else
 	Err   io.Writer
+
+	// What a programs tag hands over as files: each artifact built for every architecture, and the
+	// source archive, named for Source, when Source is not empty. Upload hands them to the tag's
+	// release, which Releases, followed by the tag, locates.
+	Artifacts []Artifact
+	Source    string
+	Releases  string
+	Upload    func(tag string, files []string) error
+}
+
+// Artifact is one archive of programs, built from the packages named.
+type Artifact struct {
+	Name     string
+	Packages []string
 }
 
 // Line is one publication, in the manifest's fixed shape and order.
