@@ -114,6 +114,12 @@ func Run(cfg Config) int {
 	}
 	sort.Slice(modules, func(i, j int) bool { return modules[i].subdir < modules[j].subdir })
 
+	// The notices the tree states, which every artifact of it carries (E3).
+	notices := []string{}
+	if _, err := os.Stat(filepath.Join(cfg.Root, "NOTICE")); err == nil {
+		notices = append(notices, "NOTICE")
+	}
+
 	var lines []Line
 	for _, m := range modules {
 		path, err := modulePath(filepath.Join(cfg.Root, m.subdir, "go.mod"))
@@ -133,7 +139,7 @@ func Run(cfg Config) int {
 		}
 		lines = append(lines, Line{Line: "publication", Published: path, Version: m.version, Commit: commit,
 			Digests: []string{digest}, Where: goProxy, Authenticated: goSumDB, Licence: licence,
-			Notices: []string{}, Day: cfg.Today().UTC().Format(time.DateOnly)})
+			Notices: notices, Day: cfg.Today().UTC().Format(time.DateOnly)})
 	}
 
 	// A programs tag also hands over files: the artifacts and the source archive, uploaded to its release.
@@ -141,14 +147,14 @@ func Run(cfg Config) int {
 		if m.subdir != "" || (len(cfg.Artifacts) == 0 && cfg.Source == "") {
 			continue
 		}
-		handed, err := handOver(cfg, m.tag, strings.TrimPrefix(m.version, "v"))
+		handed, err := handOver(cfg, m.tag, strings.TrimPrefix(m.version, "v"), notices)
 		if err != nil {
 			return fail("the files of %s could not be handed over: %v", m.tag, err)
 		}
 		for _, f := range handed {
 			lines = append(lines, Line{Line: "publication", Published: f.published, Version: m.version, Commit: commit,
 				Digests: []string{f.digest}, Where: cfg.Releases + m.tag, Authenticated: origin(cfg.Releases),
-				Licence: licence, Notices: []string{}, Day: cfg.Today().UTC().Format(time.DateOnly)})
+				Licence: licence, Notices: notices, Day: cfg.Today().UTC().Format(time.DateOnly)})
 		}
 	}
 	out := json.NewEncoder(cfg.Out)
@@ -248,7 +254,7 @@ type handed struct {
 // and uploads them to the tag's release. Every archive is written the same way from the same tree —
 // its entries' times the tag's commit's, their owners nobody, the compression's header empty — so two
 // builds give the same bytes.
-func handOver(cfg Config, tag, version string) ([]handed, error) {
+func handOver(cfg Config, tag, version string, notices []string) ([]handed, error) {
 	dir, err := os.MkdirTemp("", "yoke-release-files-")
 	if err != nil {
 		return nil, err
@@ -263,7 +269,7 @@ func handOver(cfg Config, tag, version string) ([]handed, error) {
 		return nil, err
 	}
 	when := time.Unix(seconds, 0).UTC()
-	notice, err := os.ReadFile(filepath.Join(cfg.Root, "LICENSE"))
+	licensed, err := os.ReadFile(filepath.Join(cfg.Root, "LICENSE"))
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +292,14 @@ func handOver(cfg Config, tag, version string) ([]handed, error) {
 				}
 				entries = append(entries, entry{name: filepath.Base(pkg), mode: 0o755, data: data})
 			}
-			entries = append(entries, entry{name: "LICENSE", mode: 0o644, data: notice})
+			entries = append(entries, entry{name: "LICENSE", mode: 0o644, data: licensed})
+			for _, name := range notices {
+				data, err := os.ReadFile(filepath.Join(cfg.Root, name))
+				if err != nil {
+					return nil, err
+				}
+				entries = append(entries, entry{name: name, mode: 0o644, data: data})
+			}
 			name := fmt.Sprintf("%s-%s-linux-%s.tar.gz", a.Name, version, arch)
 			if err := writeArchive(filepath.Join(dir, name), entries, when); err != nil {
 				return nil, err
