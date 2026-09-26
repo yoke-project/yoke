@@ -50,6 +50,12 @@ func TestMain(m *testing.M) {
 		}
 		fmt.Printf("args %d %q\n", len(os.Args)-1, os.Args[1:])
 		os.Exit(0)
+	case "environment":
+		// Everything the process was handed.
+		for _, variable := range os.Environ() {
+			fmt.Println("env " + variable)
+		}
+		os.Exit(0)
 	case "fork":
 		child := exec.Command(os.Args[0])
 		child.Env = append(os.Environ(), role+"=serve")
