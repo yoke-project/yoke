@@ -268,7 +268,7 @@ func TestTheGrantIsWhatIsDeclaredAndAuthorised(t *testing.T) {
 	b.a.Release("acquire")
 	b.reg.Grant(plugin, "stream.diagnostics.publish", "davide")
 	resp = b.register(t, request("acquire", b.tokens.Issue("acquire")))
-	if resp.Outcome != pluginv1.RegisterResponse_OUTCOME_ACCEPTED || len(slices.Concat(surface(resp.Withheld)[:]...)) != 0 {
+	if all := surface(resp.Withheld); resp.Outcome != pluginv1.RegisterResponse_OUTCOME_ACCEPTED || len(slices.Concat(all[:]...)) != 0 {
 		t.Errorf("with everything granted the answer is %v, withholding %v", resp.Outcome, resp.Withheld)
 	}
 }

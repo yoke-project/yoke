@@ -69,6 +69,9 @@ type Config struct {
 	Incarnations Incarnations
 	Tokens       Tokens
 	Output       Output
+	// Ended is told when an incarnation reaches a terminal state, so that what is keyed by a live unit
+	// elsewhere can let it go. Optional.
+	Ended func(unitID string)
 }
 
 // Status is what is observed of a unit: its state, and the facts about its next incarnation.
@@ -272,6 +275,9 @@ func (s *Supervisor) apply(m *managed, in unit.Input) {
 	// A terminal state reached while the process lingers: disposing of it follows the conclusion.
 	if moved && t.To.Terminal() && m.process != nil {
 		syscall.Kill(-m.process.Pid, syscall.SIGKILL)
+	}
+	if moved && t.To.Terminal() && s.cfg.Ended != nil {
+		s.cfg.Ended(m.decl.ID)
 	}
 }
 

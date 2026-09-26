@@ -14,12 +14,19 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"time"
 
+	"google.golang.org/grpc"
+
+	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
+
+	"github.com/yoke-project/yoke/internal/core/admission"
 	"github.com/yoke-project/yoke/internal/core/config"
 	"github.com/yoke-project/yoke/internal/core/discovery"
 	"github.com/yoke-project/yoke/internal/core/instance"
 	"github.com/yoke-project/yoke/internal/core/registry"
 	"github.com/yoke-project/yoke/internal/core/supervisor"
+	"github.com/yoke-project/yoke/internal/core/unit"
 	"github.com/yoke-project/yoke/internal/gate"
 )
 
@@ -66,6 +73,8 @@ type State struct {
 
 	// Composition is the composition document in force, in the service form; empty reads none.
 	Composition string
+	// AdmitUnlaunched is the development waiver, declared when the instance is started.
+	AdmitUnlaunched bool
 
 	Config     config.Config
 	Paths      instance.Paths
@@ -73,6 +82,10 @@ type State struct {
 	Registry   *registry.Registry
 	Discovery  *discovery.Discovery
 	Deployment *gate.Deployment // what the composition in force declares, once it passed the gate
+	Admission  *admission.Admission
+	Supervisor *supervisor.Supervisor
+
+	tokens *admission.Tokens
 
 	stoppers []func() error
 }
@@ -252,8 +265,14 @@ func declarations(st *State) error {
 	return nil
 }
 
+// channels binds every channel with its terminator: the plugin surface's, where there is a deployment for
+// units to be admitted to, and then the others.
 func channels(st *State) error {
-	for _, ch := range st.Channels {
+	all := st.Channels
+	if st.Registry != nil && st.Discovery != nil {
+		all = append([]Channel{pluginChannel(st)}, all...)
+	}
+	for _, ch := range all {
 		path := filepath.Join(st.Paths.Root, ch.Path)
 		if err := os.MkdirAll(filepath.Dir(path), st.Form.RootMode().Perm()); err != nil {
 			return err
@@ -268,12 +287,49 @@ func channels(st *State) error {
 	return nil
 }
 
+// pluginChannel is the plugin surface: registration, decided by admission against the Registry, the
+// Manifests discovery read and the deployment in force.
+func pluginChannel(st *State) Channel {
+	composed := func(id string) (admission.Composed, bool) {
+		if st.Deployment == nil {
+			return admission.Composed{}, false
+		}
+		u, ok := st.Deployment.Units[id]
+		return admission.Composed{Plugin: u.Plugin, Policy: u.Policy}, ok
+	}
+	st.tokens = admission.NewTokens(func(id string) time.Duration {
+		if c, ok := composed(id); ok {
+			return c.Policy.StartupWindow
+		}
+		return gate.Defaults().StartupWindow
+	})
+	st.Admission = admission.New(admission.Config{
+		Registry: st.Registry, Manifest: st.Discovery.Manifest, Unit: composed, Tokens: st.tokens,
+		AdmitUnlaunched: st.AdmitUnlaunched, Log: st.Log,
+		Observe: func(id string, in unit.Input) {
+			if st.Supervisor != nil {
+				st.Supervisor.Input(id, in)
+			}
+		},
+	})
+	server := grpc.NewServer()
+	pluginv1.RegisterRegisterServer(server, st.Admission)
+	st.OnStop(func() error { server.Stop(); return nil })
+	return Channel{Name: "plugin", Path: "plugin.sock", Serve: func(l Listener) { server.Serve(l) }}
+}
+
 // units hands the declared units to the supervisor, which is stopped first on the way down.
 func units(st *State) error {
-	s := supervisor.New(supervisor.Config{
+	cfg := supervisor.Config{
 		Root: st.Paths.Root, Policy: supervisor.DefaultPolicy(),
 		Incarnations: supervisor.NewCounter(), Tokens: supervisor.NewTokens(), Output: logged{st.Log},
-	})
+	}
+	if st.tokens != nil {
+		cfg.Tokens = st.tokens
+		cfg.Ended = st.Admission.Release
+	}
+	s := supervisor.New(cfg)
+	st.Supervisor = s
 	st.OnStop(s.Stop)
 	for _, u := range st.Units {
 		s.Launch(u)
