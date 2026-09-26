@@ -16,6 +16,7 @@ import (
 
 	"github.com/yoke-project/yoke/internal/core/config"
 	"github.com/yoke-project/yoke/internal/core/instance"
+	"github.com/yoke-project/yoke/internal/core/supervisor"
 )
 
 // Form is the deployment form, which decides where parameters come from and what the modes are.
@@ -57,6 +58,7 @@ type State struct {
 	Env      func(string) string
 	Stderr   io.Writer
 	Channels []Channel
+	Units    []supervisor.Unit // the units the deployment declares, launched at step 11
 
 	Config config.Config
 	Paths  instance.Paths
@@ -103,7 +105,7 @@ func Steps() []Step {
 		{"declarations", nothingYet},
 		{"channels", channels},
 		{ready, func(st *State) error { st.Log.Info(ready, "root", st.Paths.Root); return nil }},
-		{"units", nothingYet},
+		{"units", units},
 	}
 }
 
@@ -199,6 +201,26 @@ func channels(st *State) error {
 		go ch.Serve(listener)
 	}
 	return nil
+}
+
+// units hands the declared units to the supervisor, which is stopped first on the way down.
+func units(st *State) error {
+	s := supervisor.New(supervisor.Config{
+		Root: st.Paths.Root, Policy: supervisor.DefaultPolicy(),
+		Incarnations: supervisor.NewCounter(), Tokens: supervisor.NewTokens(), Output: logged{st.Log},
+	})
+	st.OnStop(s.Stop)
+	for _, u := range st.Units {
+		s.Launch(u)
+	}
+	return nil
+}
+
+// logged writes a unit's output to the process logger, until the log store keeps it.
+type logged struct{ log *slog.Logger }
+
+func (l logged) Line(unitID string, incarnation int, line string) {
+	l.log.Info(line, "unit", unitID, "incarnation", incarnation)
 }
 
 // ClearDebris removes everything under root but the claim: once the claim is held, the whole tree is a

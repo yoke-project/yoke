@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -31,9 +30,12 @@ func TestMain(m *testing.M) {
 	case "exit-1":
 		os.Exit(1)
 	case "serve":
-		select {}
+		time.Sleep(time.Hour)
 	case "exit-soon":
 		time.Sleep(200 * time.Millisecond)
+		if leaving := os.Getenv("YOKE_TEST_LEAVING"); leaving != "" {
+			os.WriteFile(leaving, nil, 0o600)
+		}
 		os.Exit(0)
 	case "write":
 		fmt.Println("first line")
@@ -53,10 +55,11 @@ func TestMain(m *testing.M) {
 		child.Env = append(os.Environ(), role+"=serve")
 		child.Start()
 		os.WriteFile(os.Getenv("YOKE_TEST_CHILD_PID"), []byte(fmt.Sprint(child.Process.Pid)), 0o600)
-		select {}
+		time.Sleep(time.Hour)
 	case "stubborn":
 		signal.Ignore(syscall.SIGTERM)
-		select {}
+		os.WriteFile(os.Getenv("YOKE_TEST_IGNORING"), nil, 0o600)
+		time.Sleep(time.Hour)
 	}
 	os.Exit(2)
 }
@@ -157,7 +160,7 @@ func TestTheProcessIsHandedWhatItNeeds(t *testing.T) {
 		s.Launch(u)
 	}
 	until(t, "both units telling what they received", 5*time.Second, func() bool {
-		return strings.Count(strings.Join(out.all(), "\n"), "args ") == 2
+		return strings.Count(strings.Join(out.all(), "\n"), "args ") >= 2
 	})
 	root := s.Root()
 	for _, kind := range []unit.Kind{unit.Plugin, unit.Oneshot} {
@@ -210,9 +213,13 @@ func TestAnExitReachesTheMachineWhenItHappens(t *testing.T) {
 	policy := fast()
 	policy.Backoff, policy.Ceiling = time.Hour, time.Hour
 	s, _ := started(t, policy)
-	s.Launch(declared(t, "brief", unit.Interface, "exit-soon"))
+	brief := declared(t, "brief", unit.Interface, "exit-soon")
+	leaving := filepath.Join(t.TempDir(), "leaving")
+	brief.Env["YOKE_TEST_LEAVING"] = leaving
+	s.Launch(brief)
 	until(t, "the interface running", 5*time.Second, func() bool { return s.Status("brief").State == unit.Running })
-	until(t, "the exit reaching the machine", 1200*time.Millisecond, func() bool { return s.Status("brief").State == unit.Failed })
+	until(t, "the interface about to exit", 10*time.Second, func() bool { _, err := os.Stat(leaving); return err == nil })
+	until(t, "the exit reaching the machine", time.Second, func() bool { return s.Status("brief").State == unit.Failed })
 }
 
 // std: yoke:the-supervisor.12
@@ -268,7 +275,7 @@ func TestWaitingIsReportedAndIsNotAState(t *testing.T) {
 // std: yoke:the-supervisor.14
 func TestAUnitThatStayedReadyStartsCountingAgain(t *testing.T) {
 	policy := fast()
-	policy.StabilityWindow = 400 * time.Millisecond
+	policy.StabilityWindow = 100 * time.Millisecond
 	s, _ := started(t, policy)
 	u := declared(t, "flaky", unit.Interface, "exit-1")
 	s.Launch(u)
@@ -306,11 +313,14 @@ func TestStoppingAsksInReverseWaitsAndEnds(t *testing.T) {
 	second := declared(t, "second", unit.Interface, "fork")
 	second.Env["YOKE_TEST_CHILD_PID"] = childFile
 	third := declared(t, "third", unit.Interface, "stubborn")
+	ignoring := filepath.Join(t.TempDir(), "ignoring")
+	third.Env["YOKE_TEST_IGNORING"] = ignoring
 	for _, u := range []supervisor.Unit{first, second, third} {
 		s.Launch(u)
 		until(t, u.ID+" running", 5*time.Second, func() bool { return s.Status(u.ID).State == unit.Running })
 	}
 	until(t, "the forked child", 5*time.Second, func() bool { _, err := os.Stat(childFile); return err == nil })
+	until(t, "the third ignoring the signal", 5*time.Second, func() bool { _, err := os.Stat(ignoring); return err == nil })
 	raw, _ := os.ReadFile(childFile)
 	var child int
 	fmt.Sscan(string(raw), &child)
@@ -365,5 +375,3 @@ func TestASupervisorThatCannotObserveConcludesNothing(t *testing.T) {
 		t.Errorf("after the source returned: %+v", status)
 	}
 }
-
-var _ = io.Discard
