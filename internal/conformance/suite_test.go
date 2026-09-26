@@ -51,6 +51,8 @@ func harness() int {
 		json.Unmarshal(lines.Bytes(), &d)
 		switch {
 		case d.Type == "finish":
+			// A harness takes a moment to leave, as one that closes its library's Session does.
+			time.Sleep(300 * time.Millisecond)
 			fmt.Fprintf(log, "%s finished\n", os.Getenv("YOKE_UNIT"))
 			return 0
 		case d.Verb == "describe":
