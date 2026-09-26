@@ -269,6 +269,13 @@ func TestTheTable(t *testing.T) {
 			t.Errorf("the run did not print %q:\n%s", line, said)
 		}
 	}
+	// Nothing else the run prints may begin as a result does, or the record writer reads it as one.
+	for _, line := range strings.Split(said, "\n") {
+		verdict, _, _ := strings.Cut(line, " ")
+		if (verdict == "pass" || verdict == "FAIL") && !strings.HasPrefix(line, verdict+"  yoke:") {
+			t.Errorf("the run printed %q, which reads as a result", line)
+		}
+	}
 	if d := report.Rows[1].Detail; !strings.Contains(d, "echo n=2") || !strings.Contains(d, "n=1") || !strings.Contains(d, "2") {
 		t.Errorf("the failure reports %q", d)
 	}

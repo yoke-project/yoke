@@ -68,7 +68,7 @@
 | **Label** | blocking |
 | **Precondition** | three cases: one the harness satisfies, one it does not, one it cannot recognise |
 | **Action** | run the suite |
-| **Expected** | the table has a row per case under the harness's language, reading pass, fail and absent; the failing row reports the directive issued, what was required and what the harness observed; the run prints each case's result as the lines the record writer reads, `pass  <id>` and `FAIL  <id> — <what failed>` |
+| **Expected** | the table has a row per case under the harness's language, reading pass, fail and absent; the failing row reports the directive issued, what was required and what the harness observed; the run prints each case's result as the lines the record writer reads, `pass  <id>` and `FAIL  <id> — <what failed>`, and no other line it prints begins as one of them does |
 
 ## yoke:the-conformance-suite.06 — the exit status is zero only when every cell passes
 
