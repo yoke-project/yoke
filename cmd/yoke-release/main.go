@@ -3,6 +3,7 @@
 package main
 
 import (
+	"flag"
 	"os"
 	"time"
 
@@ -17,6 +18,13 @@ var artifacts = []release.Artifact{
 }
 
 func main() {
-	os.Exit(release.Run(release.Config{Root: ".", Proxy: release.FromProxy, Today: time.Now, Out: os.Stdout, Err: os.Stderr,
-		Artifacts: artifacts, Source: "yoke", Releases: "https://github.com/yoke-project/yoke/releases/tag/", Upload: release.ToForge}))
+	// A repository that publishes only its Go modules — a Go family — runs this verb with -modules-only.
+	modulesOnly := flag.Bool("modules-only", false, "publish the modules the tags name, and hand over no file")
+	flag.Parse()
+	cfg := release.Config{Root: ".", Proxy: release.FromProxy, Today: time.Now, Out: os.Stdout, Err: os.Stderr}
+	if !*modulesOnly {
+		cfg.Artifacts, cfg.Source, cfg.Upload = artifacts, "yoke", release.ToForge
+		cfg.Releases = "https://github.com/yoke-project/yoke/releases/tag/"
+	}
+	os.Exit(release.Run(cfg))
 }
