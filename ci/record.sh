@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Assembles the record of one level of a run from what that run left behind, and writes it to standard
 # output. It runs nothing: a record is evidence of a run that already happened. One run of `test`
-# performs L1 and L3, and each level's record takes the cases declared at it.
+# performs L1, L2 and L3, and each level's record takes the cases declared at it.
 #
-# A level whose predecessor blocked was not reached: PREDECESSOR names that record, and until the
-# conformance suite runs, L3 follows L1.
+# A level whose predecessor blocked was not reached: PREDECESSOR names that record — L1 for L2, L2 for
+# L3.
 # Usage: [PREDECESSOR=<record>] record.sh <level> [results directory]
 set -uo pipefail
 
@@ -34,6 +34,7 @@ arguments=(record
   --results "$results/checks.txt")
 
 [[ -s "$results/go.json" ]] && arguments+=(--results "$results/go.json")
+[[ -s "$results/conformance.txt" ]] && arguments+=(--results "$results/conformance.txt")
 
 if [[ -n "${PREDECESSOR:-}" ]]; then
   blocked="$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get("blocks") is not False)' "$PREDECESSOR" 2>/dev/null)"

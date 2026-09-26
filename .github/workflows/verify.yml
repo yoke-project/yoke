@@ -37,15 +37,24 @@ jobs:
       - run: just test
       - run: ci/record.sh L1 > record-L1.json
         if: always()
-      - run: ci/record.sh L3 > record-L3.json
+      - run: ci/record.sh L2 > record-L2.json
         if: always()
         env:
           PREDECESSOR: record-L1.json
+      - run: ci/record.sh L3 > record-L3.json
+        if: always()
+        env:
+          PREDECESSOR: record-L2.json
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: record-L1
           path: record-L1.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: record-L2
+          path: record-L2.json
       - uses: actions/upload-artifact@v7
         if: always()
         with:

@@ -201,7 +201,7 @@ func Execute(cfg Config) (Report, error) {
 	}
 
 	// Drive.
-	run := &Run{tree: tree, control: control}
+	run := &Run{tree: tree, control: control, described: text}
 	for _, c := range cfg.Cases {
 		outcome := c.Run(run)
 		language := ""
@@ -286,9 +286,23 @@ func stop(core *exec.Cmd) {
 
 // Run is what a case drives.
 type Run struct {
-	tree    string
-	control *control
-	unit    *Harness
+	tree      string
+	control   *control
+	unit      *Harness
+	described string
+}
+
+// Described is the Manifest the harness described at the start of the run.
+func (r *Run) Described() string { return r.described }
+
+// NextUnit waits for the harness of the unit's next life, once the Core has launched it again.
+func (r *Run) NextUnit(within time.Duration) (*Harness, error) {
+	h, err := r.control.next("unit", within)
+	if err != nil {
+		return nil, err
+	}
+	r.unit = h
+	return h, nil
 }
 
 // Tree is the run's temporary tree.
@@ -457,6 +471,26 @@ func (h *Harness) Do(verb string, args map[string]any) Result {
 		case <-timeout:
 			res.Lost = true
 			return res
+		}
+	}
+}
+
+// Gone says whether the harness has closed its connection — its process finishing — within the bound.
+func (h *Harness) Gone(within time.Duration) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	deadline := time.After(within)
+	for {
+		select {
+		case m, open := <-h.lines:
+			if !open {
+				return true
+			}
+			if m.Type == "observation" {
+				h.pending = append(h.pending, Observation{Kind: m.Kind, Fields: m.Fields})
+			}
+		case <-deadline:
+			return false
 		}
 	}
 }

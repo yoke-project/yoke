@@ -23,8 +23,9 @@ test:
     go test -C proto ./... || status=1
     go run ./cmd/yoke-verify descriptions --repository yoke . > /dev/null || status=1
     go run ./cmd/yoke-verify markers --repository yoke . > /dev/null || status=1
+    bash ci/conformance.sh .results || status=1
     date -u +%Y-%m-%dT%H:%M:%SZ > .results/finished
-    (( status == 0 )) && echo "test: every description holds its form, and every case has exactly one test"
+    (( status == 0 )) && echo "test: every description holds its form, every case has exactly one test, and the suite passes"
     exit "$status"
 
 # This repository's static checks.
