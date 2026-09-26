@@ -81,21 +81,42 @@ func Read(path string, kind Kind) Document {
 	return Document{Path: path, Kind: kind, Bytes: b, Err: err}
 }
 
-// Input is what a pass is given.
+// Moment is when a pass happens, which decides what is in hand and so which checks can run.
+type Moment int
+
+const (
+	Starting   Moment = iota // before every start, on the host that will run it
+	Composing                // the documents and the Manifests, on a machine that is not the target
+	Installing               // a bundle just expanded, the host, no instance
+	Creating                 // an instance created or re-pointed
+)
+
+// Host is what phase 4 reads of the host that will run the deployment.
+type Host struct {
+	Executables string // where a Plugin's executable is found by its identity
+	StateDir    string // the instance's state directory, holding secrets/
+	RuntimeRoot string // the instance root, under which every socket path is derived
+}
+
+// Input is what a pass is given. A phase whose inputs are absent is named as not run: phase 3 needs the
+// directory the Manifests are found in, `<plugin>/manifest.yaml`, and phase 4 the host.
 type Input struct {
-	Document Document
+	Document  Document
+	Moment    Moment
+	Manifests string
+	Host      *Host
 }
 
 // Check runs every phase it has the inputs for, and returns the report and — when nothing was refused —
 // the deployment.
 func Check(in Input) (Report, *Deployment) {
-	c := &checker{doc: in.Document}
+	c := &checker{doc: in.Document, in: in}
 	c.run([]phase{
 		{PhaseReading, c.reading},
 		{PhaseShape, c.shape},
 		{PhaseInternalJoins, c.joins},
-		{PhaseCrossDocument, notGiven},
-		{PhaseHostFacts, notGiven},
+		{PhaseCrossDocument, c.crossDocument},
+		{PhaseHostFacts, c.hostFacts},
 		{PhaseWeaker, c.weaker},
 	})
 	if c.report.Refused() {
@@ -124,11 +145,13 @@ func (c *checker) run(phases []phase) {
 }
 
 type checker struct {
+	in         Input
 	doc        Document
 	report     Report
 	root       *node
 	deployment *Deployment
 	manifest   *Manifest
+	manifests  map[string]*Manifest // by plugin, the ones the document names
 }
 
 func (c *checker) refuse(code, location, format string, args ...any) {
