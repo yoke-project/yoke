@@ -212,15 +212,20 @@ func TestEveryFieldHasItsTypeAndARequiredOneItsPresence(t *testing.T) {
 // std: yoke:the-gate.08
 func TestEveryScalarIsWrittenInItsForm(t *testing.T) {
 	for document, want := range map[string]string{
-		"units: {}\npolicy: { startup_window: 30 }":                                          "format.duration",
-		"units: {}\npolicy: { retention: { bytes: 50mb } }":                                  "format.size",
-		"units: {}\npolicy: { heartbeat: { tolerance: 0.5 } }":                               "field.value",
-		"units: { a: { kind: plugin, plugin: com.example.a, manifest_digest: \"md5:ab\" } }": "format.digest",
+		"units: {}\npolicy: { startup_window: 30 }":            "format.duration",
+		"units: {}\npolicy: { retention: { bytes: 50mb } }":    "format.size",
+		"units: {}\npolicy: { heartbeat: { tolerance: 0.5 } }": "field.value",
 	} {
 		r, _ := composition(t, document)
 		if got := codes(r); !slices.Equal(got, []string{want}) {
 			t.Errorf("%s\n  gives %v, want [%s]", document, got, want)
 		}
+	}
+	// A composition document carries no digest at all, so the format is shown on a descriptor.
+	image := "ghcr.io/example/a@sha256:" + strings.Repeat("ab", 32)
+	r, _ := check(t, gate.Descriptor, "units: { a: { kind: plugin, plugin: com.example.a, image: \""+image+"\", manifest_digest: \"md5:ab\" } }")
+	if got := codes(r); !slices.Equal(got, []string{"format.digest"}) {
+		t.Errorf("a manifest_digest of md5 gives %v, want [format.digest]", got)
 	}
 	r, d := composition(t, "units: { a: { kind: oneshot, exec: /usr/bin/a, args: [no, 1.0, 01] } }")
 	if r.Refused() {
@@ -248,9 +253,14 @@ func TestANameIsValidatedAndNeverTransformed(t *testing.T) {
 
 // std: yoke:the-gate.10
 func TestWhatAUnitsKindPermitsItToCarry(t *testing.T) {
+	// A composition document carries no migrates_from at all, so the kind's rule is shown on a descriptor.
+	digest := "sha256:" + strings.Repeat("ab", 32)
+	r, _ := check(t, gate.Descriptor, "units: { a: { kind: interface, exec: bin/a, digest: \""+digest+"\", migrates_from: \"<2.0\" } }")
+	if got := codes(r); !slices.Equal(got, []string{"unit.migrates_from.kind"}) {
+		t.Errorf("migrates_from on an interface gives %v, want [unit.migrates_from.kind]", got)
+	}
 	for document, want := range map[string]string{
 		"units: { a: { kind: plugin, plugin: com.example.a, needs: [ display ] } }":    "unit.needs.on_plugin",
-		"units: { a: { kind: interface, exec: /usr/bin/a, migrates_from: \"<2.0\" } }": "unit.migrates_from.kind",
 		"units: { a: { kind: oneshot, exec: /usr/bin/a, env: { YOKE_TOKEN: mine } } }": "unit.env.reserved",
 		"units: { a: { kind: interface, image: \"ghcr.io/yoke/panel:latest\" } }":      "unit.image.tagged",
 	} {

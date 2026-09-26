@@ -171,6 +171,10 @@ func (c *checker) shape() bool {
 		case e.key == "policy":
 			policy = e.value
 		case c.doc.Kind == Descriptor && slices.Contains(headKeys, e.key):
+		case e.key == "parameters":
+			c.refuse("parameters.present", e.key, "a composition document declares no parameters: whoever writes it also runs it")
+		case slices.Contains(headKeys, e.key):
+			c.refuse("head.present", e.key, "a composition document has no head, and %s is part of one: which document is in force is answered by its path", e.key)
 		default:
 			c.refuse("key.unknown", e.key, "the key %s is not part of the document", e.key)
 		}
@@ -321,6 +325,13 @@ func (c *checker) unit(name string, n *node, outer overrides) (Unit, bool) {
 	} else if u.Kind == "plugin" {
 		c.refuse("field.required", at("plugin"), "the plugin unit %s names no plugin", name)
 	}
+	if c.doc.Kind == Composition && u.Kind == "plugin" {
+		for _, key := range []string{"exec", "image"} {
+			if _, there := fields[key]; there {
+				c.refuse("unit.program.on_plugin", at(key), "the plugin unit %s names %s, and the Core resolves a plugin's executable from its identity", name, key)
+			}
+		}
+	}
 	if e, there := fields["exec"]; there {
 		if s, ok := c.str(e, at("exec"), false); ok {
 			if c.doc.Kind == Composition && u.Kind != "plugin" && !strings.HasPrefix(s, "/") {
@@ -343,6 +354,14 @@ func (c *checker) unit(name string, n *node, outer overrides) (Unit, bool) {
 	if u.Kind != "" && namesProgram && hasExec == hasImage {
 		which := map[bool]string{true: "both exec and image", false: "neither exec nor image"}[hasExec]
 		c.refuse("unit.program.ambiguous", location, "the unit %s names %s, and exactly one is required", name, which)
+	}
+	if c.doc.Kind == Composition {
+		for _, key := range []string{"digest", "manifest_digest"} {
+			if _, there := fields[key]; there {
+				c.refuse("digest.present", at(key), "a composition document carries no %s: the files it names are the system's, under a root-owned directory", key)
+				delete(fields, key)
+			}
+		}
 	}
 	if dg, there := fields["digest"]; there {
 		if s, ok := c.str(dg, at("digest"), false); ok {
@@ -409,7 +428,9 @@ func (c *checker) unit(name string, n *node, outer overrides) (Unit, bool) {
 			u.Autostart = v
 		}
 	}
-	if mf, there := fields["migrates_from"]; there {
+	if mf, there := fields["migrates_from"]; there && c.doc.Kind == Composition {
+		c.refuse("unit.migrates_from.present", at("migrates_from"), "a composition document carries no migrates_from: a deployment composed on the host has no version of its own")
+	} else if there {
 		if u.Kind != "" && u.Kind != "oneshot" {
 			c.refuse("unit.migrates_from.kind", at("migrates_from"), "migrates_from is carried by a unit of kind oneshot only, and %s is %s", name, u.Kind)
 		} else if s, ok := c.str(mf, at("migrates_from"), false); ok {
