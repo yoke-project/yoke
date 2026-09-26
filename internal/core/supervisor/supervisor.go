@@ -159,6 +159,14 @@ func (s *Supervisor) attempt(m *managed) {
 		s.failedLaunch(m, fmt.Sprintf("the %s backend cannot be reached", backend))
 		return
 	}
+	// A Plugin unit binds its own socket under plugins/, which the Core provides: the unit supplies the
+	// bind and never the place.
+	if m.decl.Kind == unit.Plugin {
+		if err := os.MkdirAll(filepath.Join(s.cfg.Root, "plugins"), 0o750); err != nil {
+			s.failedLaunch(m, fmt.Sprintf("the directory for the unit's socket cannot be made: %v", err))
+			return
+		}
+	}
 	file, err := os.Open(m.decl.Exec)
 	if err != nil {
 		s.failedLaunch(m, fmt.Sprintf("the executable %s cannot be opened: %v", m.decl.Exec, err))
@@ -274,7 +282,16 @@ func (s *Supervisor) apply(m *managed, in unit.Input) {
 	}
 	// A terminal state reached while the process lingers: disposing of it follows the conclusion.
 	if moved && t.To.Terminal() && m.process != nil {
-		syscall.Kill(-m.process.Pid, syscall.SIGKILL)
+		// Asked, given the stop window, then ended — as any ending is.
+		process, exited, window := m.process, m.exited, s.policy(m).StopWindow
+		syscall.Kill(-process.Pid, syscall.SIGTERM)
+		go func() {
+			select {
+			case <-exited:
+			case <-time.After(window):
+				syscall.Kill(-process.Pid, syscall.SIGKILL)
+			}
+		}()
 	}
 	if moved && t.To.Terminal() && s.cfg.Ended != nil {
 		s.cfg.Ended(m.decl.ID)
