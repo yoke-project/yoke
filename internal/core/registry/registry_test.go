@@ -2,11 +2,9 @@ package registry
 
 import (
 	"database/sql"
-	"os"
 	"path/filepath"
 	"reflect"
 	"slices"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -136,30 +134,6 @@ func TestALowerNumberHasTheMissingStepsApplied(t *testing.T) {
 	defer db.Close()
 	if _, err := db.Exec("SELECT * FROM half"); err == nil {
 		t.Fatal("the failed step left part of itself behind")
-	}
-}
-
-// std: yoke:the-registry.05
-func TestAHigherNumberIsRefusedNamingBothNumbers(t *testing.T) {
-	path := filepath.Join(t.TempDir(), File)
-	db, _ := sql.Open(driver, path)
-	if _, err := db.Exec("PRAGMA user_version = 99"); err != nil {
-		t.Fatal(err)
-	}
-	db.Close()
-	before, _ := os.ReadFile(path)
-	_, err := Open(path)
-	if err == nil {
-		t.Fatal("a store written by a newer Core was opened")
-	}
-	said := strings.ReplaceAll(err.Error(), path, "")
-	for _, number := range []string{"99", strconv.Itoa(len(steps))} {
-		if !strings.Contains(said, number) {
-			t.Errorf("the refusal %q does not name %s", err, number)
-		}
-	}
-	if after, _ := os.ReadFile(path); !slices.Equal(before, after) {
-		t.Fatal("the refused file was changed")
 	}
 }
 

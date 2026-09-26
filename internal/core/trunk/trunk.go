@@ -16,6 +16,7 @@ import (
 
 	"github.com/yoke-project/yoke/internal/core/config"
 	"github.com/yoke-project/yoke/internal/core/instance"
+	"github.com/yoke-project/yoke/internal/core/registry"
 	"github.com/yoke-project/yoke/internal/core/supervisor"
 )
 
@@ -60,9 +61,10 @@ type State struct {
 	Channels []Channel
 	Units    []supervisor.Unit // the units the deployment declares, launched at step 11
 
-	Config config.Config
-	Paths  instance.Paths
-	Log    *slog.Logger
+	Config   config.Config
+	Paths    instance.Paths
+	Log      *slog.Logger
+	Registry *registry.Registry
 
 	stoppers []func() error
 }
@@ -100,7 +102,7 @@ func Steps() []Step {
 		{"logging", logging},
 		{"claim", claim},
 		{"debris", func(st *State) error { return ClearDebris(st.Paths.Root) }},
-		{"stores", nothingYet},
+		{"stores", stores},
 		{"inherited runtime facts", nothingYet},
 		{"declarations", nothingYet},
 		{"channels", channels},
@@ -184,6 +186,21 @@ func claim(st *State) error {
 		removed := os.RemoveAll(st.Paths.Root)
 		return errors.Join(removed, held.Release())
 	})
+	return nil
+}
+
+// stores opens the Registry and migrates it forward. Nothing is admitted without it, so failing here is
+// fatal.
+func stores(st *State) error {
+	if err := os.MkdirAll(st.Paths.State, 0o700); err != nil {
+		return err
+	}
+	r, err := registry.Open(filepath.Join(st.Paths.State, registry.File))
+	if err != nil {
+		return err
+	}
+	st.Registry = r
+	st.OnStop(r.Close)
 	return nil
 }
 
