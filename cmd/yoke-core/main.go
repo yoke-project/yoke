@@ -24,6 +24,7 @@ func main() {
 func run(args []string) int {
 	flags := flag.NewFlagSet("yoke-core", flag.ContinueOnError)
 	composition := flags.String("composition", "", "the composition document in force, overriding YOKE_COMPOSITION")
+	admitUnlaunched := flags.Bool("admit-unlaunched", false, "a development run: a process this Core did not launch may register")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
@@ -33,7 +34,7 @@ func run(args []string) int {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
 
-	st := &trunk.State{Form: trunk.Service, Env: os.Getenv, Stderr: os.Stderr, Composition: chosen}
+	st := &trunk.State{Form: trunk.Service, Env: os.Getenv, Stderr: os.Stderr, Composition: chosen, AdmitUnlaunched: *admitUnlaunched}
 	if err := trunk.Run(st, trunk.Steps()); err != nil {
 		fmt.Fprintln(os.Stderr, "yoke-core:", err)
 		return 1

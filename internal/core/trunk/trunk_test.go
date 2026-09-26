@@ -340,12 +340,13 @@ func TestStoppingUndoesTheTrunkInReverse(t *testing.T) {
 			return nil
 		}})
 	}
-	st.Channels = []trunk.Channel{{Name: "plugin", Path: "plugin.sock", Serve: func(trunk.Listener) {}}}
+	// The plugin channel is the Core's own; the channel this test binds is another.
+	st.Channels = []trunk.Channel{{Name: "operator", Path: "operator.sock", Serve: func(trunk.Listener) {}}}
 	if err := trunk.Run(st, withStoppers); err != nil {
 		t.Fatal(err)
 	}
 	root := st.Paths.Root
-	if _, err := os.Stat(filepath.Join(root, "plugin.sock")); err != nil {
+	if _, err := os.Stat(filepath.Join(root, "operator.sock")); err != nil {
 		t.Fatalf("the channel was not bound: %v", err)
 	}
 	if err := st.Stop(); err != nil {

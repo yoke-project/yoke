@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
 )
 
 // ManifestModel is the version of the Manifest model this host implements.
@@ -13,7 +15,7 @@ const ManifestModel = 1
 
 // Protocols are the versions of the plugin surface this Core speaks: the version of the contract the
 // definitions carry.
-var Protocols = []int{1}
+var Protocols = []int{int(pluginv1.Contract_CONTRACT_VERSION)}
 
 // Manifest is what a Plugin declares about itself before it runs. Everything in it is a claim, and a
 // claim grants nothing.

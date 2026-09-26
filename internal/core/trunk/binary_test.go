@@ -145,7 +145,8 @@ func TestACoreThatDiedUncleanLeavesItsDebrisToTheNextStart(t *testing.T) {
 	for _, e := range entries {
 		left = append(left, e.Name())
 	}
-	if strings.Join(left, ",") != "instance.lock" {
-		t.Errorf("the next start left %v under the root, want only instance.lock", left)
+	// What is there once the next start is ready is its claim and the plugin channel it bound itself.
+	if strings.Join(left, ",") != "instance.lock,plugin.sock" {
+		t.Errorf("the next start left %v under the root, want only instance.lock and its own plugin.sock", left)
 	}
 }
