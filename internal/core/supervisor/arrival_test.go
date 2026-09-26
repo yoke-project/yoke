@@ -21,9 +21,11 @@ func TestTheVariablesAndNothingElse(t *testing.T) {
 		Incarnations: supervisor.NewCounter(), Tokens: supervisor.NewTokens(), Output: out,
 	})
 	t.Cleanup(func() { s.Stop() })
+	declarations := map[string]map[string]string{}
 	for _, id := range []string{"first", "second"} {
 		u := declared(t, id, unit.Plugin, "environment")
 		u.Env["DECLARED_BY_"+strings.ToUpper(id)] = "yes"
+		declarations[id] = u.Env
 		s.Launch(u)
 	}
 	environment := func(id string) map[string]string {
@@ -50,7 +52,11 @@ func TestTheVariablesAndNothingElse(t *testing.T) {
 			names = append(names, name)
 		}
 		slices.Sort(names)
-		want := []string{"DECLARED_BY_" + strings.ToUpper(id), "YOKE_BIND", "YOKE_PLUGIN", "YOKE_SOCKET", "YOKE_TEST_UNIT_ROLE", "YOKE_TOKEN", "YOKE_UNIT"}
+		want := []string{"YOKE_BIND", "YOKE_PLUGIN", "YOKE_SOCKET", "YOKE_TOKEN", "YOKE_UNIT"}
+		for name := range declarations[id] {
+			want = append(want, name)
+		}
+		slices.Sort(want)
 		if !slices.Equal(names, want) {
 			t.Errorf("%s was handed %v, want %v", id, names, want)
 		}
@@ -78,10 +84,11 @@ func TestTheStartupWindowIsTheUnits(t *testing.T) {
 	s.Launch(quick)
 	s.Launch(declared(t, "patient", unit.Plugin, "serve"))
 	time.Sleep(time.Second)
-	if got := s.Status("quick").State; got != unit.Failed {
-		t.Errorf("quick is %v after its own window, want Failed", got)
+	// A Plugin unit that failed is launched again, so its first life is over once a second has begun.
+	if st := s.Status("quick"); st.Incarnation < 2 && st.State != unit.Failed {
+		t.Errorf("quick is %v in its incarnation %d after its own window, want its first ended Failed", st.State, st.Incarnation)
 	}
-	if got := s.Status("patient").State; got != unit.Starting {
-		t.Errorf("patient is %v inside the deployment's window, want Starting", got)
+	if st := s.Status("patient"); st.State != unit.Starting || st.Incarnation != 1 {
+		t.Errorf("patient is %v in its incarnation %d inside the deployment's window, want its first Starting", st.State, st.Incarnation)
 	}
 }

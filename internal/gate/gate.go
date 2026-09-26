@@ -90,32 +90,37 @@ type Input struct {
 // the deployment.
 func Check(in Input) (Report, *Deployment) {
 	c := &checker{doc: in.Document}
-	phases := []struct {
-		name string
-		run  func() bool // false when its inputs were not given
-	}{
+	c.run([]phase{
 		{PhaseReading, c.reading},
 		{PhaseShape, c.shape},
 		{PhaseInternalJoins, c.joins},
-		{PhaseCrossDocument, func() bool { return false }},
-		{PhaseHostFacts, func() bool { return false }},
+		{PhaseCrossDocument, notGiven},
+		{PhaseHostFacts, notGiven},
 		{PhaseWeaker, c.weaker},
-	}
-	stopped := false
-	for _, p := range phases {
-		if stopped {
-			c.report.NotRun = append(c.report.NotRun, p.name)
-			continue
-		}
-		if !p.run() {
-			c.report.NotRun = append(c.report.NotRun, p.name)
-		}
-		stopped = c.report.Refused()
-	}
+	})
 	if c.report.Refused() {
 		return c.report, nil
 	}
 	return c.report, c.deployment
+}
+
+type phase struct {
+	name string
+	run  func() bool // false when its inputs were not given
+}
+
+func notGiven() bool { return false }
+
+// run runs the phases in order. A refusal stops every phase after it, and each phase not run is named.
+func (c *checker) run(phases []phase) {
+	stopped := false
+	for _, p := range phases {
+		if stopped || !p.run() {
+			c.report.NotRun = append(c.report.NotRun, p.name)
+			continue
+		}
+		stopped = c.report.Refused()
+	}
 }
 
 type checker struct {
@@ -123,6 +128,7 @@ type checker struct {
 	report     Report
 	root       *node
 	deployment *Deployment
+	manifest   *Manifest
 }
 
 func (c *checker) refuse(code, location, format string, args ...any) {
