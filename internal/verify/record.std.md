@@ -134,3 +134,42 @@
 | **Precondition** | one tree, and two runs over it: a Go runner's own machine-readable output, and the lines a check writes for itself |
 | **Action** | run `yoke-verify record` over each |
 | **Expected** | both produce the same entries for the cases they answer for — a check has no runner to translate, so the tool reads what a check already prints rather than asking twelve repositories to print something new |
+
+## yoke:record.11 — the commit is read from a worktree
+
+| Field | Value |
+| --- | --- |
+| **Cites** | testing/40 §A record |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a repository with one commit, and a worktree of it on a branch of its own, where `.git` is a file naming the worktree's directory |
+| **Action** | run `yoke-verify record` over the worktree, giving no commit |
+| **Expected** | the record's `commit` is the commit the worktree's branch names |
+
+## yoke:record.12 — the commit is read from packed references
+
+| Field | Value |
+| --- | --- |
+| **Cites** | testing/40 §A record |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a repository with one commit, its references packed, so the branch has no file of its own and exists only as a line of `packed-refs` |
+| **Action** | run `yoke-verify record` over it, giving no commit |
+| **Expected** | the record's `commit` is the commit the branch names |
+
+## yoke:record.13 — a record that can name no commit is refused
+
+| Field | Value |
+| --- | --- |
+| **Cites** | testing/40 §A record |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a tree that is not a repository |
+| **Action** | run `yoke-verify record` over it, giving no commit |
+| **Expected** | no record is written, and the refusal says the commit could not be read — a record that names no commit cannot be joined to anything |
