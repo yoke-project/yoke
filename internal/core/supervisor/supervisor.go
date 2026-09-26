@@ -16,6 +16,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -113,6 +115,11 @@ type managed struct {
 	readyAt     time.Time
 	windowOut   bool
 	restart     *time.Timer
+
+	exitStatus int  // the status the last process ended with
+	hasExit    bool // whether the last process ended by exiting, rather than never starting
+	held       bool // waiting on its dependencies, with no incarnation yet
+	hold       *time.Timer
 }
 
 // Supervisor supervises the units of one instance.
@@ -126,6 +133,7 @@ type Supervisor struct {
 	stopping   bool
 	quiet      bool
 	quietSince time.Time
+	held       []*managed // the units waiting on their dependencies, in the order they were given
 }
 
 // New is a supervisor with no unit yet.
@@ -146,11 +154,117 @@ func (s *Supervisor) Launch(u Unit) {
 	s.attempt(m)
 }
 
-// Start launches the units a deployment declares.
+// Start launches the units a deployment declares, in the order their dependencies fix: each unit with
+// no unmet dependency at once, each other one when its last dependency becomes ready by its kind. A unit
+// whose dependencies have not all arrived when its startup window runs out is not started, and told.
 func (s *Supervisor) Start(units []Unit) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var waiting []*managed
 	for _, u := range units {
-		s.Launch(u)
+		m := &managed{decl: u, machine: unit.NewMachine(u.Kind)}
+		s.units[u.ID] = m
+		waiting = append(waiting, m)
 	}
+	for _, m := range waiting {
+		if len(m.decl.DependsOn) == 0 {
+			s.order = append(s.order, m.decl.ID)
+			s.attempt(m)
+			continue
+		}
+		m.held = true
+		m.status.Awaiting = append([]string(nil), m.decl.DependsOn...)
+		m.hold = time.AfterFunc(s.policy(m).StartupWindow, func() { s.neverArrived(m) })
+		s.held = append(s.held, m)
+	}
+}
+
+// ready says whether a unit has become ready by the definition its kind fixes: a Plugin unit when its
+// Session is open, a unit that runs to completion when it exited zero.
+func ready(kind unit.Kind, state unit.State) bool {
+	if kind == unit.Oneshot {
+		return state == unit.Completed
+	}
+	return state == unit.Running
+}
+
+// release launches every held unit whose last dependency has just become ready. Lock held.
+func (s *Supervisor) release(id string) {
+	var still []*managed
+	var free []*managed
+	for _, h := range s.held {
+		h.status.Awaiting = slices.DeleteFunc(h.status.Awaiting, func(d string) bool { return d == id })
+		if len(h.status.Awaiting) == 0 && !s.stopping {
+			free = append(free, h)
+			continue
+		}
+		still = append(still, h)
+	}
+	s.held = still
+	for _, h := range free {
+		h.hold.Stop()
+		h.held, h.status.Awaiting = false, nil
+		s.order = append(s.order, h.decl.ID)
+		s.attempt(h)
+	}
+}
+
+// neverArrived is a held unit's window running out: it is not started, and the chain is reported.
+func (s *Supervisor) neverArrived(m *managed) {
+	s.mu.Lock()
+	if s.stopping || !m.held {
+		s.mu.Unlock()
+		return
+	}
+	cause := s.chain(m, map[string]bool{})
+	m.held, m.status.Awaiting, m.status.NotStarted = false, nil, cause
+	s.held = slices.DeleteFunc(s.held, func(h *managed) bool { return h == m })
+	tell := s.cfg.NotStarted
+	s.mu.Unlock()
+	if tell != nil {
+		tell(m.decl.ID, cause)
+	}
+}
+
+// chain says why a unit did not start, back to the unit that actually failed. Lock held.
+func (s *Supervisor) chain(m *managed, seen map[string]bool) string {
+	seen[m.decl.ID] = true
+	var reasons []string
+	for _, d := range m.status.Awaiting {
+		reasons = append(reasons, s.why(d, seen))
+	}
+	return m.decl.ID + " did not start because " + strings.Join(reasons, " and ")
+}
+
+// why says what a dependency is doing instead of being ready. Lock held.
+func (s *Supervisor) why(id string, seen map[string]bool) string {
+	d, declared := s.units[id]
+	switch {
+	case !declared:
+		return id + " does not start with the instance"
+	case seen[id]:
+		return id + " is waiting as well"
+	case d.status.NotStarted != "":
+		return d.status.NotStarted
+	case d.held:
+		return s.chain(d, seen)
+	}
+	state := d.machine.State()
+	switch {
+	case !state.Terminal():
+		return fmt.Sprintf("%s had not become ready, being %s", id, state)
+	case state == unit.Refused:
+		return id + " was refused"
+	case state == unit.Stopped:
+		return id + " was stopped"
+	case d.status.Failure != "":
+		return id + " could not be launched: " + d.status.Failure
+	case d.windowOut:
+		return id + " did not become ready within its startup window"
+	case d.hasExit:
+		return fmt.Sprintf("%s exited %d", id, d.exitStatus)
+	}
+	return id + " failed"
 }
 
 // Declare changes a unit's declaration for its next attempt.
@@ -166,6 +280,7 @@ func (s *Supervisor) Declare(unitID string, change func(*Unit)) {
 func (s *Supervisor) attempt(m *managed) {
 	m.machine = unit.NewMachine(m.decl.Kind)
 	m.status.Waiting, m.status.Failure, m.windowOut = false, "", false
+	m.exitStatus, m.hasExit = 0, false
 	m.process, m.exited = nil, nil
 
 	if s.quiet {
@@ -277,6 +392,7 @@ func (s *Supervisor) ended(m *managed, incarnation, status int) {
 		return
 	}
 	m.process = nil
+	m.exitStatus, m.hasExit = status, true
 	if m.windowOut {
 		s.apply(m, unit.WindowElapsed{})
 	} else {
@@ -292,6 +408,9 @@ func (s *Supervisor) apply(m *managed, in unit.Input) {
 	m.status.Condition, m.status.HasCondition = m.machine.Condition()
 	if moved && t.To == unit.Running {
 		m.readyAt = time.Now()
+	}
+	if moved && ready(m.decl.Kind, t.To) {
+		s.release(m.decl.ID)
 	}
 	// A terminal state reached while the process lingers: disposing of it follows the conclusion.
 	if moved && t.To.Terminal() && m.process != nil {
@@ -367,6 +486,7 @@ func (s *Supervisor) Status(unitID string) Status {
 		return Status{}
 	}
 	status := m.status
+	status.Awaiting = append([]string(nil), m.status.Awaiting...)
 	status.Unobservable, status.UnobservableSince = s.quiet, s.quietSince
 	if !s.quiet {
 		status.UnobservableSince = time.Time{}
@@ -412,6 +532,9 @@ func (s *Supervisor) Stop() error {
 	for _, m := range s.units {
 		if m.restart != nil {
 			m.restart.Stop()
+		}
+		if m.hold != nil {
+			m.hold.Stop()
 		}
 	}
 	s.mu.Unlock()

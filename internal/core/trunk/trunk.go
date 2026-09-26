@@ -347,12 +347,13 @@ func units(st *State) error {
 		// An incarnation that ended is no longer live, and its Session goes with it.
 		cfg.Ended = func(id string) { st.Admission.Release(id); st.Session.Forget(id) }
 	}
+	// A unit whose dependency never arrived is reported, and nothing more: past readiness a failure is
+	// reported rather than fatal.
+	cfg.NotStarted = func(id, cause string) { st.Log.Warn("not started", "unit", id, "cause", cause) }
 	s := supervisor.New(cfg)
 	st.Supervisor = s
 	st.OnStop(s.Stop)
-	for _, u := range st.Units {
-		s.Launch(u)
-	}
+	s.Start(st.Units)
 	return nil
 }
 

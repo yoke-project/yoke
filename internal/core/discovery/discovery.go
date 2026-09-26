@@ -142,7 +142,7 @@ func Units(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), e
 			}
 			return value
 		}
-		s := supervisor.Unit{ID: name, Kind: kinds[u.Kind], Plugin: u.Plugin, Exec: u.Exec, RestartOnFailure: u.OnFailure, Env: map[string]string{}}
+		s := supervisor.Unit{ID: name, Kind: kinds[u.Kind], Plugin: u.Plugin, Exec: u.Exec, RestartOnFailure: u.OnFailure, DependsOn: u.DependsOn, Env: map[string]string{}}
 		if u.Kind == "plugin" {
 			s.Exec = filepath.Join(executables, u.Plugin)
 		}
