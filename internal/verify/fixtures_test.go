@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -119,9 +120,13 @@ func runWith(t *testing.T, subcommand string, args ...string) (status int, out, 
 	return status, o.String(), e.String()
 }
 
-// recordOf writes a record over a tree and reads it back, failing unless one was written.
+// recordOf writes a record over a tree and reads it back, failing unless one was written. A fixture tree
+// is no repository, so it is given a commit unless the test gives its own.
 func recordOf(t *testing.T, root string, args ...string) map[string]any {
 	t.Helper()
+	if !slices.Contains(args, "--commit") {
+		args = append(args, "--commit", "0f1e2d3c4b5a69788796a5b4c3d2e1f0abcdef01")
+	}
 	status, out, findings := runWith(t, "record", append(args, "--repository", "yoke", root)...)
 	if status != 0 {
 		t.Fatalf("record refused the run: %s", findings)
