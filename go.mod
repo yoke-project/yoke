@@ -1,10 +1,11 @@
 module github.com/yoke-project/yoke
 
-go 1.26
+go 1.26.0
 
 require (
 	github.com/yoke-project/yoke/proto v0.0.0-20260926092641-9f3f45313456
 	go.yaml.in/yaml/v3 v3.0.5
+	golang.org/x/mod v0.41.0
 	google.golang.org/grpc v1.84.0
 	google.golang.org/protobuf v1.36.12
 	modernc.org/sqlite v1.59.0
