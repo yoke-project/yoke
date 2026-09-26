@@ -121,6 +121,10 @@ func entries(t *testing.T, archive []byte) map[string][]byte {
 		if err != nil {
 			t.Fatal(err)
 		}
+		// A global header is the archive's own metadata — git writes the commit there — and no file.
+		if h.Typeflag == tar.TypeXGlobalHeader {
+			continue
+		}
 		data, _ := io.ReadAll(r)
 		found[h.Name] = data
 	}
