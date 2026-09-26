@@ -33,7 +33,16 @@ func git(t *testing.T, dir string, args ...string) string {
 // with one commit, tagged as given.
 func repository(t *testing.T, tags ...string) (root, commit string) {
 	t.Helper()
+	return repositoryAnd(t, nil, tags...)
+}
+
+// repositoryAnd is repository with more files in the tagged tree.
+func repositoryAnd(t *testing.T, more map[string]string, tags ...string) (root, commit string) {
+	t.Helper()
 	root = t.TempDir()
+	for path, content := range more {
+		os.WriteFile(filepath.Join(root, path), []byte(content), 0o644)
+	}
 	for path, content := range map[string]string{
 		"go.mod":         "module example.com/yk\n\ngo 1.26\n",
 		"yk.go":          "package yk\n",
@@ -157,5 +166,18 @@ func TestACommitNoReleaseTagNamesPublishesNothing(t *testing.T) {
 		if code != 0 || out != "" || len(p.asked) != 0 || strings.Count(strings.TrimSpace(errs), "\n") != 0 || !strings.Contains(errs, "nothing") {
 			t.Errorf("with tags %v: exit %d, asked %v, emitted %q, said %q", tags, code, p.asked, out, errs)
 		}
+	}
+}
+
+// std: yoke:the-release-verb.05
+func TestTheNoticesTheTreeStatesAreNamed(t *testing.T) {
+	root, _ := repositoryAnd(t, map[string]string{"NOTICE": "Yk\n"}, "v0.1.0")
+	p := &proxy{served: map[string]string{"example.com/yk@v0.1.0": treeHash(t, root, "example.com/yk", "v0.1.0", "v0.1.0", "")}}
+	code, lines, _, errs := run(t, root, p)
+	if code != 0 || len(lines) != 1 {
+		t.Fatalf("exit %d, %d lines: %s", code, len(lines), errs)
+	}
+	if notices, _ := lines[0]["notices"].([]any); len(notices) != 1 || notices[0] != "NOTICE" {
+		t.Errorf("the line names the notices %v", lines[0]["notices"])
 	}
 }
