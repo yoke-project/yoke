@@ -224,7 +224,8 @@ func Execute(cfg Config) (Report, error) {
 		fmt.Fprintf(cfg.Out, "ran  harness contract=%s version=%d language=%s sdk=%q unit=%q\n", h.Contract, h.Version, h.Language, h.SDK, h.Unit)
 	}
 	for _, row := range report.Rows {
-		fmt.Fprintf(cfg.Out, "%-8s %-10s %s\n", row.Result, row.Language, row.Case)
+		// The case leads the row, so no row begins as a result line does.
+		fmt.Fprintf(cfg.Out, "%-24s %-10s %s\n", row.Case, row.Language, row.Result)
 	}
 	for _, row := range report.Rows {
 		if row.Result == cellPass {
