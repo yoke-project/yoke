@@ -36,12 +36,16 @@ type stdCase struct {
 }
 
 type description struct {
-	path    string // relative to the root, with forward slashes
-	feature string
-	h1      string
-	rows    []field
-	cases   []stdCase
+	path     string // relative to the root, with forward slashes
+	feature  string
+	h1       string
+	rows     []field
+	cases    []stdCase
+	rendered bool // the suite's own rendering, where every case is L2
 }
+
+// RenderedLine opens a description the conformance suite rendered from its cases, and only such a one.
+const RenderedLine = "<!-- Rendered by yoke-conformance from its cases: change the cases, not this file. -->"
 
 // readDescriptions reads every <feature>.std.md under the root, in path order.
 func readDescriptions(root string) ([]description, []Finding) {
@@ -88,8 +92,9 @@ func relative(root, path string) string {
 // so a reader of this function sees what a description is and not what it must be.
 func parseDescription(path, content string) description {
 	d := description{
-		path:    path,
-		feature: strings.TrimSuffix(filepath.Base(path), ".std.md"),
+		path:     path,
+		feature:  strings.TrimSuffix(filepath.Base(path), ".std.md"),
+		rendered: strings.HasPrefix(content, RenderedLine+"\n"),
 	}
 
 	lines := strings.Split(content, "\n")
@@ -217,7 +222,7 @@ func checkDescriptions(descriptions []description, repository string) []Finding 
 				}
 				continue
 			}
-			findings = append(findings, checkFields(d.path, c)...)
+			findings = append(findings, checkFields(d.path, c, d.rendered)...)
 		}
 	}
 	return findings
@@ -225,7 +230,7 @@ func checkDescriptions(descriptions []description, repository string) []Finding 
 
 // checkFields checks the eight fields of a live case: that they are the eight, in order, once each,
 // and that every value is one the field allows.
-func checkFields(path string, c stdCase) []Finding {
+func checkFields(path string, c stdCase, rendered bool) []Finding {
 	var findings []Finding
 	at := func(format string, a ...any) {
 		findings = append(findings, Finding{File: path, Msg: fmt.Sprintf(format, a...)})
@@ -268,6 +273,12 @@ func checkFields(path string, c stdCase) []Finding {
 	}
 
 	for _, f := range c.fields {
+		if rendered && f.name == "Level" {
+			if f.value != "L2" {
+				at("%s: the field Level holds %q, and every case of the suite's rendering is L2", c.id, f.value)
+			}
+			continue
+		}
 		if message := checkValue(f); message != "" {
 			at("%s: %s", c.id, message)
 		}
