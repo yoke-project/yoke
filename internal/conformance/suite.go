@@ -486,8 +486,22 @@ func (h *Harness) Observe(within time.Duration) (Observation, bool) {
 	}
 }
 
+// finish tells the harness to stop and lets it leave by itself — the connection closing is its going —
+// within a bound, so that nothing around it is stopped while it is still finishing.
 func (h *Harness) finish() {
 	b, _ := json.Marshal(message{Type: "finish"})
 	h.conn.Write(append(b, '\n'))
-	time.AfterFunc(5*time.Second, func() { h.conn.Close() })
+	deadline := time.After(10 * time.Second)
+	for {
+		select {
+		case _, open := <-h.lines:
+			if !open {
+				h.conn.Close()
+				return
+			}
+		case <-deadline:
+			h.conn.Close()
+			return
+		}
+	}
 }
