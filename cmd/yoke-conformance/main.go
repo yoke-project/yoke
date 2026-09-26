@@ -15,7 +15,17 @@ func main() {
 	flags := flag.NewFlagSet("yoke-conformance", flag.ExitOnError)
 	core := flags.String("core", "yoke-core", "the yoke-core binary to drive")
 	harness := flags.String("harness", "", "the harness of the library under test")
+	render := flags.String("render", "", "print a contract's cases as its description, and run nothing")
 	flags.Parse(os.Args[1:])
+	if *render != "" {
+		contract, known := conformance.Contracts()[*render]
+		if !known {
+			fmt.Fprintf(os.Stderr, "yoke-conformance: no contract %s\n", *render)
+			os.Exit(2)
+		}
+		os.Stdout.Write(conformance.Render(contract))
+		return
+	}
 	if *harness == "" {
 		fmt.Fprintln(os.Stderr, "yoke-conformance: --harness names the harness of the library under test")
 		os.Exit(2)

@@ -37,13 +37,14 @@ const (
 
 // Case is one case of a contract: what it cites, what it issues, what it requires, and how it is run.
 type Case struct {
-	ID       string
-	Title    string
-	Contract string
-	Cites    []string
-	Issues   string
-	Requires string
-	Run      func(*Run) Outcome
+	ID           string
+	Title        string
+	Contract     string
+	Cites        []string
+	Precondition string
+	Issues       string
+	Requires     string
+	Run          func(*Run) Outcome
 }
 
 // Outcome is a case's result, and on a failure what was issued, required and observed.
