@@ -25,6 +25,7 @@ import (
 	"github.com/yoke-project/yoke/internal/core/discovery"
 	"github.com/yoke-project/yoke/internal/core/instance"
 	"github.com/yoke-project/yoke/internal/core/registry"
+	"github.com/yoke-project/yoke/internal/core/session"
 	"github.com/yoke-project/yoke/internal/core/supervisor"
 	"github.com/yoke-project/yoke/internal/core/unit"
 	"github.com/yoke-project/yoke/internal/gate"
@@ -83,6 +84,7 @@ type State struct {
 	Discovery  *discovery.Discovery
 	Deployment *gate.Deployment // what the composition in force declares, once it passed the gate
 	Admission  *admission.Admission
+	Session    *session.Service
 	Supervisor *supervisor.Supervisor
 
 	tokens *admission.Tokens
@@ -288,7 +290,7 @@ func channels(st *State) error {
 }
 
 // pluginChannel is the plugin surface: registration, decided by admission against the Registry, the
-// Manifests discovery read and the deployment in force.
+// Manifests discovery read and the deployment in force; and the Session each acceptance opens.
 func pluginChannel(st *State) Channel {
 	composed := func(id string) (admission.Composed, bool) {
 		if st.Deployment == nil {
@@ -312,8 +314,24 @@ func pluginChannel(st *State) Channel {
 			}
 		},
 	})
+	st.Session = session.New(session.Config{
+		Lookup: func(id string) (session.Admitted, bool) {
+			s, ok := st.Admission.Lookup(id)
+			if !ok {
+				return session.Admitted{}, false
+			}
+			return session.Admitted{Unit: s.Unit, Interval: s.Heartbeat.GetInterval().AsDuration(), Tolerance: s.Heartbeat.GetTolerance()}, true
+		},
+		Observe: func(id string, in unit.Input) {
+			if st.Supervisor != nil {
+				st.Supervisor.Input(id, in)
+			}
+		},
+		Log: st.Log,
+	})
 	server := grpc.NewServer()
 	pluginv1.RegisterRegisterServer(server, st.Admission)
+	pluginv1.RegisterSessionServer(server, st.Session)
 	st.OnStop(func() error { server.Stop(); return nil })
 	return Channel{Name: "plugin", Path: "plugin.sock", Serve: func(l Listener) { server.Serve(l) }}
 }
@@ -326,7 +344,8 @@ func units(st *State) error {
 	}
 	if st.tokens != nil {
 		cfg.Tokens = st.tokens
-		cfg.Ended = st.Admission.Release
+		// An incarnation that ended is no longer live, and its Session goes with it.
+		cfg.Ended = func(id string) { st.Admission.Release(id); st.Session.Forget(id) }
 	}
 	s := supervisor.New(cfg)
 	st.Supervisor = s
