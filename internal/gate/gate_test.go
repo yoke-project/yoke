@@ -212,9 +212,8 @@ func TestEveryFieldHasItsTypeAndARequiredOneItsPresence(t *testing.T) {
 // std: yoke:the-gate.08
 func TestEveryScalarIsWrittenInItsForm(t *testing.T) {
 	for document, want := range map[string]string{
-		"units: {}\npolicy: { startup_window: 30 }":            "format.duration",
-		"units: {}\npolicy: { retention: { bytes: 50mb } }":    "format.size",
-		"units: {}\npolicy: { heartbeat: { tolerance: 0.5 } }": "field.value",
+		"units: {}\npolicy: { startup_window: 30 }":         "format.duration",
+		"units: {}\npolicy: { retention: { bytes: 50mb } }": "format.size",
 	} {
 		r, _ := composition(t, document)
 		if got := codes(r); !slices.Equal(got, []string{want}) {
@@ -432,5 +431,19 @@ units:
 		if got := codes(r); !slices.Equal(got, []string{"key.unknown"}) {
 			t.Errorf("%s\n  gives %v, want [key.unknown]", document, got)
 		}
+	}
+}
+
+// std: yoke:the-gate.17
+func TestTheHeartbeatsToleranceIsAWholeNumber(t *testing.T) {
+	for tolerance, want := range map[string]string{"2.5": "field.type", "0": "field.value"} {
+		r, _ := composition(t, "units: {}\npolicy: { heartbeat: { tolerance: "+tolerance+" } }")
+		if got := codes(r); !slices.Equal(got, []string{want}) {
+			t.Errorf("a tolerance of %s gives %v, want [%s]", tolerance, got, want)
+		}
+	}
+	r, d := composition(t, "units: {}\npolicy: { heartbeat: { tolerance: 5 } }")
+	if r.Refused() || d.Policy.HeartbeatTolerance != 5 {
+		t.Errorf("a tolerance of 5 gives %v and %v", codes(r), d)
 	}
 }
