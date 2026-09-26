@@ -32,8 +32,9 @@ type Unit struct {
 	Digest           string // `sha256:<hex>`, the identity the executable must have; empty where there is none to compare
 	Args             []string
 	Env              map[string]string
-	RestartOnFailure bool    // `restart.on_failure`, a unit that runs to completion's to declare
-	Policy           *Policy // the unit's own figures; nil takes the deployment's
+	RestartOnFailure bool     // `restart.on_failure`, a unit that runs to completion's to declare
+	DependsOn        []string // the units this one waits on, each until it is ready by its kind
+	Policy           *Policy  // the unit's own figures; nil takes the deployment's
 }
 
 // Policy holds the deployment's figures.
@@ -72,6 +73,8 @@ type Config struct {
 	// Ended is told when an incarnation reaches a terminal state, so that what is keyed by a live unit
 	// elsewhere can let it go. Optional.
 	Ended func(unitID string)
+	// NotStarted is told of a unit whose dependency never arrived, with the chain that caused it. Optional.
+	NotStarted func(unitID, cause string)
 }
 
 // Status is what is observed of a unit: its state, and the facts about its next incarnation.
@@ -91,6 +94,9 @@ type Status struct {
 
 	Unobservable      bool
 	UnobservableSince time.Time
+
+	Awaiting   []string // the dependencies not yet ready, while the unit waits to be launched
+	NotStarted string   // why the unit was not started, once its window ran out waiting
 }
 
 // The backend this supervisor launches on.
@@ -138,6 +144,13 @@ func (s *Supervisor) Launch(u Unit) {
 	s.units[u.ID] = m
 	s.order = append(s.order, u.ID)
 	s.attempt(m)
+}
+
+// Start launches the units a deployment declares.
+func (s *Supervisor) Start(units []Unit) {
+	for _, u := range units {
+		s.Launch(u)
+	}
 }
 
 // Declare changes a unit's declaration for its next attempt.
