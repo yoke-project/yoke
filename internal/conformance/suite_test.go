@@ -22,7 +22,11 @@ func TestMain(m *testing.M) {
 	if os.Getenv("TEST_HARNESS") != "" {
 		os.Exit(harness())
 	}
-	os.Exit(m.Run())
+	code := m.Run()
+	if coreBinary != "" {
+		os.Remove(coreBinary)
+	}
+	os.Exit(code)
 }
 
 const manifest = "manifest: 1\nid: com.example.harness\nprotocol: 1\n"
