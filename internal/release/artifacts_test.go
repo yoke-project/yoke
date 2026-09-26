@@ -24,7 +24,16 @@ import (
 // the tagged tree.
 func withCommands(t *testing.T, tags ...string) string {
 	t.Helper()
+	return withCommandsAnd(t, nil, tags...)
+}
+
+// withCommandsAnd is withCommands with more files in the tagged tree.
+func withCommandsAnd(t *testing.T, more map[string]string, tags ...string) string {
+	t.Helper()
 	root := t.TempDir()
+	for path, content := range more {
+		os.WriteFile(filepath.Join(root, path), []byte(content), 0o644)
+	}
 	for path, content := range map[string]string{
 		"go.mod":         "module example.com/yk\n\ngo 1.26\n",
 		"cmd/a/main.go":  "package main\n\nfunc main() { println(\"a\") }\n",
@@ -258,4 +267,24 @@ func keys[V any](m map[string]V) []string {
 	}
 	sort.Strings(k)
 	return k
+}
+
+// std: yoke:the-artifacts.06
+func TestTheNoticesTravelWithThePrograms(t *testing.T) {
+	root := withCommandsAnd(t, map[string]string{"NOTICE": "Yk\n"}, "v0.1.0")
+	s := &shelf{}
+	code, lines, said := handOver(t, root, s)
+	if code != 0 || len(lines) != 4 {
+		t.Fatalf("exit %d, %d lines: %s", code, len(lines), said)
+	}
+	for _, arch := range []string{"amd64", "arm64"} {
+		if notice := entries(t, s.files["yk-tools-0.1.0-linux-"+arch+".tar.gz"])["NOTICE"]; string(notice) != "Yk\n" {
+			t.Errorf("the %s archive holds no NOTICE", arch)
+		}
+	}
+	for _, l := range lines {
+		if notices, _ := l["notices"].([]any); len(notices) != 1 || notices[0] != "NOTICE" {
+			t.Errorf("the line %v names the notices %v", l["published"], l["notices"])
+		}
+	}
 }

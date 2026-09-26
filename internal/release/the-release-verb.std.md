@@ -56,3 +56,16 @@
 | **Precondition** | the repository with a commit carrying no tag, and a tag that is not a release's, `nightly` |
 | **Action** | run the verb at each |
 | **Expected** | it exits zero, the proxy is asked nothing, standard output holds no line, and its error stream says in one line that nothing is published from this commit |
+
+## yoke:the-release-verb.05 — the notices the tree states are named on the line
+
+| Field | Value |
+| --- | --- |
+| **Cites** | prj_structure/85 §The release record · prj_structure/40 E3 |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the repository tagged `v0.1.0`, with a `NOTICE` beside its licence |
+| **Action** | run the verb at that commit |
+| **Expected** | the module's line names `NOTICE` among its notices |

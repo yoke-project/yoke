@@ -69,3 +69,16 @@
 | **Precondition** | the repository tagged `proto/v0.2.0` alone; then tagged `v0.1.0`, with an upload that fails |
 | **Action** | run the verb at each |
 | **Expected** | the first uploads nothing and emits the definitions module's line alone; the second exits non-zero and emits no line |
+
+## yoke:the-artifacts.06 — the notices travel with the programs, and are named on each file's line
+
+| Field | Value |
+| --- | --- |
+| **Cites** | prj_structure/85 §The release record · prj_structure/40 E3 |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the repository with two commands, tagged `v0.1.0`, with a `NOTICE` beside its licence |
+| **Action** | run the verb at that commit |
+| **Expected** | each artifact holds the `NOTICE` beside the licence, and every line names `NOTICE` among its notices |
