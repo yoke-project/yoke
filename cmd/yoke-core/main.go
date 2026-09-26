@@ -28,12 +28,12 @@ func run(args []string) int {
 		return 2
 	}
 	// The composition in force is chosen now, and read when the deployment is.
-	_ = config.Composition(*composition, os.Getenv)
+	chosen := config.Composition(*composition, os.Getenv)
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
 
-	st := &trunk.State{Form: trunk.Service, Env: os.Getenv, Stderr: os.Stderr}
+	st := &trunk.State{Form: trunk.Service, Env: os.Getenv, Stderr: os.Stderr, Composition: chosen}
 	if err := trunk.Run(st, trunk.Steps()); err != nil {
 		fmt.Fprintln(os.Stderr, "yoke-core:", err)
 		return 1

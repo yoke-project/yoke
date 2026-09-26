@@ -29,7 +29,7 @@ type Unit struct {
 	Kind             unit.Kind
 	Plugin           string // the plugin a Plugin unit is a copy of
 	Exec             string // the resolved executable
-	Digest           string // `sha256:<hex>`, the identity the executable must have
+	Digest           string // `sha256:<hex>`, the identity the executable must have; empty where there is none to compare
 	Args             []string
 	Env              map[string]string
 	RestartOnFailure bool    // `restart.on_failure`, a unit that runs to completion's to declare
@@ -168,7 +168,9 @@ func (s *Supervisor) attempt(m *managed) {
 		s.failedLaunch(m, fmt.Sprintf("the executable %s cannot be read: %v", m.decl.Exec, err))
 		return
 	}
-	if got := "sha256:" + hex.EncodeToString(sum.Sum(nil)); got != m.decl.Digest {
+	// In the service form there is no expected value: the files are the system's, under a root-owned
+	// directory, and a comparison would be with nothing.
+	if got := "sha256:" + hex.EncodeToString(sum.Sum(nil)); m.decl.Digest != "" && got != m.decl.Digest {
 		file.Close()
 		s.failedLaunch(m, fmt.Sprintf("the executable %s is %s, and the declaration says %s", m.decl.Exec, got, m.decl.Digest))
 		return
