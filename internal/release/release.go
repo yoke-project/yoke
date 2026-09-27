@@ -28,6 +28,8 @@ import (
 	"golang.org/x/mod/semver"
 	"golang.org/x/mod/sumdb/dirhash"
 	"golang.org/x/mod/zip"
+
+	"github.com/yoke-project/yoke/internal/packages"
 )
 
 // Config is what the verb runs with.
@@ -47,6 +49,15 @@ type Config struct {
 	Source    string
 	Releases  string
 	Upload    func(tag string, files []string) error
+
+	// What a definitions tag publishes beside its module: the packages, made at a version into a
+	// directory, each to its registry. Settle is how many times a registry is asked again for a version
+	// it was just given, before the publication is taken as failed. PackagesOnly publishes the packages
+	// and nothing else.
+	Packages     func(version, dir string) (crate, wheel string, err error)
+	Registries   []Registry
+	Settle       int
+	PackagesOnly bool
 }
 
 // Artifact is one archive of programs, built from the packages named.
@@ -405,4 +416,24 @@ func ToForge(tag string, files []string) error {
 		return gh(append([]string{"release", "create", tag, "--verify-tag", "--title", tag, "--notes", ""}, files...)...)
 	}
 	return gh(append([]string{"release", "upload", tag, "--clobber"}, files...)...)
+}
+
+// A registry the definitions packages are published to. Not yet used by Run.
+type Registry interface {
+	Published() string
+	Authenticated() string
+	Where(version string) string
+	Package() packages.Language
+	Served(version string) ([]byte, bool, error)
+	Publish(version, path string) error
+}
+
+// PyPI is the Python package index. Not yet able to publish.
+type PyPI struct {
+	Index, Upload string
+	Getenv        func(string) string
+}
+
+func (p PyPI) Publish(version, path string) error {
+	return fmt.Errorf("the wheel cannot be published yet")
 }
