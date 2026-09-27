@@ -1,0 +1,16 @@
+[package]
+name = "yoke-proto"
+# The definitions' version is stated when they are packaged, from the tag that publishes them.
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.88"
+license = "Apache-2.0"
+description = "The protocol definitions of Yoke, generated for Rust"
+repository = "https://github.com/yoke-project/yoke"
+include = ["src/**", "LICENSE", "NOTICE"]
+
+[dependencies]
+prost = "0.14"
+prost-types = "0.14"
+tonic = { version = "0.14", default-features = false, features = ["codegen", "transport"] }
+tonic-prost = "0.14"

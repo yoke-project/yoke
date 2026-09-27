@@ -1,0 +1,11 @@
+# The generator of the crate's Rust: it compiles the definitions and writes what prost and tonic make of
+# them. It is run by ci/definitions.sh, in the pinned Rust image, and never published.
+[package]
+name = "yoke-proto-generate"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+protox = "=0.9.1"
+tonic-prost-build = "=0.14.6"

@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling==1.32.4"]
+build-backend = "hatchling.build"
+
+[project]
+name = "yoke-proto"
+# The definitions' version is stated when they are packaged, from the tag that publishes them.
+version = "0.0.0"
+description = "The protocol definitions of Yoke, generated for Python"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+requires-python = ">=3.10"
+dependencies = ["protobuf>=7.35.1,<8", "grpcio>=1.84.0"]
+
+[project.urls]
+Repository = "https://github.com/yoke-project/yoke"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/yoke"]
