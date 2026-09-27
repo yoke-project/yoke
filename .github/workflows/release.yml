@@ -6,9 +6,11 @@ on:
   push:
     tags: ['v*', 'proto/v*']
 
-# The verb uploads the release's files to the tag's release.
+# The verb uploads the release's files to the tag's release, and publishes the definitions packages under
+# credentials the run's identity is exchanged for: nothing is stored.
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   release:
@@ -24,9 +26,15 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: '1.26'
+      # crates.io exchanges the run's identity only for a crate that exists and trusts this workflow, so
+      # until then the exchange is refused and the verb says the crate was not published.
+      - id: crates
+        uses: rust-lang/crates-io-auth-action@v1
+        continue-on-error: true
       - run: just release > manifest-lines.jsonl
         env:
           GH_TOKEN: ${{ github.token }}
+          CARGO_REGISTRY_TOKEN: ${{ steps.crates.outputs.token }}
       - uses: actions/upload-artifact@v7
         with:
           name: manifest-lines
