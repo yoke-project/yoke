@@ -136,3 +136,27 @@ var image = regexp.MustCompile(`\b(?:docker\.io|ghcr\.io|quay\.io|registry\.[a-z
 
 // Images returns every container image a script names.
 func Images(script string) []string { return image.FindAllString(script, -1) }
+
+// Carried reads the sources a package file carries — what the tree put in it — leaving out what the
+// packaging tool writes of its own: cargo's normalised manifest, its lockfile and its note of the
+// checkout, and a wheel's record of its files and its note of the tool that built it.
+func Carried(lang Language, path string) (map[string][]byte, error) {
+	read, left := CrateSources, func(name string) bool {
+		return name == "Cargo.toml" || name == "Cargo.lock" || name == ".cargo_vcs_info.json"
+	}
+	if lang == Python {
+		read, left = WheelSources, func(name string) bool {
+			return strings.HasSuffix(name, ".dist-info/RECORD") || strings.HasSuffix(name, ".dist-info/WHEEL")
+		}
+	}
+	files, err := read(path)
+	if err != nil {
+		return nil, err
+	}
+	for name := range files {
+		if left(name) {
+			delete(files, name)
+		}
+	}
+	return files, nil
+}

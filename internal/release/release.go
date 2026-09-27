@@ -28,8 +28,6 @@ import (
 	"golang.org/x/mod/semver"
 	"golang.org/x/mod/sumdb/dirhash"
 	"golang.org/x/mod/zip"
-
-	"github.com/yoke-project/yoke/internal/packages"
 )
 
 // Config is what the verb runs with.
@@ -51,12 +49,13 @@ type Config struct {
 	Upload    func(tag string, files []string) error
 
 	// What a definitions tag publishes beside its module: the packages, made at a version into a
-	// directory, each to its registry. Settle is how many times a registry is asked again for a version
-	// it was just given, before the publication is taken as failed. PackagesOnly publishes the packages
-	// and nothing else.
+	// directory, each to its registry. Settle is how many times, Pause apart, a registry is asked for a
+	// version it was just given before the publication is taken as failed. PackagesOnly publishes the
+	// packages and nothing else.
 	Packages     func(version, dir string) (crate, wheel string, err error)
 	Registries   []Registry
 	Settle       int
+	Pause        time.Duration
 	PackagesOnly bool
 }
 
@@ -133,6 +132,9 @@ func Run(cfg Config) int {
 
 	var lines []Line
 	for _, m := range modules {
+		if cfg.PackagesOnly {
+			continue
+		}
 		path, err := modulePath(filepath.Join(cfg.Root, m.subdir, "go.mod"))
 		if err != nil {
 			return fail("the module %s names cannot be read: %v", m.tag, err)
@@ -153,9 +155,21 @@ func Run(cfg Config) int {
 			Notices: notices, Day: cfg.Today().UTC().Format(time.DateOnly)})
 	}
 
+	// A definitions tag also publishes the definitions packages, each to its registry.
+	for _, m := range modules {
+		if m.subdir != "proto" || len(cfg.Registries) == 0 {
+			continue
+		}
+		published, err := cfg.publishPackages(m.version, commit, notices)
+		if err != nil {
+			return fail("the definitions packages at %s were not all published:\n%v", m.version, err)
+		}
+		lines = append(lines, published...)
+	}
+
 	// A programs tag also hands over files: the artifacts and the source archive, uploaded to its release.
 	for _, m := range modules {
-		if m.subdir != "" || (len(cfg.Artifacts) == 0 && cfg.Source == "") {
+		if cfg.PackagesOnly || m.subdir != "" || (len(cfg.Artifacts) == 0 && cfg.Source == "") {
 			continue
 		}
 		handed, err := handOver(cfg, m.tag, strings.TrimPrefix(m.version, "v"), notices)
@@ -416,24 +430,4 @@ func ToForge(tag string, files []string) error {
 		return gh(append([]string{"release", "create", tag, "--verify-tag", "--title", tag, "--notes", ""}, files...)...)
 	}
 	return gh(append([]string{"release", "upload", tag, "--clobber"}, files...)...)
-}
-
-// A registry the definitions packages are published to. Not yet used by Run.
-type Registry interface {
-	Published() string
-	Authenticated() string
-	Where(version string) string
-	Package() packages.Language
-	Served(version string) ([]byte, bool, error)
-	Publish(version, path string) error
-}
-
-// PyPI is the Python package index. Not yet able to publish.
-type PyPI struct {
-	Index, Upload string
-	Getenv        func(string) string
-}
-
-func (p PyPI) Publish(version, path string) error {
-	return fmt.Errorf("the wheel cannot be published yet")
 }

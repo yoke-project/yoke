@@ -11,6 +11,7 @@
 #        definitions.sh generate-python <dir>         the wheel's Python, into <dir>, relative to proto/
 #        definitions.sh test-rust | test-python       build the package and run its tests
 #        definitions.sh package <version> <dir>       the crate and the wheel at <version>, into <dir>, relative to proto/
+#        definitions.sh publish-crate <version>       publish the crate at <version>, under CARGO_REGISTRY_TOKEN
 set -euo pipefail
 
 buf=(go run github.com/bufbuild/buf/cmd/buf@v1.73.0)
@@ -30,7 +31,7 @@ contained() {
   local as=(--user "$(id -u):$(id -g)")
   [[ "$(basename "$engine")" == podman ]] && as=(--userns=keep-id)
   "$engine" run --rm "${as[@]}" -e HOME=/tmp -e CARGO_HOME=/tmp/cargo -e CARGO_TARGET_DIR=/tmp/target \
-    -e PIP_DISABLE_PIP_VERSION_CHECK=1 -e PIP_NO_CACHE_DIR=1 \
+    -e PIP_DISABLE_PIP_VERSION_CHECK=1 -e PIP_NO_CACHE_DIR=1 -e CARGO_REGISTRY_TOKEN \
     -v "$repo:/src:ro" -v "$out:/out" "$image" bash -euo pipefail -c "$*"
 }
 
@@ -88,8 +89,14 @@ case "${1:-}" in
     contained "$python_image" "$out" "$(stage python "$version") && $(environment) &&
       /tmp/env/bin/pip wheel -q --no-deps -w /out /tmp/python"
     ;;
+  publish-crate)
+    version="${2:?usage: definitions.sh publish-crate <version>}"
+    [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "definitions: $version is not a version: it is written X.Y.Z" >&2; exit 2; }
+    [[ -n "${CARGO_REGISTRY_TOKEN:-}" ]] || { echo "definitions: no crates.io credential: CARGO_REGISTRY_TOKEN is empty" >&2; exit 1; }
+    contained "$rust_image" "$(mktemp -d)" "$(stage rust "$version") && cd /tmp/rust && cargo publish -q --allow-dirty"
+    ;;
   *)
-    echo "usage: definitions.sh check | generate <dir> | generate-rust <dir> | generate-python <dir> | test-rust | test-python | package <version> <dir>" >&2
+    echo "usage: definitions.sh check | generate <dir> | generate-rust <dir> | generate-python <dir> | test-rust | test-python | package <version> <dir> | publish-crate <version>" >&2
     exit 2
     ;;
 esac
