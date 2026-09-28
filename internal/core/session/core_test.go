@@ -26,6 +26,8 @@ func TestMain(m *testing.M) {
 		os.Exit(openASession())
 	case "direction":
 		os.Exit(sendACommand())
+	case "occurrence":
+		os.Exit(reportAnOccurrence())
 	}
 	os.Exit(m.Run())
 }
@@ -159,6 +161,66 @@ func field(line, key string) string {
 	return ""
 }
 
+// reportAnOccurrence registers declaring an occurrence, opens the Session, reports it, and says what
+// came back.
+func reportAnOccurrence() int {
+	conn, err := grpc.NewClient("unix://"+os.Getenv("YOKE_SOCKET"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		fmt.Println("no channel:", err)
+		return 1
+	}
+	defer conn.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	resp, err := pluginv1.NewRegisterClient(conn).Register(ctx, &pluginv1.RegisterRequest{
+		Plugin: os.Getenv("YOKE_PLUGIN"), Unit: os.Getenv("YOKE_UNIT"), Token: os.Getenv("YOKE_TOKEN"), Protocol: 1,
+		Declared: &pluginv1.Surface{Capabilities: []string{"stream.data.publish", "event.calibration-drift.report"}, Streams: []string{"station.data"}},
+	})
+	if err != nil || resp.SessionId == "" {
+		fmt.Println("not admitted:", err, resp)
+		return 1
+	}
+	s, err := pluginv1.NewSessionClient(conn).Open(ctx)
+	if err != nil {
+		fmt.Println("no stream:", err)
+		return 1
+	}
+	s.Send(&pluginv1.Envelope{MessageId: "1", SessionId: resp.SessionId, SentAtUnixNano: time.Now().UnixNano(),
+		Payload: &pluginv1.Envelope_Session{Session: &pluginv1.SessionMessage{Kind: &pluginv1.SessionMessage_Open_{Open: &pluginv1.SessionMessage_Open{}}}}})
+	s.Send(&pluginv1.Envelope{MessageId: "2", SessionId: resp.SessionId, SentAtUnixNano: time.Now().UnixNano(),
+		Payload: &pluginv1.Envelope_Event{Event: &pluginv1.Event{Occurrence: "calibration.drift", Severity: 60, Line: "drifting"}}})
+	e, err := s.Recv()
+	if err != nil {
+		fmt.Println("nothing came back:", err)
+		return 1
+	}
+	fmt.Printf("received %s for %s\n", e.GetError().GetCode(), e.CorrelationId)
+	time.Sleep(time.Hour)
+	return 0
+}
+
+// std: yoke:the-granted-scope.05
+func TestThroughTheCoreAnOccurrenceNobodyAuthorisedIsRefused(t *testing.T) {
+	lines := runCore(t, "occurrence")
+	var said []string
+	refused, recorded := false, false
+	deadline := time.After(20 * time.Second)
+	for !refused || !recorded {
+		select {
+		case line, open := <-lines:
+			if !open {
+				t.Fatalf("the Core exited:\n%s", strings.Join(said, "\n"))
+			}
+			said = append(said, line)
+			refused = refused || strings.Contains(line, "received scope.withheld for 2")
+			recorded = recorded || (strings.Contains(line, "msg=session") && strings.Contains(line, "unit=acquire") &&
+				strings.Contains(line, "refused=scope.withheld"))
+		case <-deadline:
+			t.Fatalf("within twenty seconds the Core said:\n%s", strings.Join(said, "\n"))
+		}
+	}
+}
+
 // std: yoke:the-session.10
 func TestARegisteredUnitOpensItsSession(t *testing.T) {
 	lines := runCore(t, "session")
@@ -203,6 +265,16 @@ func TestThroughTheCoreAUnitThatSendsACommandIsRefused(t *testing.T) {
 	}
 }
 
+// manifestFor is the station's Manifest; the occurrence role's also declares an occurrence.
+func manifestFor(as string) string {
+	m := "manifest: 1\nid: com.example.station\nprotocol: 1\nstreams: [ { id: station.data } ]\n"
+	if as == "occurrence" {
+		return m + "occurrences: [ { id: calibration.drift } ]\ncapabilities: [ { name: stream.data.publish, governs: { stream: station.data } }, " +
+			"{ name: event.calibration-drift.report, governs: { occurrence: calibration.drift } } ]\n"
+	}
+	return m + "capabilities: [ { name: stream.data.publish, governs: { stream: station.data } } ]\n"
+}
+
 // runCore starts yoke-core with one unit of this test binary in the role given, and hands back the
 // Core's output line by line.
 func runCore(t *testing.T, as string) <-chan string {
@@ -218,7 +290,7 @@ func runCore(t *testing.T, as string) <-chan string {
 	os.MkdirAll(filepath.Join(manifests, "com.example.station"), 0o755)
 	os.MkdirAll(executables, 0o755)
 	os.WriteFile(filepath.Join(manifests, "com.example.station", "manifest.yaml"), []byte(
-		"manifest: 1\nid: com.example.station\nprotocol: 1\nstreams: [ { id: station.data } ]\ncapabilities: [ { name: stream.data.publish, governs: { stream: station.data } } ]\n"), 0o644)
+		manifestFor(as)), 0o644)
 	self, _ := os.Executable()
 	if err := os.Symlink(self, filepath.Join(executables, "com.example.station")); err != nil {
 		t.Fatal(err)

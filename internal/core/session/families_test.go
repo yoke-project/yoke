@@ -9,12 +9,20 @@ import (
 	"time"
 
 	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
+
+	"github.com/yoke-project/yoke/internal/core/scope"
 )
 
 // opened is an open Session, the Core having taken its OPEN.
 func opened(t *testing.T, h *harness) *stream {
 	t.Helper()
-	h.admit("sid-1", "acquire", time.Second, 3)
+	return openedWith(t, h, everything())
+}
+
+// openedWith is an open Session with the scope given.
+func openedWith(t *testing.T, h *harness, sc *scope.Scope) *stream {
+	t.Helper()
+	h.admitScoped("sid-1", "acquire", time.Second, 3, sc)
 	st := h.stream(t, "sid-1")
 	st.send(t, open)
 	for deadline := time.Now().Add(2 * time.Second); len(h.toldOf("acquire")) == 0; {

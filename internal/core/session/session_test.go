@@ -19,6 +19,7 @@ import (
 
 	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
 
+	"github.com/yoke-project/yoke/internal/core/scope"
 	"github.com/yoke-project/yoke/internal/core/session"
 	"github.com/yoke-project/yoke/internal/core/unit"
 )
@@ -83,11 +84,30 @@ func newHarness(t *testing.T) *harness {
 	return h
 }
 
-// admit issues a Session identity for a unit, with the heartbeat terms given.
+// admit issues a Session identity for a unit, with the heartbeat terms given and a scope granting what
+// the tests send.
 func (h *harness) admit(id, unitID string, interval time.Duration, tolerance uint32) {
+	h.admitScoped(id, unitID, interval, tolerance, everything())
+}
+
+// admitScoped issues a Session identity for a unit, with the heartbeat terms and the scope given.
+func (h *harness) admitScoped(id, unitID string, interval time.Duration, tolerance uint32, sc *scope.Scope) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	h.issued[id] = session.Admitted{Unit: unitID, Interval: interval, Tolerance: tolerance}
+	h.issued[id] = session.Admitted{Unit: unitID, Interval: interval, Tolerance: tolerance, Scope: sc}
+}
+
+// everything is the scope the tests' unit is granted: what they send, and nothing else.
+func everything() *scope.Scope {
+	sc := &scope.Scope{}
+	for _, g := range []struct {
+		kind scope.Kind
+		id   string
+	}{{scope.Command, "calibrate"}, {scope.Command, "zero"}, {scope.Query, "range"}, {scope.Occurrence, "calibration.drift"}, {scope.Stream, "station.data"}} {
+		sc.Declare(g.kind, g.id)
+		sc.Grant(g.kind, g.id)
+	}
+	return sc
 }
 
 func (h *harness) toldOf(unitID string) []string {

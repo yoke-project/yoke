@@ -26,6 +26,7 @@ import (
 	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
 
 	"github.com/yoke-project/yoke/internal/core/registry"
+	"github.com/yoke-project/yoke/internal/core/scope"
 	"github.com/yoke-project/yoke/internal/core/unit"
 	"github.com/yoke-project/yoke/internal/gate"
 )
@@ -58,6 +59,8 @@ type Session struct {
 	Plugin    string
 	Granted   *pluginv1.Surface
 	Heartbeat *pluginv1.HeartbeatTerms
+	// Scope is the grant as the Session enforces it: every kind of governed object, occurrences included.
+	Scope *scope.Scope
 }
 
 // Admission decides registrations.
