@@ -390,7 +390,8 @@ func (s *Service) Forget(unitID string) {
 }
 
 // end ends a Session once: closed by the unit, or revoked by the Core. A revocation is sent if the
-// stream is still there; a withdrawal by decision is told to the machine as one.
+// stream is still there; a withdrawal by decision is told to the machine as one, and the machine is told
+// before the stream closes.
 func (s *Service) end(l *live, how string, cause pluginv1.SessionMessage_Revoked_Cause, line string) {
 	s.mu.Lock()
 	if l.ended {
@@ -409,7 +410,6 @@ func (s *Service) end(l *live, how string, cause pluginv1.SessionMessage_Revoked
 		default:
 		}
 	}
-	close(l.done)
 	s.mu.Unlock()
 	attrs := []any{"unit", l.terms.Unit, "ended", how}
 	if how == "revoked" {
@@ -417,6 +417,8 @@ func (s *Service) end(l *live, how string, cause pluginv1.SessionMessage_Revoked
 	}
 	s.cfg.Log.Info("session", attrs...)
 	s.observe(l.terms.Unit, unit.SessionEnded{Withdrawn: how == "revoked" && cause == pluginv1.SessionMessage_Revoked_CAUSE_PLUGIN_DISABLED})
+	// The stream closes once the machine has concluded, so whoever sees it close sees the conclusion.
+	close(l.done)
 }
 
 // codeName is a code as it travels: its dotted name.
