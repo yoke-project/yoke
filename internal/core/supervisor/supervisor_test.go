@@ -95,7 +95,7 @@ type output struct {
 	lines []string
 }
 
-func (o *output) Line(unitID string, incarnation int, line string) {
+func (o *output) Line(unitID string, incarnation int, _, line string) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	o.lines = append(o.lines, fmt.Sprintf("%s#%d %s", unitID, incarnation, line))

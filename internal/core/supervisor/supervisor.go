@@ -61,9 +61,10 @@ type Incarnations interface{ Next(unitID string) int }
 // Tokens issues the bootstrap token a launch carries.
 type Tokens interface{ Issue(unitID string) string }
 
-// Output receives each line a unit writes, with the incarnation that wrote it.
+// Output receives each line a unit writes, with the incarnation that wrote it and the stream it wrote
+// it on: "stdout" or "stderr".
 type Output interface {
-	Line(unitID string, incarnation int, line string)
+	Line(unitID string, incarnation int, stream, line string)
 }
 
 // Config is what a supervisor is built with.
@@ -331,8 +332,9 @@ func (s *Supervisor) attempt(m *managed) {
 		WaitDelay:   time.Second,
 	}
 	incarnation := s.cfg.Incarnations.Next(m.decl.ID)
-	lines := &lineWriter{emit: func(line string) { s.cfg.Output.Line(m.decl.ID, incarnation, line) }}
-	command.Stdout, command.Stderr = lines, lines
+	stdout := &lineWriter{emit: func(line string) { s.cfg.Output.Line(m.decl.ID, incarnation, "stdout", line) }}
+	stderr := &lineWriter{emit: func(line string) { s.cfg.Output.Line(m.decl.ID, incarnation, "stderr", line) }}
+	command.Stdout, command.Stderr = stdout, stderr
 	if err := command.Start(); err != nil {
 		file.Close()
 		s.failedLaunch(m, fmt.Sprintf("the unit could not be started: %v", err))
@@ -348,7 +350,8 @@ func (s *Supervisor) attempt(m *managed) {
 	exited, window := m.exited, time.AfterFunc(s.policy(m).StartupWindow, func() { s.windowElapsed(m, incarnation) })
 	go func() {
 		command.Wait()
-		lines.flush()
+		stdout.flush()
+		stderr.flush()
 		window.Stop()
 		s.ended(m, incarnation, command.ProcessState.ExitCode())
 		close(exited)
@@ -640,7 +643,7 @@ func indexByte(b []byte, c byte) int {
 	return -1
 }
 
-// NewCounter counts incarnations in memory, until the log store keeps the persistent counter.
+// NewCounter counts incarnations in memory, where there is no log store to keep the persistent counter.
 func NewCounter() Incarnations { return &counter{next: map[string]int{}} }
 
 type counter struct {
