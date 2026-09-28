@@ -217,10 +217,10 @@ func (a *Admission) decide(req *pluginv1.RegisterRequest) (*pluginv1.RegisterRes
 	return resp, nil, examined
 }
 
-var listNames = []string{"capabilities", "streams", "commands", "queries"}
+var listNames = []string{"capabilities", "streams", "commands", "queries", "occurrences"}
 
 func lists(s *pluginv1.Surface) [][]string {
-	return [][]string{s.GetCapabilities(), s.GetStreams(), s.GetCommands(), s.GetQueries()}
+	return [][]string{s.GetCapabilities(), s.GetStreams(), s.GetCommands(), s.GetQueries(), s.GetOccurrences()}
 }
 
 func sameSet(a, b []string) bool {
@@ -228,7 +228,7 @@ func sameSet(a, b []string) bool {
 }
 
 func manifestSurface(m *gate.Manifest) *pluginv1.Surface {
-	s := &pluginv1.Surface{Commands: m.Commands, Queries: m.Queries}
+	s := &pluginv1.Surface{Commands: m.Commands, Queries: m.Queries, Occurrences: m.Occurrences}
 	for _, c := range m.Capabilities {
 		s.Capabilities = append(s.Capabilities, c.Name)
 	}
@@ -240,8 +240,7 @@ func manifestSurface(m *gate.Manifest) *pluginv1.Surface {
 
 // intersect is the grant: a capability declared and authorised is granted, and so is what it governs;
 // what is declared and not granted is withheld, item by item. What is authorised and not declared grants
-// nothing and is reported to nobody here. The scope is the same grant as the Session enforces it, with
-// the occurrences the four lists do not carry.
+// nothing and is reported to nobody here. The scope is the same grant as the Session enforces it.
 func intersect(m *gate.Manifest, grants []string) (granted, withheld *pluginv1.Surface, sc *scope.Scope) {
 	granted, withheld, sc = &pluginv1.Surface{}, &pluginv1.Surface{}, &scope.Scope{}
 	governed := map[gate.Object]bool{}
@@ -271,9 +270,7 @@ func intersect(m *gate.Manifest, grants []string) (granted, withheld *pluginv1.S
 	sort("stream", streams, &granted.Streams, &withheld.Streams)
 	sort("command", m.Commands, &granted.Commands, &withheld.Commands)
 	sort("query", m.Queries, &granted.Queries, &withheld.Queries)
-	// Occurrences travel in none of the four lists: the scope alone carries them.
-	var granting, withholding []string
-	sort("occurrence", m.Occurrences, &granting, &withholding)
+	sort("occurrence", m.Occurrences, &granted.Occurrences, &withheld.Occurrences)
 	return granted, withheld, sc
 }
 

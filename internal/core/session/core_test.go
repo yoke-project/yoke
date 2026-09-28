@@ -176,7 +176,8 @@ func reportAnOccurrence() int {
 	defer cancel()
 	resp, err := pluginv1.NewRegisterClient(conn).Register(ctx, &pluginv1.RegisterRequest{
 		Plugin: os.Getenv("YOKE_PLUGIN"), Unit: os.Getenv("YOKE_UNIT"), Token: os.Getenv("YOKE_TOKEN"), Protocol: 1,
-		Declared: &pluginv1.Surface{Capabilities: []string{"stream.data.publish", "event.calibration-drift.report"}, Streams: []string{"station.data"}},
+		Declared: &pluginv1.Surface{Capabilities: []string{"stream.data.publish", "event.calibration-drift.report"}, Streams: []string{"station.data"},
+			Occurrences: []string{"calibration.drift"}},
 	})
 	if err != nil || resp.SessionId == "" {
 		fmt.Println("not admitted:", err, resp)
@@ -259,9 +260,11 @@ func TestThroughTheCoreAUnitLeavingOutItsOccurrencesIsRefused(t *testing.T) {
 				t.Fatalf("the Core exited:\n%s", strings.Join(said, "\n"))
 			}
 			said = append(said, line)
-			if strings.Contains(line, "answered OUTCOME_") {
-				if !strings.Contains(line, "answered OUTCOME_REFUSED admission.consistency.divergent at STAGE_DECLARATION_CONSISTENCY") {
-					t.Fatalf("the unit was %s", line)
+			// The Core's record of its answer: the unit it refuses is ended before it could say anything.
+			if strings.Contains(line, "msg=admission") && strings.Contains(line, "unit=acquire") {
+				if !strings.Contains(line, "outcome=refused") || !strings.Contains(line, "stage=STAGE_DECLARATION_CONSISTENCY") ||
+					!strings.Contains(line, "code=admission.consistency.divergent") {
+					t.Fatalf("the unit was answered: %s", line)
 				}
 				return
 			}

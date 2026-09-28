@@ -272,6 +272,8 @@ func (s *Service) receive(l *live, e *pluginv1.Envelope) {
 	// 7 · semantics
 	switch {
 	case e.GetHealth() != nil:
+		// A grade off the scale is read as its top, and still counts as a heartbeat.
+		onTheScale(s.cfg.Log, l.terms.Unit, "grade", e.GetHealth().GetGrade())
 		s.mu.Lock()
 		l.timer.Reset(window(l.terms))
 		s.mu.Unlock()
@@ -296,8 +298,25 @@ func (s *Service) receive(l *live, e *pluginv1.Envelope) {
 		// The severity a unit attaches widens nothing: what it may report is its grant.
 		if code := l.terms.Scope.Check(scope.Occurrence, e.GetEvent().GetOccurrence()); code != pluginv1.Code_CODE_UNSPECIFIED {
 			refuse(code, e.MessageId, "the unit's grant does not cover the occurrence %s", e.GetEvent().GetOccurrence())
+			return
+		}
+		reported := event.OccurrenceReported(l.terms.Unit, l.terms.Incarnation, e.GetEvent())
+		reported.Severity = int(onTheScale(s.cfg.Log, l.terms.Unit, "severity", e.GetEvent().GetSeverity()))
+		if s.cfg.Publish != nil {
+			s.cfg.Publish(reported)
 		}
 	}
+}
+
+// onTheScale is a grade a unit declared, read as the top of the scale where it is above it — the one
+// restatement there is, recorded as a warning naming the value declared. The unit is told nothing:
+// its report was accepted.
+func onTheScale(log *slog.Logger, unitID, what string, declared uint32) uint32 {
+	if declared <= 99 {
+		return declared
+	}
+	log.Warn("session", "unit", unitID, "event", "off the scale", what, declared, "read as", 99)
+	return 99
 }
 
 // answered hands an answer to whoever asked, if it is the first and somebody still waits, and ends the
