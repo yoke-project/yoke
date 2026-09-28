@@ -28,12 +28,13 @@ message RegisterRequest {
   Surface declared = 8;
 }
 
-// Four lists of identifiers: a declared surface, a granted scope, or what was withheld from one.
+// Five lists of identifiers: a declared surface, a granted scope, or what was withheld from one.
 message Surface {
   repeated string capabilities = 1;
   repeated string streams = 2;
   repeated string commands = 3;
   repeated string queries = 4;
+  repeated string occurrences = 5;
 }
 
 message RegisterResponse {

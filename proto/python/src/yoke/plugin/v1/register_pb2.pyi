@@ -54,16 +54,18 @@ class RegisterRequest(_message.Message):
     def __init__(self, plugin: _Optional[str] = ..., unit: _Optional[str] = ..., token: _Optional[str] = ..., protocol: _Optional[int] = ..., artifact_version: _Optional[str] = ..., language: _Optional[str] = ..., sdk_line: _Optional[str] = ..., declared: _Optional[_Union[Surface, _Mapping]] = ...) -> None: ...
 
 class Surface(_message.Message):
-    __slots__ = ("capabilities", "streams", "commands", "queries")
+    __slots__ = ("capabilities", "streams", "commands", "queries", "occurrences")
     CAPABILITIES_FIELD_NUMBER: _ClassVar[int]
     STREAMS_FIELD_NUMBER: _ClassVar[int]
     COMMANDS_FIELD_NUMBER: _ClassVar[int]
     QUERIES_FIELD_NUMBER: _ClassVar[int]
+    OCCURRENCES_FIELD_NUMBER: _ClassVar[int]
     capabilities: _containers.RepeatedScalarFieldContainer[str]
     streams: _containers.RepeatedScalarFieldContainer[str]
     commands: _containers.RepeatedScalarFieldContainer[str]
     queries: _containers.RepeatedScalarFieldContainer[str]
-    def __init__(self, capabilities: _Optional[_Iterable[str]] = ..., streams: _Optional[_Iterable[str]] = ..., commands: _Optional[_Iterable[str]] = ..., queries: _Optional[_Iterable[str]] = ...) -> None: ...
+    occurrences: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, capabilities: _Optional[_Iterable[str]] = ..., streams: _Optional[_Iterable[str]] = ..., commands: _Optional[_Iterable[str]] = ..., queries: _Optional[_Iterable[str]] = ..., occurrences: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class RegisterResponse(_message.Message):
     __slots__ = ("outcome", "stage", "code", "message", "session_id", "granted", "withheld", "heartbeat")
