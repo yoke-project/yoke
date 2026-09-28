@@ -7,6 +7,11 @@
 // unit's and a revocation the Core's, and they stay distinguishable; a lost stream is neither, and what
 // follows it comes from the heartbeat window. Every message carries four header fields and one payload,
 // and a receiver validates in order, stopping at the first failure.
+//
+// Eight families travel in it, each in one direction only, except errors: the Core sends control,
+// questions and errors, and the unit everything else. An acknowledgement answers an instruction and an
+// answer a question; an acceptance is followed by at most one final answer, which ends the exchange,
+// and whoever asked is handed the first answer.
 package session
 
 import (
@@ -63,12 +68,22 @@ type live struct {
 	done  chan struct{}
 
 	// Held under Service.mu.
-	seen  map[string]bool // the unit's message identities
-	sent  map[string]bool // the Core's, which a message may answer
-	next  int
-	timer *time.Timer
-	ended bool
-	lost  bool
+	seen      map[string]bool      // the unit's message identities
+	sent      map[string]bool      // the Core's, which a message may answer
+	exchanges map[string]*exchange // the Core's instructions and questions still awaiting an answer
+	next      int
+	timer     *time.Timer
+	ended     bool
+	lost      bool
+}
+
+// exchange is one instruction or question the Core sent, until its final answer: an acknowledgement
+// answers an instruction and an answer a question, and whoever asked is handed the first.
+type exchange struct {
+	instruction bool
+	accepted    bool
+	handed      bool
+	waiter      chan *pluginv1.Envelope // nil once nobody is waiting
 }
 
 // Open serves one stream.
@@ -130,7 +145,7 @@ func (s *Service) opening(e *pluginv1.Envelope) (*live, bool) {
 	}
 	s.used[e.SessionId] = true
 	l := &live{id: e.SessionId, terms: admitted, out: make(chan *pluginv1.Envelope, 64), done: make(chan struct{}),
-		seen: map[string]bool{e.MessageId: true}, sent: map[string]bool{}}
+		seen: map[string]bool{e.MessageId: true}, sent: map[string]bool{}, exchanges: map[string]*exchange{}}
 	s.open[l.id] = l
 	l.timer = time.AfterFunc(window(admitted), func() {
 		s.end(l, "revoked", pluginv1.SessionMessage_Revoked_CAUSE_LIVENESS_LOST, "no heartbeat arrived within the terms admission set")
@@ -162,6 +177,7 @@ func (s *Service) observe(unitID string, in unit.Input) {
 // receive validates one envelope from the unit, in order, and acts on it.
 func (s *Service) receive(l *live, e *pluginv1.Envelope) {
 	refuse := func(code pluginv1.Code, correlation, format string, args ...any) {
+		s.cfg.Log.Warn("session", "unit", l.terms.Unit, "refused", codeName(code), "message", e.MessageId)
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.queue(l, &pluginv1.Envelope{CorrelationId: correlation, Payload: &pluginv1.Envelope_Error{Error: &pluginv1.Error{Code: codeName(code), Message: fmt.Sprintf(format, args...)}}})
@@ -191,6 +207,7 @@ func (s *Service) receive(l *live, e *pluginv1.Envelope) {
 	}
 	l.seen[e.MessageId] = true
 	sent := l.sent[e.CorrelationId]
+	ex := l.exchanges[e.CorrelationId]
 	s.mu.Unlock()
 	// 5 · direction: an instruction from a unit is refused for being one, whatever it says.
 	switch {
@@ -207,6 +224,10 @@ func (s *Service) receive(l *live, e *pluginv1.Envelope) {
 	case (answers || e.GetError() != nil && e.CorrelationId != "") && (!sent || e.CorrelationId == e.MessageId):
 		refuse(pluginv1.Code_CODE_SESSION_CORRELATION_UNKNOWN, e.MessageId, "the correlation %s names no message the Core sent in this Session", e.CorrelationId)
 		return
+	// An acknowledgement answers an instruction and an answer a question, while it awaits one.
+	case e.GetAck() != nil && (ex == nil || !ex.instruction), e.GetQuery().GetAnswer() != nil && (ex == nil || ex.instruction):
+		refuse(pluginv1.Code_CODE_SESSION_CORRELATION_UNKNOWN, e.MessageId, "the correlation %s names nothing of the Core's awaiting this answer", e.CorrelationId)
+		return
 	}
 	// 7 · semantics
 	switch {
@@ -220,7 +241,47 @@ func (s *Service) receive(l *live, e *pluginv1.Envelope) {
 		s.end(l, "revoked", pluginv1.SessionMessage_Revoked_CAUSE_PROTOCOL_FAILURE, "a Session is opened once")
 	case e.GetData() != nil:
 		refuse(pluginv1.Code_CODE_STREAM_INACTIVE, e.MessageId, "data travels on its stream's own transport, never on the Session")
+	case e.GetAck() != nil:
+		switch outcome := e.GetAck().GetOutcome(); {
+		case outcome == pluginv1.Ack_OUTCOME_UNSPECIFIED:
+			refuse(pluginv1.Code_CODE_SESSION_MESSAGE_MALFORMED, e.MessageId, "an acknowledgement is accepted, done or failed")
+		case outcome == pluginv1.Ack_OUTCOME_ACCEPTED && ex.accepted:
+			refuse(pluginv1.Code_CODE_SESSION_MESSAGE_MALFORMED, e.MessageId, "an acceptance is followed by one final answer and nothing else")
+		default:
+			s.answered(l, e, outcome != pluginv1.Ack_OUTCOME_ACCEPTED)
+		}
+	case e.GetQuery().GetAnswer() != nil:
+		s.answered(l, e, true)
 	}
+}
+
+// answered hands an answer to whoever asked, if it is the first and somebody still waits, and ends the
+// exchange if the answer is final. What reaches no caller is recorded.
+func (s *Service) answered(l *live, e *pluginv1.Envelope, final bool) {
+	s.mu.Lock()
+	ex := l.exchanges[e.CorrelationId]
+	if ex == nil {
+		s.mu.Unlock()
+		return
+	}
+	first := !ex.handed
+	ex.handed, ex.accepted = true, ex.accepted || !final
+	waiter := ex.waiter
+	if final {
+		delete(l.exchanges, e.CorrelationId)
+	}
+	if first && waiter != nil {
+		ex.waiter = nil
+		waiter <- e
+		s.mu.Unlock()
+		return
+	}
+	s.mu.Unlock()
+	attrs := []any{"unit", l.terms.Unit, "event", "answer", "correlation", e.CorrelationId, "reached", "no caller"}
+	if ack := e.GetAck(); ack != nil {
+		attrs = append(attrs, "outcome", ack.GetOutcome().String(), "line", ack.GetLine())
+	}
+	s.cfg.Log.Info("session", attrs...)
 }
 
 // queue sends an envelope from the Core, filling its header. Lock held.
@@ -228,6 +289,9 @@ func (s *Service) queue(l *live, e *pluginv1.Envelope) string {
 	l.next++
 	e.MessageId, e.SessionId, e.SentAtUnixNano = fmt.Sprintf("c-%d", l.next), l.id, time.Now().UnixNano()
 	l.sent[e.MessageId] = true
+	if e.GetControl() != nil || e.GetQuery().GetQuestion() != nil {
+		l.exchanges[e.MessageId] = &exchange{instruction: e.GetControl() != nil}
+	}
 	select {
 	case l.out <- e:
 	default:
@@ -235,8 +299,12 @@ func (s *Service) queue(l *live, e *pluginv1.Envelope) string {
 	return e.MessageId
 }
 
-// Send sends an envelope from the Core on an open Session and returns its message identity.
+// Send sends an envelope from the Core on an open Session and returns its message identity. The Core
+// originates control, questions and errors, and nothing else: a revocation goes by Revoke.
 func (s *Service) Send(id string, e *pluginv1.Envelope) (string, error) {
+	if e.GetControl() == nil && e.GetQuery().GetQuestion() == nil && e.GetError() == nil {
+		return "", errors.New("the Core does not originate this family")
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	l, ok := s.open[id]
@@ -247,15 +315,51 @@ func (s *Service) Send(id string, e *pluginv1.Envelope) (string, error) {
 }
 
 // Command sends a command on an open Session and hands back the first acknowledgement the unit sends,
-// or the context's error when the caller's wait runs out first.
+// or the context's error when the caller's wait runs out first. The exchange outlives the wait: an
+// acknowledgement arriving later is received, and reaches no caller.
 func (s *Service) Command(ctx context.Context, id string, c *pluginv1.Control_Command) (*pluginv1.Ack, error) {
-	return nil, errors.New("not implemented")
+	got, err := s.issue(ctx, id, &pluginv1.Envelope{Payload: &pluginv1.Envelope_Control{Control: &pluginv1.Control{Kind: &pluginv1.Control_Command_{Command: c}}}})
+	return got.GetAck(), err
 }
 
 // Ask sends a question on an open Session and hands back the unit's answer, or the context's error when
 // the caller's wait runs out first.
 func (s *Service) Ask(ctx context.Context, id string, q *pluginv1.Query_Question) (*pluginv1.Query_Answer, error) {
-	return nil, errors.New("not implemented")
+	got, err := s.issue(ctx, id, &pluginv1.Envelope{Payload: &pluginv1.Envelope_Query{Query: &pluginv1.Query{Kind: &pluginv1.Query_Question_{Question: q}}}})
+	return got.GetQuery().GetAnswer(), err
+}
+
+// issue sends an instruction or a question and waits for the first answer.
+func (s *Service) issue(ctx context.Context, id string, e *pluginv1.Envelope) (*pluginv1.Envelope, error) {
+	s.mu.Lock()
+	l, ok := s.open[id]
+	if !ok || l.ended {
+		s.mu.Unlock()
+		return nil, errors.New("no such Session is open")
+	}
+	waiter := make(chan *pluginv1.Envelope, 1)
+	sentAs := s.queue(l, e)
+	l.exchanges[sentAs].waiter = waiter
+	s.mu.Unlock()
+	select {
+	case got := <-waiter:
+		return got, nil
+	case <-l.done:
+		return nil, errors.New("the Session ended before the unit answered")
+	case <-ctx.Done():
+		s.mu.Lock()
+		if ex := l.exchanges[sentAs]; ex != nil {
+			ex.waiter = nil
+		}
+		s.mu.Unlock()
+		// An answer handed over while the wait ran out is still the caller's.
+		select {
+		case got := <-waiter:
+			return got, nil
+		default:
+			return nil, ctx.Err()
+		}
+	}
 }
 
 // Revoke ends a Session on the Core's authority, naming which of the four triggers it was.
