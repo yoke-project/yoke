@@ -487,7 +487,7 @@ pub struct RegisterRequest {
     #[prost(message, optional, tag = "8")]
     pub declared: ::core::option::Option<Surface>,
 }
-/// Four lists of identifiers: a declared surface, a granted scope, or what was withheld from one.
+/// Five lists of identifiers: a declared surface, a granted scope, or what was withheld from one.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Surface {
     #[prost(string, repeated, tag = "1")]
@@ -498,6 +498,8 @@ pub struct Surface {
     pub commands: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     #[prost(string, repeated, tag = "4")]
     pub queries: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(string, repeated, tag = "5")]
+    pub occurrences: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct RegisterResponse {

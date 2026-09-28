@@ -253,13 +253,14 @@ func (x *RegisterRequest) GetDeclared() *Surface {
 	return nil
 }
 
-// Four lists of identifiers: a declared surface, a granted scope, or what was withheld from one.
+// Five lists of identifiers: a declared surface, a granted scope, or what was withheld from one.
 type Surface struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Capabilities  []string               `protobuf:"bytes,1,rep,name=capabilities,proto3" json:"capabilities,omitempty"`
 	Streams       []string               `protobuf:"bytes,2,rep,name=streams,proto3" json:"streams,omitempty"`
 	Commands      []string               `protobuf:"bytes,3,rep,name=commands,proto3" json:"commands,omitempty"`
 	Queries       []string               `protobuf:"bytes,4,rep,name=queries,proto3" json:"queries,omitempty"`
+	Occurrences   []string               `protobuf:"bytes,5,rep,name=occurrences,proto3" json:"occurrences,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -318,6 +319,13 @@ func (x *Surface) GetCommands() []string {
 func (x *Surface) GetQueries() []string {
 	if x != nil {
 		return x.Queries
+	}
+	return nil
+}
+
+func (x *Surface) GetOccurrences() []string {
+	if x != nil {
+		return x.Occurrences
 	}
 	return nil
 }
@@ -494,12 +502,13 @@ const file_yoke_plugin_v1_register_proto_rawDesc = "" +
 	"\x10artifact_version\x18\x05 \x01(\tR\x0fartifactVersion\x12\x1a\n" +
 	"\blanguage\x18\x06 \x01(\tR\blanguage\x12\x19\n" +
 	"\bsdk_line\x18\a \x01(\tR\asdkLine\x123\n" +
-	"\bdeclared\x18\b \x01(\v2\x17.yoke.plugin.v1.SurfaceR\bdeclared\"}\n" +
+	"\bdeclared\x18\b \x01(\v2\x17.yoke.plugin.v1.SurfaceR\bdeclared\"\x9f\x01\n" +
 	"\aSurface\x12\"\n" +
 	"\fcapabilities\x18\x01 \x03(\tR\fcapabilities\x12\x18\n" +
 	"\astreams\x18\x02 \x03(\tR\astreams\x12\x1a\n" +
 	"\bcommands\x18\x03 \x03(\tR\bcommands\x12\x18\n" +
-	"\aqueries\x18\x04 \x03(\tR\aqueries\"\xed\x03\n" +
+	"\aqueries\x18\x04 \x03(\tR\aqueries\x12 \n" +
+	"\voccurrences\x18\x05 \x03(\tR\voccurrences\"\xed\x03\n" +
 	"\x10RegisterResponse\x12B\n" +
 	"\aoutcome\x18\x01 \x01(\x0e2(.yoke.plugin.v1.RegisterResponse.OutcomeR\aoutcome\x12+\n" +
 	"\x05stage\x18\x02 \x01(\x0e2\x15.yoke.plugin.v1.StageR\x05stage\x12\x12\n" +
