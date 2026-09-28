@@ -8,8 +8,10 @@
 package bus
 
 import (
+	"cmp"
 	"context"
 	"errors"
+	"slices"
 	"sync"
 
 	"github.com/yoke-project/yoke/internal/core/event"
@@ -34,18 +36,46 @@ type Snapshot struct {
 }
 
 // SubscribeTo is a new subscriber, told of what the filter selects from now on, and the snapshot it
-// opens with.
-func (b *Bus) SubscribeTo(f event.Filter) (*Subscription, Snapshot) { return b.Subscribe(), Snapshot{} }
+// opens with: both are taken at one point, so every event is in the snapshot or after it, and never in
+// both.
+func (b *Bus) SubscribeTo(f event.Filter) (*Subscription, Snapshot) {
+	s := &Subscription{bus: b, filter: f, wake: make(chan struct{}, 1)}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.subs[s] = true
+	return s, b.snapshot(f)
+}
+
+// snapshot is the current value of every level f selects, at the last sequence published. Lock held.
+func (b *Bus) snapshot(f event.Filter) Snapshot {
+	snap := Snapshot{At: b.seq}
+	for _, e := range b.current {
+		if f.Selects(e) {
+			snap.Events = append(snap.Events, e)
+		}
+	}
+	slices.SortFunc(snap.Events, func(a, b event.Event) int { return cmp.Compare(a.Seq, b.Seq) })
+	return snap
+}
+
+// level is what makes an event the current value of something: its type and what it is about. A unit's
+// value is its current life's, so the life is not part of it.
+type level struct {
+	typ  string
+	kind event.Kind
+	id   string
+}
 
 // Bus is one instance's bus.
 type Bus struct {
-	mu   sync.Mutex
-	seq  uint64
-	subs map[*Subscription]bool
+	mu      sync.Mutex
+	seq     uint64
+	subs    map[*Subscription]bool
+	current map[level]event.Event // the last event of every level, which a snapshot is made of
 }
 
 // New is an empty bus.
-func New() *Bus { return &Bus{subs: map[*Subscription]bool{}} }
+func New() *Bus { return &Bus{subs: map[*Subscription]bool{}, current: map[level]event.Event{}} }
 
 // Publish numbers an event and tells every subscriber, returning it as published. An event that does
 // not fit its fields is refused, and consumes no number. Publication is one point, so the numbers are in
@@ -58,8 +88,13 @@ func (b *Bus) Publish(e event.Event) (event.Event, error) {
 	defer b.mu.Unlock()
 	b.seq++
 	e.Seq = b.seq
+	if class, _ := event.ClassOf(e.Type); class == event.Level {
+		b.current[level{e.Type, e.Subject.Kind, e.Subject.ID}] = e
+	}
 	for s := range b.subs {
-		s.offer(e)
+		if s.filter.Selects(e) {
+			s.offer(e)
+		}
 	}
 	return e, nil
 }
@@ -67,6 +102,7 @@ func (b *Bus) Publish(e event.Event) (event.Event, error) {
 // Subscription is one subscriber's queue.
 type Subscription struct {
 	bus    *Bus
+	filter event.Filter
 	mu     sync.Mutex
 	queue  []event.Event
 	lost   bool // the queue overflowed, and the subscriber has not been told
@@ -76,10 +112,7 @@ type Subscription struct {
 
 // Subscribe is a new subscriber, told of every event published from now on.
 func (b *Bus) Subscribe() *Subscription {
-	s := &Subscription{bus: b, wake: make(chan struct{}, 1)}
-	b.mu.Lock()
-	b.subs[s] = true
-	b.mu.Unlock()
+	s, _ := b.SubscribeTo(event.Filter{})
 	return s
 }
 
@@ -120,9 +153,21 @@ func (s *Subscription) Next(ctx context.Context) (Delivery, error) {
 			s.mu.Unlock()
 			return Delivery{Event: e}, nil
 		case s.lost:
-			s.lost = false
+			// The fresh snapshot is taken where no event can be published, and the stream resumes after
+			// it: the bus is locked before this subscription, as publishing locks them.
 			s.mu.Unlock()
-			return Delivery{Overflow: true}, nil
+			s.bus.mu.Lock()
+			s.mu.Lock()
+			if !s.lost || len(s.queue) > 0 {
+				s.mu.Unlock()
+				s.bus.mu.Unlock()
+				continue
+			}
+			s.lost = false
+			snap := s.bus.snapshot(s.filter)
+			s.mu.Unlock()
+			s.bus.mu.Unlock()
+			return Delivery{Overflow: true, Snapshot: &snap}, nil
 		}
 		s.mu.Unlock()
 		select {
