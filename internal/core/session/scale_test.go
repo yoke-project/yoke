@@ -63,3 +63,35 @@ func TestAHealthGradeAboveTheScaleIsReadAsItsTop(t *testing.T) {
 		t.Errorf("no warning names the grade declared:\n%s", log)
 	}
 }
+
+// std: yoke:names-and-filtering.06
+func TestAConditionChangesWhenItsGradeDoes(t *testing.T) {
+	h := newHarness(t)
+	h.incarnation = 1
+	st := opened(t, h)
+	for _, r := range []struct {
+		grade uint32
+		line  string
+	}{{90, "warm"}, {90, "warm"}, {40, "the lamp is ageing"}} {
+		st.send(t, func(e *pluginv1.Envelope) {
+			e.Payload = &pluginv1.Envelope_Health{Health: &pluginv1.Health{Grade: r.grade, Line: r.line}}
+		})
+	}
+	st.quiet(t, 150*time.Millisecond)
+	var changes []event.Event
+	for _, e := range h.publishedEvents() {
+		if e.Type == "unit.condition.changed" {
+			changes = append(changes, e)
+		}
+	}
+	if len(changes) != 2 {
+		t.Fatalf("%d condition changes were published: %+v", len(changes), changes)
+	}
+	first, second := changes[0], changes[1]
+	if first.Severity != 90 || first.Line != "warm" || first.Actor.Class != event.ByUnit || strings.Contains(string(first.Detail), `"from"`) {
+		t.Errorf("the first change is %+v %s", first, first.Detail)
+	}
+	if second.Severity != 40 || second.Line != "the lamp is ageing" || !strings.Contains(string(second.Detail), `"from":90`) {
+		t.Errorf("the second change is %+v %s", second, second.Detail)
+	}
+}

@@ -3,6 +3,8 @@ package event_test
 import (
 	"bytes"
 	"encoding/json"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -130,5 +132,72 @@ func TestEveryTypeIsDeclaredWithItsClass(t *testing.T) {
 	e.Type = "unit.lamp.changed"
 	if err := e.Check(); err == nil {
 		t.Error("an event of an undeclared type was accepted")
+	}
+}
+
+// std: yoke:names-and-filtering.01
+func TestEveryTypeFollowsTheGrammar(t *testing.T) {
+	kinds := map[string]bool{"instance": true, "unit": true, "plugin": true, "channel": true, "document": true, "connection": true}
+	for _, name := range event.Names() {
+		segments := strings.Split(name, ".")
+		if name != strings.ToLower(name) || len(segments) < 2 || len(segments) > 3 || !kinds[segments[0]] || slices.Contains(segments, "") {
+			t.Errorf("%s does not follow the grammar", name)
+		}
+	}
+	misnamed := event.StateChanged("acquire", 1, unit.Starting, unit.Running)
+	misnamed.Subject = event.Subject{Kind: event.Channel, ID: "acquire"}
+	if err := misnamed.Check(); err == nil || !strings.Contains(err.Error(), "channel") {
+		t.Errorf("a unit type about a channel was answered %v", err)
+	}
+}
+
+// std: yoke:names-and-filtering.03
+func TestFourAxesCombinedByConjunction(t *testing.T) {
+	stream := event.StateChanged("acquire", 1, unit.Starting, unit.Running)
+	stream.Type = "unit.stream.activated"
+	all := []event.Event{
+		event.StateChanged("acquire", 1, unit.Starting, unit.Running),
+		event.StateChanged("archive", 1, unit.Running, unit.Failed),
+		event.StateChanged("acquire", 1, unit.Running, unit.Failed),
+		stream,
+		event.OccurrenceReported("acquire", 1, &pluginv1.Event{Occurrence: "calibration.drift", Severity: 40}),
+		event.OccurrenceReported("acquire", 1, &pluginv1.Event{Occurrence: "calibration.offset", Severity: 60}),
+	}
+	selected := func(f event.Filter) []int {
+		var got []int
+		for i, e := range all {
+			if f.Selects(e) {
+				got = append(got, i)
+			}
+		}
+		return got
+	}
+	for _, c := range []struct {
+		what string
+		f    event.Filter
+		want []int
+	}{
+		{"nothing", event.Filter{}, []int{0, 1, 2, 3, 4, 5}},
+		{"the kind", event.Filter{SubjectKind: event.Unit}, []int{0, 1, 2, 3, 4, 5}},
+		{"the subject", event.Filter{SubjectKind: event.Unit, SubjectID: "acquire"}, []int{0, 2, 3, 4, 5}},
+		{"the floor", event.Filter{Floor: 50}, []int{1, 2, 5}},
+		{"the type", event.Filter{Type: "unit.state.changed"}, []int{0, 1, 2}},
+		{"the type prefix", event.Filter{Type: "unit.stream", TypePrefix: true}, []int{3}},
+		{"a prefix of characters", event.Filter{Type: "unit.st", TypePrefix: true}, nil},
+		{"the occurrence prefix", event.Filter{Occurrence: "calibration", OccurrencePrefix: true}, []int{4, 5}},
+		{"the subject at a floor", event.Filter{SubjectKind: event.Unit, SubjectID: "acquire", Floor: 50}, []int{2, 5}},
+	} {
+		if got := selected(c.f); !slices.Equal(got, c.want) {
+			t.Errorf("by %s: selected %v, want %v", c.what, got, c.want)
+		}
+	}
+}
+
+// std: yoke:names-and-filtering.04
+func TestAnUnknownTypeIsPlacedAndRanked(t *testing.T) {
+	unknown := event.Event{Type: "unit.lamp.changed", Subject: event.UnitSubject("acquire", 1), Time: time.Now(),
+		Actor: event.Actor{Class: event.ByCore}, Severity: 70, Detail: []byte("not an object")}
+	if !(event.Filter{SubjectKind: event.Unit, SubjectID: "acquire", Floor: 50}).Selects(unknown) {
+		t.Error("a type nobody declared was not selected by its subject and its severity")
 	}
 }
