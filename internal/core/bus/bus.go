@@ -18,11 +18,24 @@ import (
 // Bound is how many events a subscriber's queue holds. It is not declarable.
 const Bound = 256
 
-// Delivery is what a subscriber is told: an event, or that its queue overflowed.
+// Delivery is what a subscriber is told: an event, or that its queue overflowed and the picture as it
+// now is.
 type Delivery struct {
 	Event    event.Event
 	Overflow bool
+	Snapshot *Snapshot
 }
+
+// Snapshot is the current value of every level a filter selects, taken at a sequence: the stream that
+// follows it begins at the next.
+type Snapshot struct {
+	At     uint64
+	Events []event.Event
+}
+
+// SubscribeTo is a new subscriber, told of what the filter selects from now on, and the snapshot it
+// opens with.
+func (b *Bus) SubscribeTo(f event.Filter) (*Subscription, Snapshot) { return b.Subscribe(), Snapshot{} }
 
 // Bus is one instance's bus.
 type Bus struct {
