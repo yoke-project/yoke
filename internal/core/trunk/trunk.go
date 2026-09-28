@@ -29,6 +29,7 @@ import (
 	"github.com/yoke-project/yoke/internal/core/discovery"
 	"github.com/yoke-project/yoke/internal/core/event"
 	"github.com/yoke-project/yoke/internal/core/instance"
+	"github.com/yoke-project/yoke/internal/core/logstore"
 	"github.com/yoke-project/yoke/internal/core/registry"
 	"github.com/yoke-project/yoke/internal/core/session"
 	"github.com/yoke-project/yoke/internal/core/supervisor"
@@ -86,6 +87,7 @@ type State struct {
 	Paths      instance.Paths
 	Log        *slog.Logger
 	Registry   *registry.Registry
+	Logs       *logstore.Store
 	Discovery  *discovery.Discovery
 	Deployment *gate.Deployment // what the composition in force declares, once it passed the gate
 	Admission  *admission.Admission
@@ -251,10 +253,20 @@ func record(log *slog.Logger, s *bus.Subscription) {
 	}
 }
 
-// publish publishes on the instance's bus, once it exists.
+// publish publishes on the instance's bus, once it exists, and keeps the event's durable counterpart
+// in the log store, once it is open. The counterpart is written here and not by a subscriber, which may
+// be told of an overflow: an event may be lost, and a record may not.
 func (st *State) publish(e event.Event) {
-	if st.Bus != nil {
-		st.Bus.Publish(e)
+	if st.Bus == nil {
+		return
+	}
+	published, err := st.Bus.Publish(e)
+	if err != nil {
+		st.Log.Error("event", "type", e.Type, "error", err)
+		return
+	}
+	if st.Logs != nil {
+		st.Logs.Keep(published)
 	}
 }
 
@@ -271,8 +283,8 @@ func claim(st *State) error {
 	return nil
 }
 
-// stores opens the Registry and migrates it forward. Nothing is admitted without it, so failing here is
-// fatal.
+// stores opens the Registry and the log store and migrates each forward. Nothing is admitted without the
+// first nor recorded without the second, so failing here is fatal.
 func stores(st *State) error {
 	if err := os.MkdirAll(st.Paths.State, 0o700); err != nil {
 		return err
@@ -283,6 +295,15 @@ func stores(st *State) error {
 	}
 	st.Registry = r
 	st.OnStop(r.Close)
+	// The log store is opened second, so it is closed first on the way down — after everything that
+	// writes to it has stopped. Nothing could be recorded without it; a write that fails later is
+	// reported, and costs evidence only.
+	logs, err := logstore.Open(filepath.Join(st.Paths.State, logstore.File), func(err error) { st.Log.Error("log store", "error", err) })
+	if err != nil {
+		return err
+	}
+	st.Logs = logs
+	st.OnStop(logs.Close)
 	return nil
 }
 
@@ -399,7 +420,7 @@ func pluginChannel(st *State) Channel {
 func units(st *State) error {
 	cfg := supervisor.Config{
 		Root: st.Paths.Root, Policy: supervisor.DefaultPolicy(),
-		Incarnations: supervisor.NewCounter(), Tokens: supervisor.NewTokens(), Output: logged{st.Log},
+		Incarnations: supervisor.NewCounter(), Tokens: supervisor.NewTokens(), Output: captured{st.Log, st.Logs},
 		Publish: st.publish,
 	}
 	if st.tokens != nil {
@@ -410,6 +431,9 @@ func units(st *State) error {
 	// A unit whose dependency never arrived is reported, and nothing more: past readiness a failure is
 	// reported rather than fatal.
 	cfg.NotStarted = func(id, cause string) { st.Log.Warn("not started", "unit", id, "cause", cause) }
+	if st.Logs != nil {
+		cfg.Incarnations = counted{st.Logs, st.Log}
+	}
 	s := supervisor.New(cfg)
 	st.Supervisor = s
 	st.OnStop(s.Stop)
@@ -417,11 +441,35 @@ func units(st *State) error {
 	return nil
 }
 
-// logged writes a unit's output to the process logger, until the log store keeps it.
-type logged struct{ log *slog.Logger }
+// captured keeps a unit's output in the log store, one entry per line at the routine grade, and echoes it
+// to the process logger until a surface reads the store.
+type captured struct {
+	log  *slog.Logger
+	logs *logstore.Store
+}
 
-func (l logged) Line(unitID string, incarnation int, line string) {
-	l.log.Info(line, "unit", unitID, "incarnation", incarnation)
+func (c captured) Line(unitID string, incarnation int, stream, line string) {
+	c.log.Info(line, "unit", unitID, "incarnation", incarnation, "stream", stream)
+	if c.logs != nil {
+		c.logs.Append(logstore.Entry{At: time.Now(), Unit: unitID, Incarnation: uint64(incarnation),
+			Source: logstore.Source(stream), Severity: event.Routine, Message: line})
+	}
+}
+
+// counted numbers a unit's lives with the log store's counter, which survives the Core. A count that
+// cannot be taken is reported, and that life has no number.
+type counted struct {
+	logs *logstore.Store
+	log  *slog.Logger
+}
+
+func (c counted) Next(unitID string) int {
+	n, err := c.logs.Next(unitID)
+	if err != nil {
+		c.log.Error("log store", "unit", unitID, "error", fmt.Errorf("the launch could not be counted: %w", err))
+		return 0
+	}
+	return int(n)
 }
 
 // ClearDebris removes everything under root but the claim: once the claim is held, the whole tree is a

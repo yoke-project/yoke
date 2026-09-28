@@ -83,6 +83,9 @@ type Event struct {
 	// Cause is the sequence of the event this one follows from, zero where there is none.
 	Cause  uint64
 	Detail []byte
+	// Line is the sentence a unit's report carried for a person. It is none of the eight fields: the
+	// durable counterpart keeps it as its message.
+	Line string
 }
 
 // declared is every type a producer in this Core emits, with its class and, where the Core grades its
@@ -185,7 +188,7 @@ func InstanceStopping(name string) Event {
 // when the Core received it.
 func OccurrenceReported(unitID string, incarnation uint64, r *pluginv1.Event) Event {
 	return Event{Type: occurrenceType, Subject: UnitSubject(unitID, incarnation), Time: time.Now(),
-		Actor: Actor{Class: ByUnit}, Severity: int(r.GetSeverity()), Occurrence: r.GetOccurrence(), Detail: r.GetDetail()}
+		Actor: Actor{Class: ByUnit}, Severity: int(r.GetSeverity()), Occurrence: r.GetOccurrence(), Detail: r.GetDetail(), Line: r.GetLine()}
 }
 
 // ConditionChanged is a unit's report of how well it is, as the Core carries it: at the grade the unit
@@ -196,6 +199,6 @@ func ConditionChanged(unitID string, incarnation uint64, from *int, to int, line
 		detail["from"] = *from
 	}
 	e := concluded("unit.condition.changed", UnitSubject(unitID, incarnation), to, detail)
-	e.Actor = Actor{Class: ByUnit}
+	e.Actor, e.Line = Actor{Class: ByUnit}, line
 	return e
 }
