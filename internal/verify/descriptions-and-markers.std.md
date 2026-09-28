@@ -147,3 +147,16 @@
 | **Precondition** | a tree whose test carries its own marker as a comment line, and builds a fixture whose text holds another marker inside a string |
 | **Action** | run `yoke-verify markers` over that tree |
 | **Expected** | only the comment line is read, and the quoted one enters no map and raises no finding — a marker is the whole of a comment line, which is what lets a scan tell one from a fixture quoting one |
+
+## yoke:descriptions-and-markers.12 — a symbolic link is not part of the tree, and does not stop the scan
+
+| Field | Value |
+| --- | --- |
+| **Cites** | testing/30 §Joining a case to its test · testing/30 §What checks a description |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a tree with a description and its test, a symbolic link to a directory holding another description and a marker, and a symbolic link to a file carrying a marker |
+| **Action** | check the descriptions and scan the markers |
+| **Expected** | both pass; nothing reached through either link is read, so neither the linked description nor the linked markers appear |

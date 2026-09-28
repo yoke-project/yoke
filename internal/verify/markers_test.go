@@ -1,6 +1,8 @@
 package verify_test
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -130,5 +132,28 @@ func TestAMarkerQuotedInAFixtureIsNotAMarker(t *testing.T) {
 
 	if strings.Contains(out, "yoke:sample.02") {
 		t.Errorf("a marker quoted inside a fixture was read as one: %s", out)
+	}
+}
+
+// std: yoke:descriptions-and-markers.12
+func TestASymbolicLinkIsNotPartOfTheTree(t *testing.T) {
+	root := tree(t, map[string]string{
+		"sample.std.md":  description(caseBlock("yoke:sample.01", "the case a test performs", fields())),
+		"sample_test.go": "package sample\n\n// std: yoke:sample.01\nfunc TestTheCase() {}\n",
+	})
+	elsewhere := tree(t, map[string]string{
+		"other.std.md":  description(caseBlock("yoke:other.01", "a case outside the tree", fields())),
+		"other_test.go": "package other\n\n// std: yoke:other.01\nfunc TestOther() {}\n",
+	})
+	if err := os.Symlink(elsewhere, filepath.Join(root, "lib64")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(elsewhere, "other_test.go"), filepath.Join(root, "linked_test.go")); err != nil {
+		t.Fatal(err)
+	}
+	for _, subcommand := range []string{"descriptions", "markers"} {
+		if out := accepted(t, subcommand, root); strings.Contains(out, "yoke:other") {
+			t.Errorf("%s read through a link: %s", subcommand, out)
+		}
 	}
 }
