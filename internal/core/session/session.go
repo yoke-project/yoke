@@ -48,6 +48,29 @@ type Refused struct {
 
 func (r *Refused) Error() string { return codeName(r.Code) + ": " + r.Reason }
 
+// permitted checks what the Core would send against the unit's grant: a command, a question, and a
+// stream's activation or stop each name an object a capability governs.
+func permitted(sc *scope.Scope, e *pluginv1.Envelope) error {
+	var kind scope.Kind
+	var id string
+	switch c, q := e.GetControl(), e.GetQuery().GetQuestion(); {
+	case c.GetCommand() != nil:
+		kind, id = scope.Command, c.GetCommand().GetType()
+	case c.GetActivate() != nil:
+		kind, id = scope.Stream, c.GetActivate().GetStream()
+	case c.GetStop() != nil:
+		kind, id = scope.Stream, c.GetStop().GetStream()
+	case q != nil:
+		kind, id = scope.Query, q.GetType()
+	default:
+		return nil
+	}
+	if code := sc.Check(kind, id); code != pluginv1.Code_CODE_UNSPECIFIED {
+		return &Refused{Code: code, Reason: fmt.Sprintf("the unit's grant does not cover the %s %s", kind, id)}
+	}
+	return nil
+}
+
 // Config is what the Session service reads and whom it tells.
 type Config struct {
 	// Lookup resolves an identity admission issued, and ok false for one it did not.
@@ -264,6 +287,11 @@ func (s *Service) receive(l *live, e *pluginv1.Envelope) {
 		}
 	case e.GetQuery().GetAnswer() != nil:
 		s.answered(l, e, true)
+	case e.GetEvent() != nil:
+		// The severity a unit attaches widens nothing: what it may report is its grant.
+		if code := l.terms.Scope.Check(scope.Occurrence, e.GetEvent().GetOccurrence()); code != pluginv1.Code_CODE_UNSPECIFIED {
+			refuse(code, e.MessageId, "the unit's grant does not cover the occurrence %s", e.GetEvent().GetOccurrence())
+		}
 	}
 }
 
@@ -315,13 +343,16 @@ func (s *Service) queue(l *live, e *pluginv1.Envelope) string {
 // originates control, questions and errors, and nothing else: a revocation goes by Revoke.
 func (s *Service) Send(id string, e *pluginv1.Envelope) (string, error) {
 	if e.GetControl() == nil && e.GetQuery().GetQuestion() == nil && e.GetError() == nil {
-		return "", errors.New("the Core does not originate this family")
+		return "", &Refused{Code: pluginv1.Code_CODE_SESSION_DIRECTION, Reason: "the Core does not originate this family"}
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	l, ok := s.open[id]
 	if !ok || l.ended {
 		return "", errors.New("no such Session is open")
+	}
+	if err := permitted(l.terms.Scope, e); err != nil {
+		return "", err
 	}
 	return s.queue(l, e), nil
 }
@@ -348,6 +379,10 @@ func (s *Service) issue(ctx context.Context, id string, e *pluginv1.Envelope) (*
 	if !ok || l.ended {
 		s.mu.Unlock()
 		return nil, errors.New("no such Session is open")
+	}
+	if err := permitted(l.terms.Scope, e); err != nil {
+		s.mu.Unlock()
+		return nil, err
 	}
 	waiter := make(chan *pluginv1.Envelope, 1)
 	sentAs := s.queue(l, e)

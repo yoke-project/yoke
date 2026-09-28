@@ -192,7 +192,7 @@ func (a *Admission) decide(req *pluginv1.RegisterRequest) (*pluginv1.RegisterRes
 		}
 	}
 	// 7 · authorisation, which cannot refuse: what is declared and authorised is granted.
-	granted, withheld := intersect(m, p.Grants)
+	granted, withheld, sc := intersect(m, p.Grants)
 	// 8 · unit conflict: one unit live twice, never one plugin running four times.
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -209,7 +209,7 @@ func (a *Admission) decide(req *pluginv1.RegisterRequest) (*pluginv1.RegisterRes
 	}
 	terms := &pluginv1.HeartbeatTerms{Interval: durationpb.New(composed.Policy.HeartbeatInterval), Tolerance: composed.Policy.HeartbeatTolerance}
 	a.live[req.Unit] = id
-	a.sessions[id] = &Session{ID: id, Unit: req.Unit, Plugin: req.Plugin, Granted: granted, Heartbeat: terms}
+	a.sessions[id] = &Session{ID: id, Unit: req.Unit, Plugin: req.Plugin, Granted: granted, Heartbeat: terms, Scope: sc}
 	resp := &pluginv1.RegisterResponse{Outcome: pluginv1.RegisterResponse_OUTCOME_ACCEPTED, SessionId: id, Granted: granted, Heartbeat: terms}
 	if len(slices.Concat(lists(withheld)...)) > 0 {
 		resp.Outcome, resp.Withheld = pluginv1.RegisterResponse_OUTCOME_ACCEPTED_WITH_RESTRICTIONS, withheld
@@ -240,9 +240,10 @@ func manifestSurface(m *gate.Manifest) *pluginv1.Surface {
 
 // intersect is the grant: a capability declared and authorised is granted, and so is what it governs;
 // what is declared and not granted is withheld, item by item. What is authorised and not declared grants
-// nothing and is reported to nobody here.
-func intersect(m *gate.Manifest, grants []string) (granted, withheld *pluginv1.Surface) {
-	granted, withheld = &pluginv1.Surface{}, &pluginv1.Surface{}
+// nothing and is reported to nobody here. The scope is the same grant as the Session enforces it, with
+// the occurrences the four lists do not carry.
+func intersect(m *gate.Manifest, grants []string) (granted, withheld *pluginv1.Surface, sc *scope.Scope) {
+	granted, withheld, sc = &pluginv1.Surface{}, &pluginv1.Surface{}, &scope.Scope{}
 	governed := map[gate.Object]bool{}
 	for _, c := range m.Capabilities {
 		if slices.Contains(grants, c.Name) {
@@ -254,7 +255,9 @@ func intersect(m *gate.Manifest, grants []string) (granted, withheld *pluginv1.S
 	}
 	sort := func(kind string, ids []string, into, out *[]string) {
 		for _, id := range ids {
+			sc.Declare(scope.Kind(kind), id)
 			if governed[gate.Object{Kind: kind, ID: id}] {
+				sc.Grant(scope.Kind(kind), id)
 				*into = append(*into, id)
 			} else {
 				*out = append(*out, id)
@@ -268,7 +271,10 @@ func intersect(m *gate.Manifest, grants []string) (granted, withheld *pluginv1.S
 	sort("stream", streams, &granted.Streams, &withheld.Streams)
 	sort("command", m.Commands, &granted.Commands, &withheld.Commands)
 	sort("query", m.Queries, &granted.Queries, &withheld.Queries)
-	return granted, withheld
+	// Occurrences travel in none of the four lists: the scope alone carries them.
+	var granting, withholding []string
+	sort("occurrence", m.Occurrences, &granting, &withholding)
+	return granted, withheld, sc
 }
 
 // sessionIdentity is 32 random bytes: a secret a message carries in place of a credential.
