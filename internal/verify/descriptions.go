@@ -62,6 +62,10 @@ func readDescriptions(root string) ([]description, []Finding) {
 			}
 			return nil
 		}
+		// A link is not part of the tree, whatever it points at: it is neither followed nor read.
+		if !d.Type().IsRegular() {
+			return nil
+		}
 		if !strings.HasSuffix(d.Name(), ".std.md") {
 			return nil
 		}
