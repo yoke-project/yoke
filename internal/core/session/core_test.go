@@ -21,8 +21,11 @@ import (
 const role = "TEST_UNIT_ROLE"
 
 func TestMain(m *testing.M) {
-	if os.Getenv(role) == "session" {
+	switch os.Getenv(role) {
+	case "session":
 		os.Exit(openASession())
+	case "direction":
+		os.Exit(sendACommand())
 	}
 	os.Exit(m.Run())
 }
@@ -73,8 +76,91 @@ func openASession() int {
 	return 0
 }
 
+// sendACommand registers, opens the Session, heartbeats, sends a command, and says what came back.
+func sendACommand() int {
+	conn, err := grpc.NewClient("unix://"+os.Getenv("YOKE_SOCKET"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		fmt.Println("no channel:", err)
+		return 1
+	}
+	defer conn.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	resp, err := pluginv1.NewRegisterClient(conn).Register(ctx, &pluginv1.RegisterRequest{
+		Plugin: os.Getenv("YOKE_PLUGIN"), Unit: os.Getenv("YOKE_UNIT"), Token: os.Getenv("YOKE_TOKEN"), Protocol: 1,
+		Declared: &pluginv1.Surface{Capabilities: []string{"stream.data.publish"}, Streams: []string{"station.data"}},
+	})
+	if err != nil || resp.SessionId == "" {
+		fmt.Println("not admitted:", err, resp)
+		return 1
+	}
+	s, err := pluginv1.NewSessionClient(conn).Open(ctx)
+	if err != nil {
+		fmt.Println("no stream:", err)
+		return 1
+	}
+	s.Send(&pluginv1.Envelope{MessageId: "1", SessionId: resp.SessionId, SentAtUnixNano: time.Now().UnixNano(),
+		Payload: &pluginv1.Envelope_Session{Session: &pluginv1.SessionMessage{Kind: &pluginv1.SessionMessage_Open_{Open: &pluginv1.SessionMessage_Open{}}}}})
+	s.Send(&pluginv1.Envelope{MessageId: "2", SessionId: resp.SessionId, SentAtUnixNano: time.Now().UnixNano(),
+		Payload: &pluginv1.Envelope_Control{Control: &pluginv1.Control{Kind: &pluginv1.Control_Command_{Command: &pluginv1.Control_Command{Type: "calibrate"}}}}})
+	e, err := s.Recv()
+	if err != nil {
+		fmt.Println("nothing came back:", err)
+		return 1
+	}
+	fmt.Printf("received %s for %s\n", e.GetError().GetCode(), e.CorrelationId)
+	time.Sleep(time.Hour)
+	return 0
+}
+
 // std: yoke:the-session.10
 func TestARegisteredUnitOpensItsSession(t *testing.T) {
+	lines := runCore(t, "session")
+	var said []string
+	opened, closed := false, false
+	deadline := time.After(20 * time.Second)
+	for !opened || !closed {
+		select {
+		case line, open := <-lines:
+			if !open {
+				t.Fatalf("the Core exited:\n%s", strings.Join(said, "\n"))
+			}
+			said = append(said, line)
+			isSession := strings.Contains(line, "msg=session") && strings.Contains(line, "unit=acquire")
+			opened = opened || (isSession && strings.Contains(line, "event=opened"))
+			closed = closed || (opened && isSession && strings.Contains(line, "ended=closed"))
+		case <-deadline:
+			t.Fatalf("within twenty seconds the Core said:\n%s", strings.Join(said, "\n"))
+		}
+	}
+}
+
+// std: yoke:the-families.07
+func TestThroughTheCoreAUnitThatSendsACommandIsRefused(t *testing.T) {
+	lines := runCore(t, "direction")
+	var said []string
+	refused, recorded := false, false
+	deadline := time.After(20 * time.Second)
+	for !refused || !recorded {
+		select {
+		case line, open := <-lines:
+			if !open {
+				t.Fatalf("the Core exited:\n%s", strings.Join(said, "\n"))
+			}
+			said = append(said, line)
+			refused = refused || strings.Contains(line, "received session.direction for 2")
+			recorded = recorded || (strings.Contains(line, "msg=session") && strings.Contains(line, "unit=acquire") &&
+				strings.Contains(line, "refused=session.direction"))
+		case <-deadline:
+			t.Fatalf("within twenty seconds the Core said:\n%s", strings.Join(said, "\n"))
+		}
+	}
+}
+
+// runCore starts yoke-core with one unit of this test binary in the role given, and hands back the
+// Core's output line by line.
+func runCore(t *testing.T, as string) <-chan string {
+	t.Helper()
 	binary := filepath.Join(t.TempDir(), "yoke-core")
 	if said, err := exec.Command("go", "build", "-o", binary, "github.com/yoke-project/yoke/cmd/yoke-core").CombinedOutput(); err != nil {
 		t.Fatalf("yoke-core does not build: %v\n%s", err, said)
@@ -92,7 +178,7 @@ func TestARegisteredUnitOpensItsSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	composition := filepath.Join(dir, "bench.yaml")
-	os.WriteFile(composition, []byte("units:\n  acquire: { kind: plugin, plugin: com.example.station, env: { "+role+": session } }\n"), 0o644)
+	os.WriteFile(composition, []byte("units:\n  acquire: { kind: plugin, plugin: com.example.station, env: { "+role+": "+as+" } }\n"), 0o644)
 	core := filepath.Join(dir, "core.yaml")
 	os.WriteFile(core, []byte(fmt.Sprintf("state_dir: %s/state\nruntime_dir: %s\nplugins:\n  manifests: %s\n  executables: %s\n", dir, run, manifests, executables)), 0o644)
 
@@ -111,21 +197,5 @@ func TestARegisteredUnitOpensItsSession(t *testing.T) {
 		}
 		close(lines)
 	}()
-	var said []string
-	opened, closed := false, false
-	deadline := time.After(20 * time.Second)
-	for !opened || !closed {
-		select {
-		case line, open := <-lines:
-			if !open {
-				t.Fatalf("the Core exited:\n%s", strings.Join(said, "\n"))
-			}
-			said = append(said, line)
-			isSession := strings.Contains(line, "msg=session") && strings.Contains(line, "unit=acquire")
-			opened = opened || (isSession && strings.Contains(line, "event=opened"))
-			closed = closed || (opened && isSession && strings.Contains(line, "ended=closed"))
-		case <-deadline:
-			t.Fatalf("within twenty seconds the Core said:\n%s", strings.Join(said, "\n"))
-		}
-	}
+	return lines
 }

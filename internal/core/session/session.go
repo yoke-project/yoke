@@ -10,6 +10,7 @@
 package session
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -243,6 +244,18 @@ func (s *Service) Send(id string, e *pluginv1.Envelope) (string, error) {
 		return "", errors.New("no such Session is open")
 	}
 	return s.queue(l, e), nil
+}
+
+// Command sends a command on an open Session and hands back the first acknowledgement the unit sends,
+// or the context's error when the caller's wait runs out first.
+func (s *Service) Command(ctx context.Context, id string, c *pluginv1.Control_Command) (*pluginv1.Ack, error) {
+	return nil, errors.New("not implemented")
+}
+
+// Ask sends a question on an open Session and hands back the unit's answer, or the context's error when
+// the caller's wait runs out first.
+func (s *Service) Ask(ctx context.Context, id string, q *pluginv1.Query_Question) (*pluginv1.Query_Answer, error) {
+	return nil, errors.New("not implemented")
 }
 
 // Revoke ends a Session on the Core's authority, naming which of the four triggers it was.
