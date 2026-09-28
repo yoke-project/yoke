@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -51,8 +52,8 @@ func newRegistry(t *testing.T) *registry.Registry {
 	return r
 }
 
-func logger() (*slog.Logger, *bytes.Buffer) {
-	logged := &bytes.Buffer{}
+func logger() (*slog.Logger, *lockedBuffer) {
+	logged := &lockedBuffer{}
 	return slog.New(slog.NewTextHandler(logged, nil)), logged
 }
 
@@ -179,13 +180,13 @@ func newDeployment(t *testing.T, plugins ...string) deployment {
 }
 
 // ready runs the trunk up to readiness, launching nothing.
-func (d deployment) ready(t *testing.T, composition string) (*trunk.State, *bytes.Buffer) {
+func (d deployment) ready(t *testing.T, composition string) (*trunk.State, *lockedBuffer) {
 	t.Helper()
 	os.WriteFile(d.composition, []byte(composition), 0o644)
 	core := filepath.Join(d.dir, "core.yaml")
 	os.WriteFile(core, []byte(fmt.Sprintf("state_dir: %s/state\nruntime_dir: %s/run\nplugins:\n  manifests: %s\n  executables: %s\n", d.dir, d.run, d.manifests, d.executables)), 0o644)
 	env := map[string]string{"YOKE_CONFIG": core}
-	logged := &bytes.Buffer{}
+	logged := &lockedBuffer{}
 	st := &trunk.State{Form: trunk.Service, Env: func(k string) string { return env[k] }, Stderr: logged, Composition: d.composition}
 	steps := trunk.Steps()
 	if err := trunk.Run(st, steps[:len(steps)-1]); err != nil {
@@ -340,4 +341,22 @@ func TestTheCoreDeclaresWhatItFindsAndRunsWhatTheCompositionSays(t *testing.T) {
 	if !slices.Equal(ids, []string{"com.example.good"}) {
 		t.Errorf("the Registry holds %v, want [com.example.good]", ids)
 	}
+}
+
+// lockedBuffer is a log the Core may write from several goroutines while a test reads it.
+type lockedBuffer struct {
+	mu sync.Mutex
+	b  bytes.Buffer
+}
+
+func (l *lockedBuffer) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.b.Write(p)
+}
+
+func (l *lockedBuffer) String() string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.b.String()
 }

@@ -8,12 +8,15 @@ package trunk
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"google.golang.org/grpc"
@@ -21,8 +24,10 @@ import (
 	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
 
 	"github.com/yoke-project/yoke/internal/core/admission"
+	"github.com/yoke-project/yoke/internal/core/bus"
 	"github.com/yoke-project/yoke/internal/core/config"
 	"github.com/yoke-project/yoke/internal/core/discovery"
+	"github.com/yoke-project/yoke/internal/core/event"
 	"github.com/yoke-project/yoke/internal/core/instance"
 	"github.com/yoke-project/yoke/internal/core/registry"
 	"github.com/yoke-project/yoke/internal/core/session"
@@ -86,6 +91,8 @@ type State struct {
 	Admission  *admission.Admission
 	Session    *session.Service
 	Supervisor *supervisor.Supervisor
+	// Bus is the instance's event bus, which the subsystems publish on from the logging step on.
+	Bus *bus.Bus
 
 	tokens *admission.Tokens
 
@@ -95,8 +102,10 @@ type State struct {
 // OnStop registers what undoes a step. The stop runs them in the reverse of the order they were given.
 func (st *State) OnStop(undo func() error) { st.stoppers = append(st.stoppers, undo) }
 
-// Stop undoes what the trunk set up, in reverse.
+// Stop undoes what the trunk set up, in reverse. That the instance is stopping is published first, so
+// that the silence which follows is an expected one.
 func (st *State) Stop() error {
+	st.publish(event.InstanceStopping(st.Paths.Name))
 	var failed []error
 	for i := len(st.stoppers) - 1; i >= 0; i-- {
 		if err := st.stoppers[i](); err != nil {
@@ -129,7 +138,11 @@ func Steps() []Step {
 		{"inherited runtime facts", nothingYet},
 		{"declarations", declarations},
 		{"channels", channels},
-		{ready, func(st *State) error { st.Log.Info(ready, "root", st.Paths.Root); return nil }},
+		{ready, func(st *State) error {
+			st.Log.Info(ready, "root", st.Paths.Root)
+			st.publish(event.InstanceReady(st.Paths.Name))
+			return nil
+		}},
 		{"units", units},
 	}
 }
@@ -196,7 +209,53 @@ func logging(st *State) error {
 		return fmt.Errorf("no such log level %q", st.Config.Log.Level)
 	}
 	st.Log = slog.New(slog.NewTextHandler(st.Stderr, &slog.HandlerOptions{Level: level}))
+	// The bus exists from here on, and the process logger is told everything published on it until the
+	// log store keeps the record.
+	st.Bus = bus.New()
+	recorded := st.Bus.Subscribe()
+	st.OnStop(func() error { recorded.Close(); return nil })
+	go record(st.Log, recorded)
 	return nil
+}
+
+// record writes every event it is told of to the process logger, with the fields of its detail.
+func record(log *slog.Logger, s *bus.Subscription) {
+	for {
+		d, err := s.Next(context.Background())
+		if err != nil {
+			return
+		}
+		if d.Overflow {
+			log.Warn("event", "overflow", "the process logger fell behind, and events were lost")
+			continue
+		}
+		e := d.Event
+		subject := string(e.Subject.Kind) + ":" + e.Subject.ID
+		if e.Subject.Incarnation != 0 {
+			subject += fmt.Sprintf("#%d", e.Subject.Incarnation)
+		}
+		attrs := []any{"seq", e.Seq, "type", e.Type, "subject", subject, "severity", e.Severity, "actor", string(e.Actor.Class)}
+		if e.Occurrence != "" {
+			attrs = append(attrs, "occurrence", e.Occurrence)
+		}
+		if e.Cause != 0 {
+			attrs = append(attrs, "cause", e.Cause)
+		}
+		var detail map[string]any
+		if json.Unmarshal(e.Detail, &detail) == nil {
+			for _, k := range slices.Sorted(maps.Keys(detail)) {
+				attrs = append(attrs, k, detail[k])
+			}
+		}
+		log.Info("event", attrs...)
+	}
+}
+
+// publish publishes on the instance's bus, once it exists.
+func (st *State) publish(e event.Event) {
+	if st.Bus != nil {
+		st.Bus.Publish(e)
+	}
 }
 
 func claim(st *State) error {
@@ -341,6 +400,7 @@ func units(st *State) error {
 	cfg := supervisor.Config{
 		Root: st.Paths.Root, Policy: supervisor.DefaultPolicy(),
 		Incarnations: supervisor.NewCounter(), Tokens: supervisor.NewTokens(), Output: logged{st.Log},
+		Publish: st.publish,
 	}
 	if st.tokens != nil {
 		cfg.Tokens = st.tokens

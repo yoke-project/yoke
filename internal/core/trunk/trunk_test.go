@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 
@@ -63,7 +64,7 @@ func claimable(root string) bool {
 }
 
 // service is a service-form state whose core.yaml puts both directories under the test's own.
-func service(t *testing.T) (*trunk.State, *bytes.Buffer) {
+func service(t *testing.T) (*trunk.State, *lockedBuffer) {
 	t.Helper()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "core.yaml")
@@ -71,16 +72,16 @@ func service(t *testing.T) (*trunk.State, *bytes.Buffer) {
 	if err := os.WriteFile(path, []byte(document), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	logged := &bytes.Buffer{}
+	logged := &lockedBuffer{}
 	env := map[string]string{"YOKE_CONFIG": path}
 	return &trunk.State{Form: trunk.Service, Env: func(k string) string { return env[k] }, Stderr: logged}, logged
 }
 
 // application is an application-form state named bench-a, under the test's own directories.
-func application(t *testing.T) (*trunk.State, *bytes.Buffer) {
+func application(t *testing.T) (*trunk.State, *lockedBuffer) {
 	t.Helper()
 	dir := t.TempDir()
-	logged := &bytes.Buffer{}
+	logged := &lockedBuffer{}
 	env := map[string]string{"XDG_RUNTIME_DIR": dir + "/run", "XDG_STATE_HOME": dir + "/state"}
 	return &trunk.State{Form: trunk.Application, Name: "bench-a", Env: func(k string) string { return env[k] }, Stderr: logged}, logged
 }
@@ -364,4 +365,22 @@ func TestStoppingUndoesTheTrunkInReverse(t *testing.T) {
 	if !claimable(root) {
 		t.Error("another process could not take the claim after the stop")
 	}
+}
+
+// lockedBuffer is a log the Core may write from several goroutines while a test reads it.
+type lockedBuffer struct {
+	mu sync.Mutex
+	b  bytes.Buffer
+}
+
+func (l *lockedBuffer) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.b.Write(p)
+}
+
+func (l *lockedBuffer) String() string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.b.String()
 }
