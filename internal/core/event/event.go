@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
@@ -116,6 +117,8 @@ func (e Event) Check() error {
 		return fmt.Errorf("an event has a type")
 	case !declaredType(e.Type):
 		return fmt.Errorf("the type %s is declared by no producer", e.Type)
+	case strings.SplitN(e.Type, ".", 2)[0] != string(e.Subject.Kind):
+		return fmt.Errorf("the type %s is about a %s, and the subject is a %s", e.Type, strings.SplitN(e.Type, ".", 2)[0], e.Subject.Kind)
 	case !slices.Contains([]Kind{Instance, Unit, Plugin, Channel, Document, Connection}, e.Subject.Kind):
 		return fmt.Errorf("the subject is of the kind %q, which is none of the six", e.Subject.Kind)
 	case e.Subject.ID == "":
@@ -214,10 +217,15 @@ func Names() []string {
 }
 
 // DocumentResolved is discovery's conclusion that a document it read resolved to something, at a digest.
-func DocumentResolved(path, resolved, digest string) Event { return Event{} }
+func DocumentResolved(path, resolved, digest string) Event {
+	return concluded("document.resolved", Subject{Kind: Document, ID: path}, Routine, map[string]any{"resolved": resolved, "digest": digest})
+}
 
-// DocumentRejected is the Core's conclusion that a document it read is refused, with one finding.
-func DocumentRejected(path, code, place string) Event { return Event{} }
+// DocumentRejected is the Core's conclusion that a document it read is refused, with one finding: its
+// code and its place, in the validator's vocabulary.
+func DocumentRejected(path, code, place string) Event {
+	return concluded("document.rejected", Subject{Kind: Document, ID: path}, Notable, map[string]any{"finding": map[string]string{"code": code, "place": place}})
+}
 
 // Filter selects events on four independent axes; an axis left empty selects everything on it.
 type Filter struct {
@@ -230,5 +238,25 @@ type Filter struct {
 	OccurrencePrefix bool
 }
 
-// Selects says whether the event satisfies every axis the filter states.
-func (f Filter) Selects(e Event) bool { return false }
+// Selects says whether the event satisfies every axis the filter states. Its detail is never read, so a
+// type the filter's owner has never seen is selected on what every event carries.
+func (f Filter) Selects(e Event) bool {
+	switch {
+	case f.SubjectKind != "" && e.Subject.Kind != f.SubjectKind,
+		f.SubjectID != "" && e.Subject.ID != f.SubjectID,
+		e.Severity < f.Floor,
+		f.Type != "" && !named(e.Type, f.Type, f.TypePrefix),
+		f.Occurrence != "" && !named(e.Occurrence, f.Occurrence, f.OccurrencePrefix):
+		return false
+	}
+	return true
+}
+
+// named says whether a name is the one wanted or, as a prefix, begins with its segments: a prefix reads
+// segments and never characters.
+func named(name, want string, prefix bool) bool {
+	if !prefix {
+		return name == want
+	}
+	return name == want || strings.HasPrefix(name, strings.TrimSuffix(want, ".")+".")
+}

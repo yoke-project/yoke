@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/yoke-project/yoke/internal/core/event"
 	"github.com/yoke-project/yoke/internal/core/registry"
 	"github.com/yoke-project/yoke/internal/core/supervisor"
 	"github.com/yoke-project/yoke/internal/core/unit"
@@ -34,11 +35,30 @@ type Discovery struct {
 
 	mu        sync.Mutex
 	manifests map[string]*gate.Manifest // what the last scan read, by plugin
+	publish   func(event.Event)
+	resolved  map[string]string // the digest each Manifest last resolved at, by path
+}
+
+// Publishing has discovery tell publish what it concludes of each document it reads: that it resolved,
+// when its digest is not the one it last resolved at, or each finding it was refused with.
+func (d *Discovery) Publishing(publish func(event.Event)) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.publish = publish
+}
+
+func (d *Discovery) tell(e event.Event) {
+	d.mu.Lock()
+	publish := d.publish
+	d.mu.Unlock()
+	if publish != nil {
+		publish(e)
+	}
 }
 
 // New is discovery over the Plugin directory dir.
 func New(dir string, r *registry.Registry, log *slog.Logger) *Discovery {
-	return &Discovery{dir: dir, registry: r, log: log, manifests: map[string]*gate.Manifest{}}
+	return &Discovery{dir: dir, registry: r, log: log, manifests: map[string]*gate.Manifest{}, resolved: map[string]string{}}
 }
 
 // Scan reads every `<plugin>/manifest.yaml` under the directory. Each that passes its check is declared
@@ -64,16 +84,28 @@ func (d *Discovery) Scan() {
 		report, m := gate.CheckManifest(doc)
 		for _, f := range report.Findings {
 			d.log.Warn("a Manifest was refused and is skipped", "manifest", path, "code", f.Code, "location", f.Location, "finding", f.Message)
+			if m == nil {
+				d.tell(event.DocumentRejected(path, f.Code, f.Location))
+			}
 		}
 		if m == nil {
 			continue
 		}
 		sum := sha256.Sum256(doc.Bytes)
-		if err := d.registry.Declare(registry.Declared{ID: m.ID, Protocol: m.Protocol, ManifestDigest: "sha256:" + hex.EncodeToString(sum[:])}); err != nil {
+		digest := "sha256:" + hex.EncodeToString(sum[:])
+		if err := d.registry.Declare(registry.Declared{ID: m.ID, Protocol: m.Protocol, ManifestDigest: digest}); err != nil {
 			d.log.Error("a Manifest could not be declared", "manifest", path, "error", err)
 			continue
 		}
 		found[m.ID] = m
+		// A level announces a change: a Manifest read again at the digest it resolved at says nothing new.
+		d.mu.Lock()
+		changed := d.resolved[path] != digest
+		d.resolved[path] = digest
+		d.mu.Unlock()
+		if changed {
+			d.tell(event.DocumentResolved(path, m.ID, digest))
+		}
 	}
 	d.mu.Lock()
 	d.manifests = found
