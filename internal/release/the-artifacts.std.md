@@ -82,3 +82,16 @@
 | **Precondition** | the repository with two commands, tagged `v0.1.0`, with a `NOTICE` beside its licence |
 | **Action** | run the verb at that commit |
 | **Expected** | each artifact holds the `NOTICE` beside the licence, and every line names `NOTICE` among its notices |
+
+## yoke:the-artifacts.07 — a program is built from the tag, and says the version it was built at
+
+| Field | Value |
+| --- | --- |
+| **Cites** | prj_structure/85 §Equipping a developer · prj_structure/85 §The release record |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the repository with two commands, tagged `v0.1.0`, with a file that is not committed beside the tagged tree |
+| **Action** | run the verb at that commit, and read the build information each program carries |
+| **Expected** | every program names its module at `v0.1.0`, the tag's commit as its revision, and no modification — what lies beside the tagged tree never reaches a build |

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
+	"debug/buildinfo"
 	"debug/elf"
 	"encoding/hex"
 	"encoding/json"
@@ -285,6 +286,33 @@ func TestTheNoticesTravelWithThePrograms(t *testing.T) {
 	for _, l := range lines {
 		if notices, _ := l["notices"].([]any); len(notices) != 1 || notices[0] != "NOTICE" {
 			t.Errorf("the line %v names the notices %v", l["published"], l["notices"])
+		}
+	}
+}
+
+// std: yoke:the-artifacts.07
+func TestAProgramIsBuiltFromTheTagAndSaysItsVersion(t *testing.T) {
+	root := withCommands(t, "v0.1.0")
+	commit := strings.TrimSpace(git(t, root, "rev-parse", "v0.1.0"))
+	s := &shelf{}
+	if code, _, said := handOver(t, root, s); code != 0 {
+		t.Fatalf("the verb failed: %s", said)
+	}
+	for _, arch := range []string{"amd64", "arm64"} {
+		inside := entries(t, s.files["yk-tools-0.1.0-linux-"+arch+".tar.gz"])
+		for _, program := range []string{"a", "b"} {
+			info, err := buildinfo.Read(bytes.NewReader(inside[program]))
+			if err != nil {
+				t.Fatalf("%s for %s carries no build information: %v", program, arch, err)
+			}
+			settings := map[string]string{}
+			for _, each := range info.Settings {
+				settings[each.Key] = each.Value
+			}
+			if info.Main.Version != "v0.1.0" || settings["vcs.revision"] != commit || settings["vcs.modified"] != "false" {
+				t.Errorf("%s for %s says %s at %s, modified %s", program, arch,
+					info.Main.Version, settings["vcs.revision"], settings["vcs.modified"])
+			}
 		}
 	}
 }
