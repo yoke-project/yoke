@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -101,27 +100,33 @@ func TestAnOverflowIsAnnouncedNeverSilentAndNeverAClose(t *testing.T) {
 	slow, reader := b.Subscribe(), b.Subscribe()
 	defer slow.Close()
 	defer reader.Close()
-	var told atomic.Int64
-	go func() {
-		for {
-			d, err := reader.Next(context.Background())
-			if err != nil {
-				return
-			}
-			if !d.Overflow {
-				told.Add(1)
+	// The reading subscriber reads after every hundred published, so it never falls behind.
+	told := 0
+	publish := func(n int) {
+		t.Helper()
+		for i := range n {
+			b.Publish(changed("a"))
+			if (i+1)%100 == 0 || i == n-1 {
+				for {
+					ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+					d, err := reader.Next(ctx)
+					cancel()
+					if err != nil {
+						break
+					}
+					if d.Overflow {
+						t.Fatal("the reading subscriber was told of an overflow")
+					}
+					told++
+				}
 			}
 		}
-	}()
-	for range bus.Bound {
-		b.Publish(changed("a"))
 	}
+	publish(bus.Bound)
 	if d := next(t, slow); d.Overflow || d.Event.Seq != 1 {
 		t.Fatalf("the slow subscriber was first told %+v", d)
 	}
-	for range 300 {
-		b.Publish(changed("a"))
-	}
+	publish(300)
 	var seqs []uint64
 	announced := false
 	for {
@@ -136,13 +141,12 @@ func TestAnOverflowIsAnnouncedNeverSilentAndNeverAClose(t *testing.T) {
 		t.Fatalf("before the announcement the slow subscriber was told %d events, %v…%v", len(seqs), seqs[:1], seqs[len(seqs)-1:])
 	}
 	quiet(t, slow)
-	last, _ := b.Publish(changed("a"))
-	if d := next(t, slow); d.Overflow || d.Event.Seq != last.Seq || last.Seq != 557 {
-		t.Errorf("after the overflow the slow subscriber was told %+v, want the event numbered %d", d, last.Seq)
+	publish(1)
+	if d := next(t, slow); d.Overflow || d.Event.Seq != 557 {
+		t.Errorf("after the overflow the slow subscriber was told %+v, want the event numbered 557", d)
 	}
-	time.Sleep(100 * time.Millisecond)
-	if n := told.Load(); n != 557 {
-		t.Errorf("the reading subscriber was told %d events, want 557", n)
+	if told != 557 {
+		t.Errorf("the reading subscriber was told %d events, want 557", told)
 	}
 }
 
