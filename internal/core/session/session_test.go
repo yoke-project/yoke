@@ -19,6 +19,7 @@ import (
 
 	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
 
+	"github.com/yoke-project/yoke/internal/core/event"
 	"github.com/yoke-project/yoke/internal/core/scope"
 	"github.com/yoke-project/yoke/internal/core/session"
 	"github.com/yoke-project/yoke/internal/core/unit"
@@ -34,6 +35,16 @@ type harness struct {
 	told   map[string][]string
 	// slow is how long the machine takes to be told anything.
 	slow atomic.Int64
+	// incarnation is the life every Session admitted here belongs to.
+	incarnation uint64
+	published   []event.Event
+}
+
+// publishedEvents is what the Session had the Core publish.
+func (h *harness) publishedEvents() []event.Event {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return append([]event.Event(nil), h.published...)
 }
 
 type syncBuffer struct {
@@ -63,6 +74,11 @@ func newHarness(t *testing.T) *harness {
 			h.mu.Lock()
 			defer h.mu.Unlock()
 			h.told[id] = append(h.told[id], fmt.Sprintf("%T%+v", in, in))
+		},
+		Publish: func(e event.Event) {
+			h.mu.Lock()
+			defer h.mu.Unlock()
+			h.published = append(h.published, e)
 		},
 		Log: slog.New(slog.NewTextHandler(h.log, nil)),
 	})
@@ -94,7 +110,7 @@ func (h *harness) admit(id, unitID string, interval time.Duration, tolerance uin
 func (h *harness) admitScoped(id, unitID string, interval time.Duration, tolerance uint32, sc *scope.Scope) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	h.issued[id] = session.Admitted{Unit: unitID, Interval: interval, Tolerance: tolerance, Scope: sc}
+	h.issued[id] = session.Admitted{Unit: unitID, Incarnation: h.incarnation, Interval: interval, Tolerance: tolerance, Scope: sc}
 }
 
 // everything is the scope the tests' unit is granted: what they send, and nothing else.

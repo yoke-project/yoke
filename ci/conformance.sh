@@ -8,7 +8,7 @@ set -uo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 results="${1:-$root/.results}"
-harness=github.com/yoke-project/yoke-sdk-go/cmd/yoke-go-plugin-harness@v0.0.0-20260926132730-9b02de5ffa98
+harness=github.com/yoke-project/yoke-sdk-go/cmd/yoke-go-plugin-harness@v0.1.1-0.20260928175311-59b3deb0e677
 bin="$(mktemp -d)"
 trap 'rm -rf "$bin"' EXIT
 mkdir -p "$results"

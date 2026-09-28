@@ -28,6 +28,8 @@ func TestMain(m *testing.M) {
 		os.Exit(sendACommand())
 	case "occurrence":
 		os.Exit(reportAnOccurrence())
+	case "undeclared":
+		os.Exit(registerLeavingOutItsOccurrences())
 	}
 	os.Exit(m.Run())
 }
@@ -221,6 +223,54 @@ func TestThroughTheCoreAnOccurrenceNobodyAuthorisedIsRefused(t *testing.T) {
 	}
 }
 
+// registerLeavingOutItsOccurrences registers claiming no occurrence, whatever its Manifest declares,
+// and says what the Core answered.
+func registerLeavingOutItsOccurrences() int {
+	conn, err := grpc.NewClient("unix://"+os.Getenv("YOKE_SOCKET"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		fmt.Println("no channel:", err)
+		return 1
+	}
+	defer conn.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	resp, err := pluginv1.NewRegisterClient(conn).Register(ctx, &pluginv1.RegisterRequest{
+		Plugin: os.Getenv("YOKE_PLUGIN"), Unit: os.Getenv("YOKE_UNIT"), Token: os.Getenv("YOKE_TOKEN"), Protocol: 1,
+		Declared: &pluginv1.Surface{Capabilities: []string{"stream.data.publish", "event.calibration-drift.report"}, Streams: []string{"station.data"}},
+	})
+	if err != nil {
+		fmt.Println("no answer:", err)
+		return 1
+	}
+	fmt.Printf("answered %s %s at %s\n", resp.Outcome, resp.Code, resp.Stage)
+	time.Sleep(time.Hour)
+	return 0
+}
+
+// std: yoke:the-fifth-list-and-the-scale.06
+func TestThroughTheCoreAUnitLeavingOutItsOccurrencesIsRefused(t *testing.T) {
+	lines := runCore(t, "undeclared")
+	var said []string
+	deadline := time.After(20 * time.Second)
+	for {
+		select {
+		case line, open := <-lines:
+			if !open {
+				t.Fatalf("the Core exited:\n%s", strings.Join(said, "\n"))
+			}
+			said = append(said, line)
+			if strings.Contains(line, "answered OUTCOME_") {
+				if !strings.Contains(line, "answered OUTCOME_REFUSED admission.consistency.divergent at STAGE_DECLARATION_CONSISTENCY") {
+					t.Fatalf("the unit was %s", line)
+				}
+				return
+			}
+		case <-deadline:
+			t.Fatalf("within twenty seconds the Core said:\n%s", strings.Join(said, "\n"))
+		}
+	}
+}
+
 // std: yoke:the-session.10
 func TestARegisteredUnitOpensItsSession(t *testing.T) {
 	lines := runCore(t, "session")
@@ -268,7 +318,7 @@ func TestThroughTheCoreAUnitThatSendsACommandIsRefused(t *testing.T) {
 // manifestFor is the station's Manifest; the occurrence role's also declares an occurrence.
 func manifestFor(as string) string {
 	m := "manifest: 1\nid: com.example.station\nprotocol: 1\nstreams: [ { id: station.data } ]\n"
-	if as == "occurrence" {
+	if as == "occurrence" || as == "undeclared" {
 		return m + "occurrences: [ { id: calibration.drift } ]\ncapabilities: [ { name: stream.data.publish, governs: { stream: station.data } }, " +
 			"{ name: event.calibration-drift.report, governs: { occurrence: calibration.drift } } ]\n"
 	}
