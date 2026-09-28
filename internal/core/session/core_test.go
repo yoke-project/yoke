@@ -113,6 +113,52 @@ func sendACommand() int {
 	return 0
 }
 
+// std: yoke:the-event-bus.05
+func TestThroughTheCoreAUnitsLifeIsPublished(t *testing.T) {
+	lines := runCore(t, "session")
+	var said []string
+	ready := false
+	var seqs []int
+	into := map[string]bool{}
+	deadline := time.After(20 * time.Second)
+	for !ready || !into["Starting"] || !into["Admitted"] || !into["Running"] {
+		select {
+		case line, open := <-lines:
+			if !open {
+				t.Fatalf("the Core exited:\n%s", strings.Join(said, "\n"))
+			}
+			said = append(said, line)
+			if !strings.Contains(line, "msg=event") {
+				continue
+			}
+			var seq int
+			if _, err := fmt.Sscanf(field(line, "seq"), "%d", &seq); err != nil {
+				t.Fatalf("an event without its number: %s", line)
+			}
+			if len(seqs) > 0 && seq <= seqs[len(seqs)-1] {
+				t.Fatalf("the event numbered %d follows %d: %s", seq, seqs[len(seqs)-1], line)
+			}
+			seqs = append(seqs, seq)
+			ready = ready || field(line, "type") == "instance.ready"
+			if field(line, "type") == "unit.state.changed" && field(line, "subject") == "unit:acquire#1" {
+				into[field(line, "to")] = true
+			}
+		case <-deadline:
+			t.Fatalf("within twenty seconds the Core said:\n%s", strings.Join(said, "\n"))
+		}
+	}
+}
+
+// field is the value of one key in a line the Core's logger wrote.
+func field(line, key string) string {
+	for _, part := range strings.Fields(line) {
+		if value, ok := strings.CutPrefix(part, key+"="); ok {
+			return strings.Trim(value, `"`)
+		}
+	}
+	return ""
+}
+
 // std: yoke:the-session.10
 func TestARegisteredUnitOpensItsSession(t *testing.T) {
 	lines := runCore(t, "session")
