@@ -256,7 +256,7 @@ func TestTheRegistrationRequestCarriesTheClaim(t *testing.T) {
 		t.Errorf("the protocol version is %v, want an integer", kind)
 	}
 	same(t, "the declared surface", fields(message(t, files, "Surface")),
-		[]string{"capabilities", "streams", "commands", "queries"})
+		[]string{"capabilities", "streams", "commands", "queries", "occurrences"})
 	surface := message(t, files, "Surface")
 	for i := 0; i < surface.Fields().Len(); i++ {
 		if f := surface.Fields().Get(i); !f.IsList() || f.Kind() != protoreflect.StringKind {

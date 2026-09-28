@@ -61,14 +61,14 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.13 · specs/50.15 · specs/50.16 · specs/50.17 · arch/50-plugin-surface/08 §The registration exchange |
+| **Cites** | specs/50.13 · specs/50.15 · specs/50.16 · specs/50.17 · arch/50-plugin-surface/03 §What the request claims · arch/50-plugin-surface/08 §The registration exchange |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
 | **Precondition** | the registration request's definition |
 | **Action** | enumerate its fields |
-| **Expected** | the plugin and unit identities, the bootstrap token, the protocol version as an integer, the artifact's version, language and SDK line, and the declared surface as four lists — capabilities, streams, commands, queries — and no address, no Session identity and no state |
+| **Expected** | the plugin and unit identities, the bootstrap token, the protocol version as an integer, the artifact's version, language and SDK line, and the declared surface as five lists — capabilities, streams, commands, queries, occurrences — and no address, no Session identity and no state |
 
 ## yoke:plugin-contract.06 — the registration answer says how far the request got, and what was withheld item by item
 
