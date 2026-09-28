@@ -1,0 +1,205 @@
+// The one operation union: an operation is a member of Request and never of a service, so it is on
+// both projections or on neither. Response has one answer per operation, in the same order.
+syntax = "proto3";
+
+package yoke.administrative.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "yoke/administrative/v1/events.proto";
+import "yoke/administrative/v1/records.proto";
+
+option go_package = "github.com/yoke-project/yoke/proto/yoke/administrative/v1;administrativev1";
+
+message Request {
+  // The contract's version, checked on every call and on the first frame of a connection.
+  uint32 version = 1;
+  oneof operation {
+    // Policy is per plugin.
+    PluginPolicy plugin_enable = 2;
+    PluginPolicy plugin_disable = 3;
+    PluginGrant plugin_grant = 4;
+    PluginGrant plugin_withdraw = 5;
+    // Execution is per unit.
+    UnitAct unit_start = 6;
+    UnitAct unit_stop = 7;
+    UnitAct unit_restart = 8;
+    UnitStream unit_stream_start = 9;
+    UnitStream unit_stream_stop = 10;
+    UnitRetention unit_retention_set = 11;
+    UnitAct unit_retention_clear = 12;
+    UnitAsk unit_ask = 13;
+    // The rest is per instance.
+    Read read = 14;
+    LogQuery log_query = 15;
+    LogFollow log_follow = 16;
+    Subscribe subscribe = 17;
+  }
+}
+
+message PluginPolicy {
+  string plugin = 1;
+}
+
+message PluginGrant {
+  string plugin = 1;
+  string capability = 2;
+}
+
+message UnitAct {
+  string unit = 1;
+}
+
+message UnitStream {
+  string unit = 1;
+  string stream = 2;
+}
+
+// A retention override: each limit absent is unconstrained, and none at all is legal.
+message UnitRetention {
+  string unit = 1;
+  google.protobuf.Duration age = 2;
+  optional uint64 bytes = 3;
+  optional uint64 entries = 4;
+}
+
+// A question for a unit, opaque to the Core and bounded at 1 MiB.
+message UnitAsk {
+  string unit = 1;
+  string type = 2;
+  bytes question = 3;
+}
+
+// A subject kind, and an identity where one is named: with none, every subject of that kind.
+message Read {
+  string kind = 1;
+  string identity = 2;
+}
+
+message LogQuery {
+  string unit = 1;
+  uint64 incarnation = 2;
+  google.protobuf.Timestamp from = 3;
+  google.protobuf.Timestamp until = 4;
+  uint32 floor = 5;
+  // The entry's seq to continue after; zero is the beginning of what survives.
+  uint64 cursor = 6;
+}
+
+message LogFollow {
+  string unit = 1;
+  uint64 incarnation = 2;
+  uint32 floor = 3;
+  // The entry's seq to continue after; zero is the next entry to be written.
+  uint64 cursor = 4;
+}
+
+message Subscribe {
+  Filter filter = 1;
+}
+
+message Response {
+  oneof answer {
+    Changed plugin_enable = 1;
+    Changed plugin_disable = 2;
+    Changed plugin_grant = 3;
+    Changed plugin_withdraw = 4;
+    Changed unit_start = 5;
+    Changed unit_stop = 6;
+    Changed unit_restart = 7;
+    Changed unit_stream_start = 8;
+    Changed unit_stream_stop = 9;
+    Changed unit_retention_set = 10;
+    Changed unit_retention_clear = 11;
+    Asked unit_ask = 12;
+    Records read = 13;
+    LogPage log_query = 14;
+    Followed log_follow = 15;
+    Subscribed subscribe = 16;
+  }
+}
+
+// What every change answers, which is what lets a caller converge without reading first.
+message Changed {
+  enum Effective {
+    EFFECTIVE_UNSPECIFIED = 0;
+    EFFECTIVE_IMMEDIATELY = 1;
+    EFFECTIVE_AT_NEXT_ADMISSION = 2;
+  }
+  // The value the operation replaced; an effect already true says nothing changed.
+  Previously previously = 1;
+  Effective effective = 2;
+  // One per unit affected.
+  repeated Consequence consequences = 3;
+}
+
+message Previously {
+  oneof value {
+    bool enabled = 1;
+    bool granted = 2;
+    string state = 3;
+    Retention retention = 4;
+  }
+}
+
+// A retention policy as it resolved; an absent limit is unconstrained.
+message Retention {
+  google.protobuf.Duration age = 1;
+  optional uint64 bytes = 2;
+  optional uint64 entries = 3;
+}
+
+message Consequence {
+  string unit = 1;
+  uint64 incarnation = 2;
+  // What happened to it, for a person.
+  string what = 3;
+}
+
+// A unit's answer, opaque to the Core and bounded at 1 MiB.
+message Asked {
+  bytes answer = 1;
+}
+
+// A page of the log store, in the order it keeps, and the cursor to continue from.
+message LogPage {
+  repeated LogEntry entries = 1;
+  uint64 next = 2;
+  // The cursor named an entry retention had removed, and the page resumed at the next surviving one.
+  bool resumed = 3;
+}
+
+message LogEntry {
+  uint64 seq = 1;
+  google.protobuf.Timestamp at = 2;
+  string unit = 3;
+  uint64 incarnation = 4;
+  // stdout, stderr, core or reported.
+  string source = 5;
+  uint32 severity = 6;
+  string type = 7;
+  string subject_kind = 8;
+  string subject_id = 9;
+  string actor = 10;
+  uint64 cause = 11;
+  string message = 12;
+  bytes detail = 13;
+}
+
+// What a follow carries: an entry, or that the follower fell behind at a sequence, from which it queries.
+message Followed {
+  oneof carries {
+    LogEntry entry = 1;
+    uint64 behind_at = 2;
+  }
+}
+
+// What a subscription carries: the snapshot it opens with, an event, or an overflow and the fresh
+// snapshot that follows it.
+message Subscribed {
+  oneof carries {
+    Snapshot snapshot = 1;
+    Event event = 2;
+    Snapshot overflow = 3;
+  }
+}

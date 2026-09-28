@@ -1,0 +1,142 @@
+// The one record a read and a subscription's snapshot are both made of: one kind per readable subject,
+// each field group marked declared, authorized or observed.
+syntax = "proto3";
+
+package yoke.administrative.v1;
+
+import "google/protobuf/timestamp.proto";
+import "yoke/administrative/v1/events.proto";
+
+option go_package = "github.com/yoke-project/yoke/proto/yoke/administrative/v1;administrativev1";
+
+message Record {
+  oneof subject {
+    InstanceRecord instance = 1;
+    UnitRecord unit = 2;
+    PluginRecord plugin = 3;
+    ChannelRecord channel = 4;
+    DocumentRecord document = 5;
+    ConnectionRecord connection = 6;
+  }
+}
+
+message InstanceRecord {
+  string identity = 1;
+  // service or application.
+  string form = 2;
+  bool ready = 3;
+  bool stopping = 4;
+  google.protobuf.Timestamp since = 5;
+  string version = 6;
+  string stamp = 7;
+  // The resolved parameter values.
+  map<string, string> parameters = 8;
+  // The description in force, as a path and the digest it was read at.
+  string description = 9;
+  string description_digest = 10;
+  // The declared weaker arrangements in force, as the gate reported them.
+  repeated string weaker = 11;
+}
+
+message UnitRecord {
+  message Declared {
+    string identity = 1;
+    // plugin, oneshot or interface.
+    string kind = 2;
+    string backend = 3;
+    // For a Plugin unit: the plugin it runs.
+    string plugin = 4;
+  }
+  message Observed {
+    string state = 1;
+    uint64 incarnation = 2;
+    // The moment of the last transition.
+    google.protobuf.Timestamp since = 3;
+    // None where the unit has never reported.
+    Condition condition = 4;
+    // The streams currently activated.
+    repeated string streams = 5;
+  }
+  Declared declared = 1;
+  Observed observed = 2;
+  // For a Plugin unit: its plugin's record, beside its own.
+  PluginRecord plugin = 3;
+}
+
+// A unit's own account of how well it is.
+message Condition {
+  uint32 grade = 1;
+  string line = 2;
+  google.protobuf.Timestamp since = 3;
+}
+
+message PluginRecord {
+  message Declared {
+    string identity = 1;
+    uint32 protocol = 2;
+    string manifest_digest = 3;
+    // What the last registration supplied.
+    string version = 4;
+    string language = 5;
+    string sdk_line = 6;
+  }
+  message Authorized {
+    bool enabled = 1;
+    repeated string granted = 2;
+    string credential_mode = 3;
+  }
+  message Observed {
+    bool manifest_present = 1;
+    bool composed = 2;
+    repeated string running = 3;
+  }
+  Declared declared = 1;
+  Authorized authorized = 2;
+  Observed observed = 3;
+}
+
+message ChannelRecord {
+  message Declared {
+    string name = 1;
+    string projection = 2;
+    string address_class = 3;
+  }
+  message Observed {
+    bool attached = 1;
+    string client = 2;
+    bool suspended = 3;
+    string reason = 4;
+    string retains = 5;
+  }
+  Declared declared = 1;
+  Observed observed = 2;
+}
+
+// A document as it was read.
+message DocumentRecord {
+  string path = 1;
+  string resolved = 2;
+  string digest = 3;
+}
+
+// A person or a tool attached to an administrative surface.
+message ConnectionRecord {
+  string identity = 1;
+  // operator or shell.
+  string projection = 2;
+  Actor actor = 3;
+  google.protobuf.Timestamp opened = 4;
+  repeated Filter subscriptions = 5;
+}
+
+// The current value of every level a filter selects, taken at a sequence: the stream that follows
+// begins at the next.
+message Snapshot {
+  uint64 at = 1;
+  repeated Record records = 2;
+}
+
+// A read's answer: the snapshot's records, and nothing follows.
+message Records {
+  repeated Record records = 1;
+}

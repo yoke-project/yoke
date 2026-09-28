@@ -1,5 +1,9 @@
 //! Writes the Rust the definitions generate: the messages by prost, the services by tonic.
 //!
+//! A client is made from a channel the caller built: the transport's own `connect` is left out, since a
+//! method named `Connect` — the shell projection's — would collide with it, and a service's methods are
+//! the contract's to name.
+//!
 //! Usage: yoke-proto-generate <definitions root> <out dir> <file>...
 
 use std::{env, path::PathBuf, process};
@@ -15,7 +19,7 @@ fn main() {
         eprintln!("the definitions do not compile: {err:?}");
         process::exit(1);
     });
-    if let Err(err) = tonic_prost_build::configure().out_dir(&out).compile_fds(set) {
+    if let Err(err) = tonic_prost_build::configure().build_transport(false).out_dir(&out).compile_fds(set) {
         eprintln!("the Rust cannot be generated: {err}");
         process::exit(1);
     }

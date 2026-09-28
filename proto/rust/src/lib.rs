@@ -7,3 +7,11 @@ pub mod plugin {
         include!("gen/yoke.plugin.v1.rs");
     }
 }
+
+/// The administrative contract.
+pub mod administrative {
+    /// Version 1 of the administrative contract.
+    pub mod v1 {
+        include!("gen/yoke.administrative.v1.rs");
+    }
+}
