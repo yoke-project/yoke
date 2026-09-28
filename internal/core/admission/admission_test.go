@@ -490,3 +490,43 @@ func TestAdmissionHandsTheSessionItsScope(t *testing.T) {
 		{scope.Query, "head-status", pluginv1.Code_CODE_UNSPECIFIED},
 	})
 }
+
+// watching is a registration of the watch plugin, claiming the occurrences given.
+func watching(token string, occurrences ...string) *pluginv1.RegisterRequest {
+	return &pluginv1.RegisterRequest{Plugin: "com.yoke.station.watch", Unit: "watch", Token: token, Protocol: 1, Declared: &pluginv1.Surface{
+		Capabilities: []string{"stream.spectra.publish", "command.calibrate.accept", "query.head-status.answer", "event.calibration-drift.report", "event.head-fault.report"},
+		Streams:      []string{"station.spectra"}, Commands: []string{"calibrate"}, Queries: []string{"head-status"}, Occurrences: occurrences}}
+}
+
+// std: yoke:the-fifth-list-and-the-scale.01
+func TestStageSixComparesTheOccurrences(t *testing.T) {
+	b := newBench(t, false)
+	b.manifest(t, watch)
+	resp := b.register(t, watching(b.compose("watch", "com.yoke.station.watch"), "calibration.drift"))
+	refusedAt(t, resp, pluginv1.Stage_STAGE_DECLARATION_CONSISTENCY, "admission.consistency.divergent")
+	if !strings.Contains(resp.Message, "occurrences") {
+		t.Errorf("the refusal does not name the occurrences: %q", resp.Message)
+	}
+	resp = b.register(t, watching(b.tokens.Issue("watch"), "calibration.drift", "head.fault"))
+	accepted(t, resp)
+}
+
+// std: yoke:the-fifth-list-and-the-scale.02
+func TestTheGrantAndTheWithheldCarryOccurrences(t *testing.T) {
+	b := newBench(t, false)
+	b.manifest(t, watch)
+	b.reg.Grant("com.yoke.station.watch", "event.calibration-drift.report", "davide")
+	resp := b.register(t, watching(b.compose("watch", "com.yoke.station.watch"), "calibration.drift", "head.fault"))
+	if resp.Outcome != pluginv1.RegisterResponse_OUTCOME_ACCEPTED_WITH_RESTRICTIONS {
+		t.Fatalf("the answer is %v (%s), want accepted with restrictions", resp.Outcome, resp.Message)
+	}
+	if got := resp.Granted.GetOccurrences(); !slices.Equal(got, []string{"calibration.drift"}) {
+		t.Errorf("the granted occurrences are %v", got)
+	}
+	if got := resp.Withheld.GetOccurrences(); !slices.Equal(got, []string{"head.fault"}) {
+		t.Errorf("the withheld occurrences are %v", got)
+	}
+	if !slices.Contains(resp.Withheld.GetCapabilities(), "event.head-fault.report") {
+		t.Errorf("the withheld capabilities are %v", resp.Withheld.GetCapabilities())
+	}
+}

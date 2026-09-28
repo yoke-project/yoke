@@ -26,6 +26,7 @@ import (
 
 	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
 
+	"github.com/yoke-project/yoke/internal/core/event"
 	"github.com/yoke-project/yoke/internal/core/scope"
 	"github.com/yoke-project/yoke/internal/core/unit"
 )
@@ -33,10 +34,12 @@ import (
 // Admitted is what admission issued with a Session identity: whose it is, the heartbeat terms, and the
 // scope the unit was granted.
 type Admitted struct {
-	Unit      string
-	Interval  time.Duration
-	Tolerance uint32
-	Scope     *scope.Scope
+	Unit string
+	// Incarnation is the life the Session belongs to, which what the Core concludes from it names.
+	Incarnation uint64
+	Interval    time.Duration
+	Tolerance   uint32
+	Scope       *scope.Scope
 }
 
 // Refused is a sending the Core declined where it was asked for, with the code a unit would have been
@@ -77,6 +80,8 @@ type Config struct {
 	Lookup func(id string) (Admitted, bool)
 	// Observe hands the unit's lifecycle machine what the Session concluded.
 	Observe func(unitID string, in unit.Input)
+	// Publish is told what the Core concludes from a unit's report. Optional.
+	Publish func(event.Event)
 	Log     *slog.Logger
 }
 
