@@ -43,5 +43,12 @@ func add(m map[Kind]map[string]bool, k Kind, id string) map[Kind]map[string]bool
 // Check is CODE_UNSPECIFIED for an object granted, scope.withheld for one declared and not granted, and
 // scope.undeclared for one never declared.
 func (s *Scope) Check(k Kind, id string) pluginv1.Code {
-	return pluginv1.Code_CODE_UNSPECIFIED
+	switch {
+	case s != nil && s.granted[k][id]:
+		return pluginv1.Code_CODE_UNSPECIFIED
+	case s != nil && s.declared[k][id]:
+		return pluginv1.Code_CODE_SCOPE_WITHHELD
+	default:
+		return pluginv1.Code_CODE_SCOPE_UNDECLARED
+	}
 }

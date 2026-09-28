@@ -379,7 +379,7 @@ func pluginChannel(st *State) Channel {
 			if !ok {
 				return session.Admitted{}, false
 			}
-			return session.Admitted{Unit: s.Unit, Interval: s.Heartbeat.GetInterval().AsDuration(), Tolerance: s.Heartbeat.GetTolerance()}, true
+			return session.Admitted{Unit: s.Unit, Interval: s.Heartbeat.GetInterval().AsDuration(), Tolerance: s.Heartbeat.GetTolerance(), Scope: s.Scope}, true
 		},
 		Observe: func(id string, in unit.Input) {
 			if st.Supervisor != nil {
