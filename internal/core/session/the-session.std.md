@@ -134,3 +134,16 @@
 | **Precondition** | `yoke-core` built, with a composition running one unit of a program that registers, opens its Session with the identity it was given, heartbeats, and closes after a second |
 | **Action** | start the Core |
 | **Expected** | the Core's output says the unit's Session opened, and then that it was closed by the unit |
+
+## yoke:the-session.11 — the machine is told how a Session ended before its stream closes
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/50.49 · specs/50.51 · arch/50-plugin-surface/04 §Revocation |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an open Session, whose unit's machine takes a moment to be told anything |
+| **Action** | the unit closes it; on a second Session, the Core revokes it |
+| **Expected** | when each stream closes, the machine has already been told that its Session ended |

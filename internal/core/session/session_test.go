@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -30,6 +31,8 @@ type harness struct {
 	mu     sync.Mutex
 	issued map[string]session.Admitted
 	told   map[string][]string
+	// slow is how long the machine takes to be told anything.
+	slow atomic.Int64
 }
 
 type syncBuffer struct {
@@ -55,6 +58,7 @@ func newHarness(t *testing.T) *harness {
 			return a, ok
 		},
 		Observe: func(id string, in unit.Input) {
+			time.Sleep(time.Duration(h.slow.Load()))
 			h.mu.Lock()
 			defer h.mu.Unlock()
 			h.told[id] = append(h.told[id], fmt.Sprintf("%T%+v", in, in))
@@ -399,5 +403,42 @@ func TestAnOrderlyCloseIsTheUnitsAndARevocationIsTheCores(t *testing.T) {
 	logged := h.log.String()
 	if !bytes.Contains([]byte(logged), []byte("unit=first")) || !bytes.Contains([]byte(logged), []byte("ended=closed")) || !bytes.Contains([]byte(logged), []byte("ended=revoked")) {
 		t.Errorf("the record does not tell a close from a revocation:\n%s", logged)
+	}
+}
+
+// std: yoke:the-session.11
+func TestTheMachineIsToldBeforeTheStreamCloses(t *testing.T) {
+	h := newHarness(t)
+	h.slow.Store(int64(150 * time.Millisecond))
+	told := func(unitID string, n int) {
+		t.Helper()
+		for deadline := time.Now().Add(2 * time.Second); len(h.toldOf(unitID)) < n; {
+			if time.Now().After(deadline) {
+				t.Fatalf("the machine of %s was told %v", unitID, h.toldOf(unitID))
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+	h.admit("sid-1", "acquire", time.Second, 3)
+	first := h.stream(t, "sid-1")
+	first.send(t, open)
+	told("acquire", 1)
+	first.send(t, closing)
+	first.closedWithNothing(t)
+	if got := h.toldOf("acquire"); !slices.Equal(got, []string{"unit.SessionOpened{}", "unit.SessionEnded{Withdrawn:false}"}) {
+		t.Errorf("when the closed stream ended the machine had been told %v", got)
+	}
+
+	h.admit("sid-2", "second", time.Second, 3)
+	second := h.stream(t, "sid-2")
+	second.send(t, open)
+	told("second", 1)
+	go h.svc.Revoke("sid-2", pluginv1.SessionMessage_Revoked_CAUSE_PLUGIN_DISABLED, "disabled")
+	if e, open := second.receive(t, 2*time.Second); !open || e.GetSession().GetRevoked() == nil {
+		t.Fatalf("%v arrived, want the revocation", e)
+	}
+	second.closedWithNothing(t)
+	if got := h.toldOf("second"); !slices.Equal(got, []string{"unit.SessionOpened{}", "unit.SessionEnded{Withdrawn:true}"}) {
+		t.Errorf("when the revoked stream ended the machine had been told %v", got)
 	}
 }
