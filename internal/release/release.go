@@ -294,7 +294,16 @@ func handOver(cfg Config, tag, version string, notices []string) ([]handed, erro
 		return nil, err
 	}
 	when := time.Unix(seconds, 0).UTC()
-	licensed, err := os.ReadFile(filepath.Join(cfg.Root, "LICENSE"))
+	// The programs are built in a clone at the tag, so nothing beside the tagged tree reaches a build and
+	// each program names the tag's version, unmodified.
+	tree := filepath.Join(dir, "tree")
+	if _, err := gitIn(cfg.Root, "clone", "-q", "--shared", "--no-checkout", cfg.Root, tree); err != nil {
+		return nil, err
+	}
+	if _, err := gitIn(tree, "checkout", "-q", "--detach", tag); err != nil {
+		return nil, err
+	}
+	licensed, err := os.ReadFile(filepath.Join(tree, "LICENSE"))
 	if err != nil {
 		return nil, err
 	}
@@ -306,7 +315,7 @@ func handOver(cfg Config, tag, version string, notices []string) ([]handed, erro
 			for _, pkg := range a.Packages {
 				program := filepath.Join(dir, arch, filepath.Base(pkg))
 				build := exec.Command("go", "build", "-trimpath", "-ldflags=-s -w -buildid=", "-o", program, pkg)
-				build.Dir = cfg.Root
+				build.Dir = tree
 				build.Env = append(os.Environ(), "CGO_ENABLED=0", "GOOS=linux", "GOARCH="+arch)
 				if said, err := build.CombinedOutput(); err != nil {
 					return nil, fmt.Errorf("%s for %s does not build: %v\n%s", pkg, arch, err, said)
@@ -319,7 +328,7 @@ func handOver(cfg Config, tag, version string, notices []string) ([]handed, erro
 			}
 			entries = append(entries, entry{name: "LICENSE", mode: 0o644, data: licensed})
 			for _, name := range notices {
-				data, err := os.ReadFile(filepath.Join(cfg.Root, name))
+				data, err := os.ReadFile(filepath.Join(tree, name))
 				if err != nil {
 					return nil, err
 				}
