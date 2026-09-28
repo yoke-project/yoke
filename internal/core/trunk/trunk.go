@@ -8,6 +8,8 @@ package trunk
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -317,6 +319,7 @@ func declarations(st *State) error {
 	}
 	plugins := st.Config.Plugins
 	d := discovery.New(plugins.Manifests, st.Registry, st.Log)
+	d.Publishing(st.publish)
 	d.Scan()
 	st.Discovery = d
 	if plugins.ScanInterval > 0 {
@@ -326,8 +329,9 @@ func declarations(st *State) error {
 	if st.Composition == "" {
 		return nil
 	}
+	composition := gate.Read(st.Composition, gate.Composition)
 	report, dep := gate.Check(gate.Input{
-		Document:  gate.Read(st.Composition, gate.Composition),
+		Document:  composition,
 		Moment:    gate.Starting,
 		Manifests: plugins.Manifests,
 		Host:      &gate.Host{Executables: plugins.Executables, StateDir: st.Paths.State, RuntimeRoot: st.Paths.Root},
@@ -338,10 +342,15 @@ func declarations(st *State) error {
 			level = slog.LevelWarn
 		}
 		st.Log.Log(context.Background(), level, "finding", "document", f.Document, "code", f.Code, "location", f.Location, "finding", f.Message)
+		if dep == nil && f.Class != gate.Weaker {
+			st.publish(event.DocumentRejected(f.Document, f.Code, f.Location))
+		}
 	}
 	if dep == nil {
 		return fmt.Errorf("the composition %s is refused", st.Composition)
 	}
+	sum := sha256.Sum256(composition.Bytes)
+	st.publish(event.DocumentResolved(st.Composition, fmt.Sprintf("%d units", len(dep.Units)), "sha256:"+hex.EncodeToString(sum[:])))
 	st.Deployment = dep
 	st.Units = discovery.Units(dep, d.Manifest, plugins.Executables, st.Paths.State)
 	return nil

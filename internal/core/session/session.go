@@ -115,6 +115,10 @@ type live struct {
 	timer     *time.Timer
 	ended     bool
 	lost      bool
+	// The unit's condition, as its health reports last graded it; none until it reports.
+	reported bool
+	grade    int
+	line     string
 }
 
 // exchange is one instruction or question the Core sent, until its final answer: an acknowledgement
@@ -273,10 +277,22 @@ func (s *Service) receive(l *live, e *pluginv1.Envelope) {
 	switch {
 	case e.GetHealth() != nil:
 		// A grade off the scale is read as its top, and still counts as a heartbeat.
-		onTheScale(s.cfg.Log, l.terms.Unit, "grade", e.GetHealth().GetGrade())
+		grade := int(onTheScale(s.cfg.Log, l.terms.Unit, "grade", e.GetHealth().GetGrade()))
+		line := e.GetHealth().GetLine()
 		s.mu.Lock()
 		l.timer.Reset(window(l.terms))
+		// The condition is a level: it changes when the grade or its line does, and not at every beat.
+		var from *int
+		if l.reported {
+			former := l.grade
+			from = &former
+		}
+		changed := !l.reported || l.grade != grade || l.line != line
+		l.reported, l.grade, l.line = true, grade, line
 		s.mu.Unlock()
+		if changed && s.cfg.Publish != nil {
+			s.cfg.Publish(event.ConditionChanged(l.terms.Unit, l.terms.Incarnation, from, grade, line))
+		}
 	case e.GetSession().GetClose() != nil:
 		s.end(l, "closed", 0, "")
 	case e.GetSession().GetOpen() != nil:
