@@ -17,6 +17,7 @@ import (
 
 	"github.com/yoke-project/yoke/internal/core/admission"
 	"github.com/yoke-project/yoke/internal/core/registry"
+	"github.com/yoke-project/yoke/internal/core/scope"
 	"github.com/yoke-project/yoke/internal/core/unit"
 	"github.com/yoke-project/yoke/internal/gate"
 )
@@ -406,4 +407,86 @@ func TestTheOutcomeReachesTheMachineWhenItIsTheUnits(t *testing.T) {
 	if len(b.told["third"]) != 0 {
 		t.Errorf("a forged request told the third unit's machine %v", b.told["third"])
 	}
+}
+
+const watch = `
+manifest: 1
+id: com.yoke.station.watch
+protocol: 1
+streams:
+  - id: station.spectra
+commands:
+  - id: calibrate
+queries:
+  - id: head-status
+occurrences:
+  - id: calibration.drift
+  - id: head.fault
+capabilities:
+  - { name: stream.spectra.publish, governs: { stream: station.spectra } }
+  - { name: command.calibrate.accept, governs: { command: calibrate } }
+  - { name: query.head-status.answer, governs: { query: head-status } }
+  - { name: event.calibration-drift.report, governs: { occurrence: calibration.drift } }
+  - { name: event.head-fault.report, governs: { occurrence: head.fault } }
+`
+
+// std: yoke:the-granted-scope.04
+func TestAdmissionHandsTheSessionItsScope(t *testing.T) {
+	b := newBench(t, false)
+	b.manifest(t, watch)
+	const of = "com.yoke.station.watch"
+	b.reg.Grant(of, "command.calibrate.accept", "davide")
+	b.reg.Grant(of, "event.calibration-drift.report", "davide")
+	req := func(token string) *pluginv1.RegisterRequest {
+		return &pluginv1.RegisterRequest{Plugin: of, Unit: "watch", Token: token, Protocol: 1, Declared: &pluginv1.Surface{
+			Capabilities: []string{"stream.spectra.publish", "command.calibrate.accept", "query.head-status.answer", "event.calibration-drift.report", "event.head-fault.report"},
+			Streams:      []string{"station.spectra"}, Commands: []string{"calibrate"}, Queries: []string{"head-status"}}}
+	}
+	resp := b.register(t, req(b.compose("watch", of)))
+	accepted(t, resp)
+	first, ok := b.a.Lookup(resp.SessionId)
+	if !ok || first.Scope == nil {
+		t.Fatalf("the Session identity resolves to %v, with no scope", first)
+	}
+	type check struct {
+		kind scope.Kind
+		id   string
+		want pluginv1.Code
+	}
+	expect := func(sc *scope.Scope, checks []check) {
+		t.Helper()
+		for _, c := range checks {
+			if got := sc.Check(c.kind, c.id); got != c.want {
+				t.Errorf("%s %s is %v, want %v", c.kind, c.id, got, c.want)
+			}
+		}
+	}
+	atAdmission := []check{
+		{scope.Command, "calibrate", pluginv1.Code_CODE_UNSPECIFIED},
+		{scope.Occurrence, "calibration.drift", pluginv1.Code_CODE_UNSPECIFIED},
+		{scope.Occurrence, "head.fault", pluginv1.Code_CODE_SCOPE_WITHHELD},
+		{scope.Stream, "station.spectra", pluginv1.Code_CODE_SCOPE_WITHHELD},
+		{scope.Query, "head-status", pluginv1.Code_CODE_SCOPE_WITHHELD},
+		{scope.Occurrence, "lamp.failure", pluginv1.Code_CODE_SCOPE_UNDECLARED},
+	}
+	expect(first.Scope, atAdmission)
+
+	for _, c := range []string{"stream.spectra.publish", "query.head-status.answer", "event.head-fault.report"} {
+		b.reg.Grant(of, c, "davide")
+	}
+	again, _ := b.a.Lookup(resp.SessionId)
+	expect(again.Scope, atAdmission)
+
+	b.a.Release("watch")
+	resp = b.register(t, req(b.tokens.Issue("watch")))
+	accepted(t, resp)
+	next, _ := b.a.Lookup(resp.SessionId)
+	if next == nil || next.Scope == nil {
+		t.Fatal("the next admission's Session has no scope")
+	}
+	expect(next.Scope, []check{
+		{scope.Occurrence, "head.fault", pluginv1.Code_CODE_UNSPECIFIED},
+		{scope.Stream, "station.spectra", pluginv1.Code_CODE_UNSPECIFIED},
+		{scope.Query, "head-status", pluginv1.Code_CODE_UNSPECIFIED},
+	})
 }

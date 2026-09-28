@@ -26,15 +26,27 @@ import (
 
 	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
 
+	"github.com/yoke-project/yoke/internal/core/scope"
 	"github.com/yoke-project/yoke/internal/core/unit"
 )
 
-// Admitted is what admission issued with a Session identity: whose it is, and the heartbeat terms.
+// Admitted is what admission issued with a Session identity: whose it is, the heartbeat terms, and the
+// scope the unit was granted.
 type Admitted struct {
 	Unit      string
 	Interval  time.Duration
 	Tolerance uint32
+	Scope     *scope.Scope
 }
+
+// Refused is a sending the Core declined where it was asked for, with the code a unit would have been
+// answered with had it sent the same.
+type Refused struct {
+	Code   pluginv1.Code
+	Reason string
+}
+
+func (r *Refused) Error() string { return codeName(r.Code) + ": " + r.Reason }
 
 // Config is what the Session service reads and whom it tells.
 type Config struct {
