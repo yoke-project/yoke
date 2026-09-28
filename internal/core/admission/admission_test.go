@@ -440,7 +440,8 @@ func TestAdmissionHandsTheSessionItsScope(t *testing.T) {
 	req := func(token string) *pluginv1.RegisterRequest {
 		return &pluginv1.RegisterRequest{Plugin: of, Unit: "watch", Token: token, Protocol: 1, Declared: &pluginv1.Surface{
 			Capabilities: []string{"stream.spectra.publish", "command.calibrate.accept", "query.head-status.answer", "event.calibration-drift.report", "event.head-fault.report"},
-			Streams:      []string{"station.spectra"}, Commands: []string{"calibrate"}, Queries: []string{"head-status"}}}
+			Streams:      []string{"station.spectra"}, Commands: []string{"calibrate"}, Queries: []string{"head-status"},
+			Occurrences: []string{"calibration.drift", "head.fault"}}}
 	}
 	resp := b.register(t, req(b.compose("watch", of)))
 	accepted(t, resp)

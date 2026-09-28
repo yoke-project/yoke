@@ -400,14 +400,20 @@ func pluginChannel(st *State) Channel {
 			if !ok {
 				return session.Admitted{}, false
 			}
-			return session.Admitted{Unit: s.Unit, Interval: s.Heartbeat.GetInterval().AsDuration(), Tolerance: s.Heartbeat.GetTolerance(), Scope: s.Scope}, true
+			var incarnation uint64
+			if st.Supervisor != nil {
+				incarnation = uint64(st.Supervisor.Status(s.Unit).Incarnation)
+			}
+			return session.Admitted{Unit: s.Unit, Incarnation: incarnation, Interval: s.Heartbeat.GetInterval().AsDuration(),
+				Tolerance: s.Heartbeat.GetTolerance(), Scope: s.Scope}, true
 		},
 		Observe: func(id string, in unit.Input) {
 			if st.Supervisor != nil {
 				st.Supervisor.Input(id, in)
 			}
 		},
-		Log: st.Log,
+		Publish: st.publish,
+		Log:     st.Log,
 	})
 	server := grpc.NewServer()
 	pluginv1.RegisterRegisterServer(server, st.Admission)
