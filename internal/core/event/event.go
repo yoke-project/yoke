@@ -152,8 +152,9 @@ func concluded(typ string, subject Subject, severity int, detail map[string]any)
 	return e
 }
 
-// StateChanged is the Core's conclusion that a unit's life moved between two states. It grades the
-// change by where it went: into Failed serious, into Refused notable, and anything else routine.
+// StateChanged is the Core's conclusion that a unit's life moved between two states; from is empty for a
+// life that has just begun. It grades the change by where it went: into Failed serious, into Refused
+// notable, and anything else routine.
 func StateChanged(unitID string, incarnation uint64, from, to unit.State) Event {
 	severity := Routine
 	switch to {
@@ -162,7 +163,11 @@ func StateChanged(unitID string, incarnation uint64, from, to unit.State) Event 
 	case unit.Refused:
 		severity = Notable
 	}
-	return concluded("unit.state.changed", UnitSubject(unitID, incarnation), severity, map[string]any{"from": from, "to": to})
+	detail := map[string]any{"to": to}
+	if from != "" {
+		detail["from"] = from
+	}
+	return concluded("unit.state.changed", UnitSubject(unitID, incarnation), severity, detail)
 }
 
 // InstanceReady is the trunk's conclusion that the instance became observable.

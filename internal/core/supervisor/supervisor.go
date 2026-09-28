@@ -22,6 +22,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/yoke-project/yoke/internal/core/event"
 	"github.com/yoke-project/yoke/internal/core/unit"
 )
 
@@ -77,6 +78,9 @@ type Config struct {
 	Ended func(unitID string)
 	// NotStarted is told of a unit whose dependency never arrived, with the chain that caused it. Optional.
 	NotStarted func(unitID, cause string)
+	// Publish is told each state a unit's life enters, as the event the Core concluded. It never waits.
+	// Optional.
+	Publish func(event.Event)
 }
 
 // Status is what is observed of a unit: its state, and the facts about its next incarnation.
@@ -279,6 +283,8 @@ func (s *Supervisor) Declare(unitID string, change func(*Unit)) {
 // attempt performs one launch: a new machine, a new incarnation, a new token. Called with the lock held.
 func (s *Supervisor) attempt(m *managed) {
 	m.machine = unit.NewMachine(m.decl.Kind)
+	// Until the launch is counted, this attempt's life has no number.
+	m.incarnation = 0
 	m.status.Waiting, m.status.Failure, m.windowOut = false, "", false
 	m.exitStatus, m.hasExit = 0, false
 	m.process, m.exited = nil, nil
@@ -336,6 +342,7 @@ func (s *Supervisor) attempt(m *managed) {
 
 	m.incarnation, m.process, m.exited = incarnation, command.Process, make(chan struct{})
 	m.status.Incarnation, m.status.PID, m.status.Token = incarnation, command.Process.Pid, token
+	s.publish(event.StateChanged(m.decl.ID, uint64(incarnation), "", unit.Starting))
 	s.apply(m, unit.ProcessStarted{})
 
 	exited, window := m.exited, time.AfterFunc(s.policy(m).StartupWindow, func() { s.windowElapsed(m, incarnation) })
@@ -404,6 +411,9 @@ func (s *Supervisor) ended(m *managed, incarnation, status int) {
 // apply gives the machine one input and records what it concluded. Lock held.
 func (s *Supervisor) apply(m *managed, in unit.Input) {
 	t, moved := m.machine.Apply(in)
+	if moved {
+		s.publish(event.StateChanged(m.decl.ID, uint64(m.incarnation), t.From, t.To))
+	}
 	m.status.State = m.machine.State()
 	m.status.Condition, m.status.HasCondition = m.machine.Condition()
 	if moved && t.To == unit.Running {
@@ -427,6 +437,12 @@ func (s *Supervisor) apply(m *managed, in unit.Input) {
 	}
 	if moved && t.To.Terminal() && s.cfg.Ended != nil {
 		s.cfg.Ended(m.decl.ID)
+	}
+}
+
+func (s *Supervisor) publish(e event.Event) {
+	if s.cfg.Publish != nil {
+		s.cfg.Publish(e)
 	}
 }
 
