@@ -77,6 +77,10 @@ func scanMarkers(root string, descriptions []description) ([]pair, []Finding) {
 			}
 			return nil
 		}
+		// A link is not part of the tree, whatever it points at: it is neither followed nor read.
+		if !d.Type().IsRegular() {
+			return nil
+		}
 		if strings.HasSuffix(d.Name(), ".std.md") {
 			return nil
 		}
