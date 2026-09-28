@@ -1,0 +1,72 @@
+// This surface's error codes. On the wire a code is its dotted name, which grows under one grammar across
+// every surface; this enum is where every party reads the names from, each stated in its `code` option,
+// and a code's meaning never changes under its name.
+syntax = "proto3";
+
+package yoke.administrative.v1;
+
+import "google/protobuf/descriptor.proto";
+
+option go_package = "github.com/yoke-project/yoke/proto/yoke/administrative/v1;administrativev1";
+
+extend google.protobuf.EnumValueOptions {
+  // The code's dotted name, as it travels.
+  string code = 50001;
+}
+
+enum Code {
+  CODE_UNSPECIFIED = 0;
+  // The request does not decode, or a required field is absent.
+  CODE_OPERATION_MALFORMED = 1 [(code) = "operation.malformed"];
+  // It names an operation this Core does not implement.
+  CODE_OPERATION_UNKNOWN = 2 [(code) = "operation.unknown"];
+  // The contract version is absent, or this Core does not support it.
+  CODE_COMPAT_UNSUPPORTED = 3 [(code) = "compat.unsupported"];
+  // Nothing of that kind bears that identity.
+  CODE_SUBJECT_UNKNOWN = 4 [(code) = "subject.unknown"];
+  // The operation does not take a subject of that kind.
+  CODE_SUBJECT_WRONG_KIND = 5 [(code) = "subject.wrong_kind"];
+  // A grant names a capability the plugin's Manifest does not declare.
+  CODE_CAPABILITY_UNDECLARED = 6 [(code) = "capability.undeclared"];
+  // The stream is not one that unit's Plugin declared.
+  CODE_STREAM_UNDECLARED = 7 [(code) = "stream.undeclared"];
+  // It names something declared but not authorised.
+  CODE_SCOPE_WITHHELD = 8 [(code) = "scope.withheld"];
+  // The operation needs a running unit and this one is not.
+  CODE_UNIT_NOT_RUNNING = 9 [(code) = "unit.not_running"];
+  // The unit holds no Session, so nothing can be issued on one.
+  CODE_UNIT_NO_SESSION = 10 [(code) = "unit.no_session"];
+  // The wait elapsed with no acknowledgement or answer.
+  CODE_UNIT_UNANSWERED = 11 [(code) = "unit.unanswered"];
+  // A limit is not a positive integer.
+  CODE_RETENTION_INVALID = 12 [(code) = "retention.invalid"];
+  // An orderly stop is in progress and the operation would change something.
+  CODE_INSTANCE_STOPPING = 13 [(code) = "instance.stopping"];
+  // The container engine is not currently observable: a fault, not a denial.
+  CODE_BACKEND_UNAVAILABLE = 14 [(code) = "backend.unavailable"];
+  // A write to the Registry or the log store did not succeed: a fault, not a denial.
+  CODE_STORE_UNAVAILABLE = 15 [(code) = "store.unavailable"];
+}
+
+// A refusal: a code, a message for a person, and what it names in a detail typed per code.
+message Refusal {
+  // One of Code's names.
+  string code = 1;
+  string message = 2;
+  oneof detail {
+    // The subject named: for subject.unknown and subject.wrong_kind, and for the refusals about a unit.
+    Subject subject = 3;
+    // The item withheld or undeclared: a capability, or a stream.
+    string item = 4;
+  }
+}
+
+// What an operation, a record or an event is about: a kind and an identity, and a unit's life where
+// one is named.
+message Subject {
+  // instance, unit, plugin, channel, document or connection.
+  string kind = 1;
+  string identity = 2;
+  // A unit's life; zero where none is named.
+  uint64 incarnation = 3;
+}

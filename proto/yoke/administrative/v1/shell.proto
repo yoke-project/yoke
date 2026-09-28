@@ -1,0 +1,53 @@
+// The shell projection, on shell.sock: one connection held open, carrying many calls, each correlated by
+// an identity the caller chose, and each ending with exactly one completion.
+syntax = "proto3";
+
+package yoke.administrative.v1;
+
+import "yoke/administrative/v1/codes.proto";
+import "yoke/administrative/v1/events.proto";
+import "yoke/administrative/v1/operations.proto";
+
+option go_package = "github.com/yoke-project/yoke/proto/yoke/administrative/v1;administrativev1";
+
+service Shell {
+  rpc Connect(stream ClientFrame) returns (stream CoreFrame);
+}
+
+message ClientFrame {
+  // Chosen by the caller, unique within this connection.
+  string call = 1;
+  oneof carries {
+    Request request = 2;
+    Cancel cancel = 3;
+  }
+}
+
+// Ends a call in flight.
+message Cancel {}
+
+message CoreFrame {
+  // The call this frame belongs to; empty on the opening.
+  string call = 1;
+  oneof carries {
+    Opening opening = 2;
+    Response answer = 3;
+    Event event = 4;
+    // A refusal belongs to one call and does not end the connection.
+    Refusal refusal = 5;
+    Completion completion = 6;
+  }
+}
+
+// The Core's first frame, before anything the client asked for.
+message Opening {
+  string connection = 1;
+  Actor actor = 2;
+  // The call identity of the standing subscription, which the client may replace or cancel.
+  string subscription = 3;
+  // The contract version this Core speaks.
+  uint32 version = 4;
+}
+
+// The end of a call; never inferred from silence.
+message Completion {}

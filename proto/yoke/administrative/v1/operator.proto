@@ -1,0 +1,15 @@
+// The operator projection, on operator.sock: a call and its answer, or one call answered by a stream.
+syntax = "proto3";
+
+package yoke.administrative.v1;
+
+import "yoke/administrative/v1/operations.proto";
+
+option go_package = "github.com/yoke-project/yoke/proto/yoke/administrative/v1;administrativev1";
+
+service Operator {
+  // One operation, one answer. A refusal travels in the status, carrying the structured Refusal.
+  rpc Call(Request) returns (Response);
+  // One operation whose answer is a stream: subscribe, and log.follow.
+  rpc Watch(Request) returns (stream Response);
+}
