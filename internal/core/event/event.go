@@ -202,3 +202,33 @@ func ConditionChanged(unitID string, incarnation uint64, from *int, to int, line
 	e.Actor, e.Line = Actor{Class: ByUnit}, line
 	return e
 }
+
+// Names are the types a producer in this Core emits.
+func Names() []string {
+	names := make([]string, 0, len(declared))
+	for name := range declared {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	return names
+}
+
+// DocumentResolved is discovery's conclusion that a document it read resolved to something, at a digest.
+func DocumentResolved(path, resolved, digest string) Event { return Event{} }
+
+// DocumentRejected is the Core's conclusion that a document it read is refused, with one finding.
+func DocumentRejected(path, code, place string) Event { return Event{} }
+
+// Filter selects events on four independent axes; an axis left empty selects everything on it.
+type Filter struct {
+	SubjectKind      Kind
+	SubjectID        string
+	Floor            int
+	Type             string
+	TypePrefix       bool
+	Occurrence       string
+	OccurrencePrefix bool
+}
+
+// Selects says whether the event satisfies every axis the filter states.
+func (f Filter) Selects(e Event) bool { return false }

@@ -275,3 +275,33 @@ func TestAWriteThatFailsIsReportedAndNotFatal(t *testing.T) {
 		t.Fatal("the store could not be closed")
 	}
 }
+
+// std: yoke:names-and-filtering.05
+func TestEveryDeclaredTypeIsKeptAsAnEntry(t *testing.T) {
+	one := map[string]event.Event{
+		"instance.ready":           event.InstanceReady("bench"),
+		"instance.stopping":        event.InstanceStopping("bench"),
+		"unit.state.changed":       event.StateChanged("acquire", 2, unit.Starting, unit.Running),
+		"unit.condition.changed":   event.ConditionChanged("acquire", 2, nil, 90, "warm"),
+		"unit.occurrence.reported": event.OccurrenceReported("acquire", 2, &pluginv1.Event{Occurrence: "calibration.drift", Severity: 40}),
+		"document.resolved":        event.DocumentResolved("/etc/yoke/bench.yaml", "bench", "sha256:00"),
+		"document.rejected":        event.DocumentRejected("/etc/yoke/bad.yaml", "yaml.syntax", "line 3"),
+	}
+	for _, name := range event.Names() {
+		e, made := one[name]
+		if !made {
+			t.Errorf("%s is declared, and this case makes none", name)
+			continue
+		}
+		entry := logstore.Counterpart(e)
+		wantSource := logstore.FromCore
+		if name == "unit.occurrence.reported" {
+			wantSource = logstore.Reported
+		}
+		unitLife := e.Subject.Kind == event.Unit
+		if entry.Type != name || entry.SubjectKind != string(e.Subject.Kind) || entry.SubjectID != e.Subject.ID || entry.Source != wantSource ||
+			(unitLife && (entry.Unit != "acquire" || entry.Incarnation != 2)) || (!unitLife && entry.Unit != "") {
+			t.Errorf("%s is kept as %+v", name, entry)
+		}
+	}
+}

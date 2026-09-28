@@ -360,3 +360,69 @@ func (l *lockedBuffer) String() string {
 	defer l.mu.Unlock()
 	return l.b.String()
 }
+
+// std: yoke:names-and-filtering.07
+func TestThroughTheCoreTheDocumentsReadArePublishedAndRecorded(t *testing.T) {
+	binary := filepath.Join(t.TempDir(), "yoke-core")
+	if said, err := exec.Command("go", "build", "-o", binary, "github.com/yoke-project/yoke/cmd/yoke-core").CombinedOutput(); err != nil {
+		t.Fatalf("yoke-core does not build: %v\n%s", err, said)
+	}
+	d := newDeployment(t, "com.example.good")
+	write(t, d.manifests, "com.example.broken", "manifest: [unclosed")
+	os.WriteFile(d.composition, []byte("units: {}\n"), 0o644)
+	good := filepath.Join(d.manifests, "com.example.good", "manifest.yaml")
+	broken := filepath.Join(d.manifests, "com.example.broken", "manifest.yaml")
+	core := filepath.Join(d.dir, "core.yaml")
+	os.WriteFile(core, []byte(fmt.Sprintf("state_dir: %s/state\nruntime_dir: %s/run\nplugins:\n  manifests: %s\n  executables: %s\n", d.dir, d.run, d.manifests, d.executables)), 0o644)
+	command := exec.Command(binary)
+	command.Env = append(os.Environ(), "YOKE_CONFIG="+core, "YOKE_COMPOSITION="+d.composition)
+	out, _ := command.StderrPipe()
+	if err := command.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { command.Process.Kill(); command.Wait() })
+	lines := make(chan string)
+	go func() {
+		scanner := bufio.NewScanner(out)
+		for scanner.Scan() {
+			lines <- scanner.Text()
+		}
+		close(lines)
+	}()
+	var said []string
+	resolvedGood, resolvedComposition, rejected := false, false, false
+	deadline := time.After(15 * time.Second)
+	for !resolvedGood || !resolvedComposition || !rejected {
+		select {
+		case line, open := <-lines:
+			if !open {
+				t.Fatalf("the Core exited:\n%s", strings.Join(said, "\n"))
+			}
+			said = append(said, line)
+			if !strings.Contains(line, "msg=event") {
+				continue
+			}
+			resolvedGood = resolvedGood || (strings.Contains(line, "type=document.resolved") && strings.Contains(line, "subject=document:"+good) &&
+				strings.Contains(line, "digest=sha256:"))
+			resolvedComposition = resolvedComposition || (strings.Contains(line, "type=document.resolved") && strings.Contains(line, "subject=document:"+d.composition))
+			rejected = rejected || (strings.Contains(line, "type=document.rejected") && strings.Contains(line, "subject=document:"+broken) &&
+				strings.Contains(line, "finding="))
+		case <-deadline:
+			t.Fatalf("within fifteen seconds the Core said:\n%s", strings.Join(said, "\n"))
+		}
+	}
+	command.Process.Signal(os.Interrupt)
+	command.Wait()
+	db, err := sql.Open("sqlite", "file:"+filepath.Join(d.dir, "state", "logs.db")+"?mode=ro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	for _, want := range []struct{ typ, subject string }{{"document.resolved", good}, {"document.resolved", d.composition}, {"document.rejected", broken}} {
+		var n int
+		db.QueryRow("SELECT count(*) FROM entry WHERE type = ? AND subject_kind = 'document' AND subject_id = ? AND unit IS NULL", want.typ, want.subject).Scan(&n)
+		if n == 0 {
+			t.Errorf("the log store holds no %s about %s", want.typ, want.subject)
+		}
+	}
+}
