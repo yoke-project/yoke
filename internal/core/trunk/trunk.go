@@ -18,12 +18,16 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"slices"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
+	administrativev1 "github.com/yoke-project/yoke/proto/yoke/administrative/v1"
 	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
 
 	"github.com/yoke-project/yoke/internal/core/admin"
@@ -105,6 +109,12 @@ type State struct {
 
 	stoppers []func() error
 	stopping atomic.Bool
+
+	mu             sync.Mutex
+	readyAt        time.Time
+	stoppingAt     time.Time
+	compositionSum string   // the digest the composition in force was read at
+	weaker         []string // the weaker arrangements the gate reported, in force
 }
 
 // OnStop registers what undoes a step. The stop runs them in the reverse of the order they were given.
@@ -113,6 +123,9 @@ func (st *State) OnStop(undo func() error) { st.stoppers = append(st.stoppers, u
 // Stop undoes what the trunk set up, in reverse. That the instance is stopping is published first, so
 // that the silence which follows is an expected one.
 func (st *State) Stop() error {
+	st.mu.Lock()
+	st.stoppingAt = time.Now()
+	st.mu.Unlock()
 	st.stopping.Store(true)
 	st.publish(event.InstanceStopping(st.Paths.Name))
 	var failed []error
@@ -149,6 +162,9 @@ func Steps() []Step {
 		{"channels", channels},
 		{ready, func(st *State) error {
 			st.Log.Info(ready, "root", st.Paths.Root)
+			st.mu.Lock()
+			st.readyAt = time.Now()
+			st.mu.Unlock()
 			st.publish(event.InstanceReady(st.Paths.Name))
 			return nil
 		}},
@@ -348,6 +364,7 @@ func declarations(st *State) error {
 		level := slog.LevelError
 		if f.Class == gate.Weaker {
 			level = slog.LevelWarn
+			st.weaker = append(st.weaker, f.Code+" at "+f.Location)
 		}
 		st.Log.Log(context.Background(), level, "finding", "document", f.Document, "code", f.Code, "location", f.Location, "finding", f.Message)
 		if dep == nil && f.Class != gate.Weaker {
@@ -358,7 +375,8 @@ func declarations(st *State) error {
 		return fmt.Errorf("the composition %s is refused", st.Composition)
 	}
 	sum := sha256.Sum256(composition.Bytes)
-	st.publish(event.DocumentResolved(st.Composition, fmt.Sprintf("%d units", len(dep.Units)), "sha256:"+hex.EncodeToString(sum[:])))
+	st.compositionSum = "sha256:" + hex.EncodeToString(sum[:])
+	st.publish(event.DocumentResolved(st.Composition, fmt.Sprintf("%d units", len(dep.Units)), st.compositionSum))
 	st.Deployment = dep
 	st.Units = discovery.Units(dep, d.Manifest, plugins.Executables, st.Paths.State)
 	return nil
@@ -451,6 +469,19 @@ func adminChannels(st *State) []Channel {
 				}
 				return st.Discovery.Manifest(id)
 			}}
+		core.Instance, core.Documents = st.instanceRecord, st.documents
+		core.Composed = func(plugin string) bool {
+			if st.Deployment == nil {
+				return false
+			}
+			for _, u := range st.Deployment.Units {
+				if u.Plugin == plugin {
+					return true
+				}
+			}
+			return false
+		}
+		core.Connections = func() []admin.Connection { return st.Admin.Connections() }
 		cfg.Operations = core.Operations()
 	}
 	st.Admin = admin.New(cfg)
@@ -460,6 +491,56 @@ func adminChannels(st *State) []Channel {
 		{Name: "operator", Path: "operator.sock", Serve: func(l Listener) { operator.Serve(l) }},
 		{Name: "shell", Path: "shell.sock", Serve: func(l Listener) { shell.Serve(l) }},
 	}
+}
+
+// instanceRecord is the instance as a read answers it.
+func (st *State) instanceRecord() *administrativev1.InstanceRecord {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	r := &administrativev1.InstanceRecord{Identity: st.Paths.Name, Form: map[Form]string{Service: "service", Application: "application"}[st.Form],
+		Ready: !st.readyAt.IsZero(), Stopping: st.stopping.Load(), Description: st.Composition, DescriptionDigest: st.compositionSum,
+		Weaker: slices.Clone(st.weaker),
+		Parameters: map[string]string{
+			"state_dir": st.Config.StateDir, "runtime_dir": st.Config.RuntimeDir, "engine": st.Config.Engine, "log.level": st.Config.Log.Level,
+			"plugins.manifests": st.Config.Plugins.Manifests, "plugins.executables": st.Config.Plugins.Executables,
+			"plugins.scan_interval": st.Config.Plugins.ScanInterval.String(),
+		}}
+	since := st.readyAt
+	if r.Stopping {
+		since = st.stoppingAt
+	}
+	if !since.IsZero() {
+		r.Since = timestamppb.New(since)
+	}
+	if info, ok := debug.ReadBuildInfo(); ok {
+		r.Version = info.Main.Version
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.revision" {
+				r.Stamp = setting.Value
+			}
+		}
+	}
+	return r
+}
+
+// documents are the documents the Core read, each as it was read: the Manifests discovery resolved, and
+// the composition in force.
+func (st *State) documents() []*administrativev1.DocumentRecord {
+	var out []*administrativev1.DocumentRecord
+	if st.Discovery != nil && st.Registry != nil {
+		plugins, _ := st.Registry.Plugins()
+		for _, id := range plugins {
+			m, ok := st.Discovery.Manifest(id)
+			p, known, _ := st.Registry.Plugin(id)
+			if ok && known {
+				out = append(out, &administrativev1.DocumentRecord{Path: m.Path, Resolved: id, Digest: p.ManifestDigest})
+			}
+		}
+	}
+	if st.Deployment != nil {
+		out = append(out, &administrativev1.DocumentRecord{Path: st.Composition, Resolved: fmt.Sprintf("%d units", len(st.Deployment.Units)), Digest: st.compositionSum})
+	}
+	return out
 }
 
 // supervised is the supervisor as the administrative operations reach it, from the moment it exists.

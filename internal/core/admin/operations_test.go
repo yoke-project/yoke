@@ -544,8 +544,15 @@ func TestStreamControlWaitsForItsTransports(t *testing.T) {
 	slices.Sort(served)
 	want := []string{"plugin.disable", "plugin.enable", "plugin.grant", "plugin.withdraw", "unit.ask", "unit.restart",
 		"unit.retention.clear", "unit.retention.set", "unit.start", "unit.stop"}
-	if !slices.Equal(served, want) {
-		t.Errorf("the Core serves %v, want %v", served, want)
+	for _, name := range want {
+		if !slices.Contains(served, name) {
+			t.Errorf("the Core does not serve %s", name)
+		}
+	}
+	for _, name := range []string{"unit.stream.start", "unit.stream.stop"} {
+		if slices.Contains(served, name) {
+			t.Errorf("the Core serves %s", name)
+		}
 	}
 	start := v1(&administrativev1.Request{Operation: &administrativev1.Request_UnitStreamStart{UnitStreamStart: &administrativev1.UnitStream{Unit: "acquire", Stream: "station.data"}}})
 	if _, ref := b.call(t, start); ref.GetCode() != "operation.unknown" {

@@ -74,12 +74,6 @@ type Core struct {
 	Wait time.Duration
 }
 
-// Records are the records of a subject kind, or of the one subject named: what a read answers and what a
-// subscription's snapshot is made of.
-func (c *Core) Records(kind, identity string) ([]*administrativev1.Record, *administrativev1.Refusal) {
-	return nil, nil
-}
-
 // Operations are the operations the Core serves, by name. Stream control is not among them: a stream
 // travels on a transport of its own, and there is none yet to create.
 func (c *Core) Operations() map[string]Operation {
@@ -94,6 +88,9 @@ func (c *Core) Operations() map[string]Operation {
 		"unit.retention.set":   {Answer: c.retention(true)},
 		"unit.retention.clear": {Answer: c.retention(false)},
 		"unit.ask":             {Answer: c.ask},
+		"read":                 {Answer: c.read},
+		"log.query":            {Answer: c.logQuery},
+		"log.follow":           {Stream: c.logFollow},
 	}
 }
 
