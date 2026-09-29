@@ -26,6 +26,8 @@ import (
 	"time"
 
 	"go.yaml.in/yaml/v3"
+
+	administrativev1 "github.com/yoke-project/yoke/proto/yoke/administrative/v1"
 )
 
 // The three values a cell can hold. There is no fourth.
@@ -330,6 +332,7 @@ type Run struct {
 	instance  string
 	admin     *Harness
 	adminErr  error
+	operator  administrativev1.OperatorClient
 }
 
 // Described is the Manifest the harness described at the start of the run.
