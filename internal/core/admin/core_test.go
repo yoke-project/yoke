@@ -17,8 +17,10 @@ import (
 	administrativev1 "github.com/yoke-project/yoke/proto/yoke/administrative/v1"
 )
 
-// std: yoke:reaching-the-surface.07
-func TestThroughTheCoreAShellConnectionOpensAsItsAccount(t *testing.T) {
+// started builds yoke-core and starts it in the service form, with nothing to run; it returns the
+// runtime directory and a wait for a line of its output.
+func started(t *testing.T) (string, func(what string, holds func(string) bool)) {
+	t.Helper()
 	binary := filepath.Join(t.TempDir(), "yoke-core")
 	if said, err := exec.Command("go", "build", "-o", binary, "github.com/yoke-project/yoke/cmd/yoke-core").CombinedOutput(); err != nil {
 		t.Fatalf("yoke-core does not build: %v\n%s", err, said)
@@ -67,21 +69,32 @@ func TestThroughTheCoreAShellConnectionOpensAsItsAccount(t *testing.T) {
 		}
 	}
 	await("readiness", func(l string) bool { return strings.Contains(l, "msg=ready") })
+	return run, await
+}
 
+// dial is a client of one of the Core's sockets.
+func dial(t *testing.T, path string) *grpc.ClientConn {
+	t.Helper()
+	conn, err := grpc.NewClient("unix://"+path, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { conn.Close() })
+	return conn
+}
+
+// std: yoke:reaching-the-surface.07
+func TestThroughTheCoreAShellConnectionOpensAsItsAccount(t *testing.T) {
+	run, await := started(t)
 	for _, name := range []string{"operator.sock", "shell.sock"} {
 		info, err := os.Stat(filepath.Join(run, name))
 		if err != nil || info.Mode()&os.ModeSocket == 0 || info.Mode().Perm() != 0o660 {
 			t.Errorf("%s is %v (%v), want a socket of mode 0660", name, info, err)
 		}
 	}
-	conn, err := grpc.NewClient("unix://"+filepath.Join(run, "shell.sock"), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer conn.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	stream, err := administrativev1.NewShellClient(conn).Connect(ctx)
+	stream, err := administrativev1.NewShellClient(dial(t, filepath.Join(run, "shell.sock"))).Connect(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,4 +114,36 @@ func TestThroughTheCoreAShellConnectionOpensAsItsAccount(t *testing.T) {
 	await("connection.closed", func(l string) bool {
 		return strings.Contains(l, "type=connection.closed") && strings.Contains(l, about) && strings.Contains(l, "actor=operator")
 	})
+}
+
+// std: yoke:the-two-projections.06
+func TestThroughTheCoreBothProjectionsAnswerAlike(t *testing.T) {
+	run, _ := started(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	operator := administrativev1.NewOperatorClient(dial(t, filepath.Join(run, "operator.sock")))
+	for name, r := range map[string]*administrativev1.Request{"no operation": nothing, "subscribe": subscribe} {
+		_, err := operator.Call(ctx, r)
+		if got := refusalOf(err); got.GetCode() != "operation.malformed" {
+			t.Errorf("Call of %s was answered %v, want operation.malformed", name, err)
+		}
+	}
+	stream, err := administrativev1.NewShellClient(dial(t, filepath.Join(run, "shell.sock"))).Connect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	next(t, stream)
+	issue(t, stream, "x", nothing)
+	issue(t, stream, "y", nothing)
+	calls := map[string]bool{}
+	for range 2 {
+		frame := next(t, stream)
+		if frame.GetRefusal().GetCode() != "operation.malformed" {
+			t.Errorf("the shell answered %v, want a refusal operation.malformed", frame)
+		}
+		calls[frame.GetCall()] = true
+	}
+	if !calls["x"] || !calls["y"] {
+		t.Errorf("the refusals carried %v, want x and y", calls)
+	}
 }

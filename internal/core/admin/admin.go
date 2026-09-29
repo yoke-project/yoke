@@ -54,7 +54,16 @@ type Config struct {
 	Publish func(event.Event)
 	// Accounts resolves an account's number to its name; nil reads the host's account database.
 	Accounts func(uid string) (string, error)
-	Log      *slog.Logger
+	// Operations answer the union's members, by the operation's name: `read`, `log.follow`.
+	Operations map[string]Operation
+	Log        *slog.Logger
+}
+
+// An Operation answers one member of the union, whichever projection carried it: once, or by a stream
+// the caller or the operation ends.
+type Operation struct {
+	Answer func(ctx context.Context, actor event.Actor, r *administrativev1.Request) (*administrativev1.Response, *administrativev1.Refusal)
+	Stream func(ctx context.Context, actor event.Actor, r *administrativev1.Request, send func(*administrativev1.Response) error) *administrativev1.Refusal
 }
 
 // Surface serves both projections.
