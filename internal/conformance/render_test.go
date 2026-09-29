@@ -53,6 +53,11 @@ func TestAContractsCasesAreRenderedInTheForm(t *testing.T) {
 
 // std: yoke:the-rendered-description.02
 func TestTheCommittedRenderingIsCurrent(t *testing.T) {
+	for name, c := range conformance.Contracts() {
+		if err := conformance.Current(name+".std.md", c); err != nil {
+			t.Errorf("the %s contract's rendering: %v", name, err)
+		}
+	}
 	committed := "plugin.std.md"
 	if err := conformance.Current(committed, conformance.Plugin()); err != nil {
 		t.Fatalf("the committed rendering is not current: %v", err)

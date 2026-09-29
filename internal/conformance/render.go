@@ -26,8 +26,16 @@ func Plugin() Contract {
 		Item: "yoke-project/yoke#19", Cases: Cases()}
 }
 
+// Administrative is the administrative contract, as the suite measures it.
+func Administrative() Contract {
+	return Contract{Name: "administrative", Feature: "the administrative contract, as the conformance suite measures it against a real Core through a family's harness",
+		Item: "yoke-project/yoke#97", Cases: AdministrativeCases()}
+}
+
 // Contracts are the contracts the suite measures, by name.
-func Contracts() map[string]Contract { return map[string]Contract{"plugin": Plugin()} }
+func Contracts() map[string]Contract {
+	return map[string]Contract{"plugin": Plugin(), "administrative": Administrative()}
+}
 
 // Render is a contract's description, in the form every description has, from the fields each case
 // carries: nobody writes a description of the suite's cases by hand.

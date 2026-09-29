@@ -95,3 +95,16 @@
 | **Precondition** | the run of case 1 |
 | **Action** | read its report |
 | **Expected** | it names the Core that ran and its version, and each harness's contract, declared contract version, language and SDK line |
+
+## yoke:the-conformance-suite.08 — a harness of a contract spoken from outside is launched against the instance, and only its contract's cases run
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/90.17 · arch/90-sdks/04 §How it is reached · arch/90-sdks/03 §The shape of a run |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a harness saying hello for the administrative contract; one case of that contract and one of the plugin contract |
+| **Action** | run the suite with both cases |
+| **Expected** | the Core is started with the fixture plugin declared and no unit; the harness is launched by the suite once the Core is ready, with the instance's root in `CONFORMANCE_INSTANCE`, where both administrative sockets are; the administrative case runs against it and passes, and the plugin case is not in the table |
