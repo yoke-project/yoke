@@ -31,6 +31,8 @@ type fakeUnit struct {
 	plugin      string
 	state       unit.State
 	incarnation int
+	since       time.Time
+	condition   *unit.Condition
 }
 
 // fakeUnits is a supervisor that does at once what it is asked.
@@ -63,11 +65,35 @@ func (f *fakeUnits) Of(plugin string) []string {
 	return ids
 }
 
+func (f *fakeUnits) IDs() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var ids []string
+	for id := range f.units {
+		ids = append(ids, id)
+	}
+	slices.Sort(ids)
+	return ids
+}
+
+func (f *fakeUnits) Kind(id string) unit.Kind {
+	if plugin, ok := f.Plugin(id); ok && plugin != "" {
+		return unit.Plugin
+	} else if ok {
+		return unit.Oneshot
+	}
+	return ""
+}
+
 func (f *fakeUnits) Status(id string) supervisor.Status {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if u, ok := f.units[id]; ok {
-		return supervisor.Status{State: u.state, Incarnation: u.incarnation}
+		st := supervisor.Status{State: u.state, Incarnation: u.incarnation, Since: u.since}
+		if u.condition != nil {
+			st.Condition, st.HasCondition, st.ConditionSince = *u.condition, true, u.since
+		}
+		return st
 	}
 	return supervisor.Status{}
 }
@@ -154,6 +180,7 @@ type bench struct {
 	events   *published
 	operator administrativev1.OperatorClient
 	shell    administrativev1.ShellClient
+	dir      string
 }
 
 func newBench(t *testing.T, units map[string]*fakeUnit, sessions map[string]string) *bench {
@@ -178,7 +205,10 @@ func newBench(t *testing.T, units map[string]*fakeUnit, sessions map[string]stri
 		Registry: r, Logs: logs, Units: b.units, Sessions: b.sessions, Publish: b.events.publish,
 		Manifest: func(id string) (*gate.Manifest, bool) { return manifest, id == station },
 	}
-	_, b.operator, b.shell = served(t, admin.Config{Operations: b.core.Operations()})
+	var s *admin.Surface
+	s, b.operator, b.shell = served(t, admin.Config{Operations: b.core.Operations()})
+	b.core.Connections = s.Connections
+	b.dir = dir
 	return b
 }
 

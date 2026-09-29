@@ -28,6 +28,9 @@ type Units interface {
 	Plugin(unit string) (string, bool)
 	// Of are the units declared to run a plugin.
 	Of(plugin string) []string
+	// IDs are every unit declared, in the order of their identities.
+	IDs() []string
+	Kind(unit string) unit.Kind
 	Status(unit string) supervisor.Status
 	StartUnit(unit string) error
 	StopUnit(unit string) error
@@ -59,8 +62,22 @@ type Core struct {
 	Sessions Sessions
 	Logs     *logstore.Store
 	Publish  func(event.Event)
+	// Instance is the instance's own record, as it stands.
+	Instance func() *administrativev1.InstanceRecord
+	// Documents are the documents the Core read, each as it was read.
+	Documents func() []*administrativev1.DocumentRecord
+	// Composed says whether the composition in force runs a plugin.
+	Composed func(plugin string) bool
+	// Connections are the administrative connections open now.
+	Connections func() []Connection
 	// Wait replaces the 30 s wait, for a test.
 	Wait time.Duration
+}
+
+// Records are the records of a subject kind, or of the one subject named: what a read answers and what a
+// subscription's snapshot is made of.
+func (c *Core) Records(kind, identity string) ([]*administrativev1.Record, *administrativev1.Refusal) {
+	return nil, nil
 }
 
 // Operations are the operations the Core serves, by name. Stream control is not among them: a stream
