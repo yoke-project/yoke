@@ -40,7 +40,11 @@ func harness() int {
 	}
 	log, _ := os.OpenFile(os.Getenv("TEST_HARNESS_LOG"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	send := func(v map[string]any) { b, _ := json.Marshal(v); conn.Write(append(b, '\n')) }
-	send(map[string]any{"type": "hello", "contract": "plugin", "language": "go", "sdk": "test-harness 0.0.1", "version": 1, "unit": os.Getenv("YOKE_UNIT")})
+	contract := os.Getenv("TEST_CONTRACT")
+	if contract == "" {
+		contract = "plugin"
+	}
+	send(map[string]any{"type": "hello", "contract": contract, "language": "go", "sdk": "test-harness 0.0.1", "version": 1, "unit": os.Getenv("YOKE_UNIT")})
 	lines := bufio.NewScanner(conn)
 	for lines.Scan() {
 		fmt.Fprintf(log, "%s %s\n", os.Getenv("YOKE_UNIT"), lines.Text())
@@ -57,6 +61,8 @@ func harness() int {
 			return 0
 		case d.Verb == "describe":
 			send(map[string]any{"type": "result", "id": d.ID, "value": map[string]any{"manifest": manifest}})
+		case d.Verb == "where":
+			send(map[string]any{"type": "result", "id": d.ID, "value": map[string]any{"instance": os.Getenv("CONFORMANCE_INSTANCE")}})
 		case d.Verb == "echo":
 			send(map[string]any{"type": "result", "id": d.ID, "value": d.Args})
 		case d.Verb == "notify":
@@ -307,5 +313,47 @@ func TestARunSaysWhatRan(t *testing.T) {
 	}
 	if said := cfg.Out.(*bytes.Buffer).String(); !strings.Contains(said, report.Ran.CoreVersion) || !strings.Contains(said, "test-harness 0.0.1") {
 		t.Errorf("the run printed:\n%s", said)
+	}
+}
+
+// std: yoke:the-conformance-suite.08
+func TestAHarnessSpokenFromOutsideIsLaunchedAgainstTheInstance(t *testing.T) {
+	var hello conformance.Hello
+	var instance, told string
+	var sockets, fixture bool
+	administrative := conformance.Case{ID: "yoke:toy.03", Title: "the administrator", Contract: "administrative", Issues: "`where`", Requires: "the instance",
+		Run: func(r *conformance.Run) conformance.Outcome {
+			h, err := r.Administrator()
+			if err != nil {
+				return conformance.Fail("", "a harness launched against the instance", err.Error())
+			}
+			hello, instance = h.Hello(), r.Instance()
+			_, operator := os.Stat(filepath.Join(instance, "operator.sock"))
+			_, shell := os.Stat(filepath.Join(instance, "shell.sock"))
+			sockets = operator == nil && shell == nil
+			_, declared := os.Stat(filepath.Join(r.Tree(), "plugins.d", conformance.Fixture, "manifest.yaml"))
+			fixture = declared == nil
+			told, _ = h.Do("where", nil).Value["instance"].(string)
+			return conformance.Pass()
+		}}
+	plugin := conformance.Case{ID: "yoke:toy.04", Title: "a plugin case", Contract: "plugin", Issues: "nothing", Requires: "nothing",
+		Run: func(*conformance.Run) conformance.Outcome { return conformance.Pass() }}
+	cfg, _ := config(t, administrative, plugin)
+	cfg.HarnessEnv["TEST_CONTRACT"] = "administrative"
+	report, err := conformance.Execute(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Rows) != 1 || report.Rows[0].Case != "yoke:toy.03" || report.Rows[0].Result != "pass" {
+		t.Fatalf("the table is %+v, want the administrative case alone, passing", report.Rows)
+	}
+	if hello.Contract != "administrative" || hello.Unit != "" {
+		t.Errorf("the harness said %+v, want the administrative contract and no unit", hello)
+	}
+	if instance == "" || told != instance || !sockets {
+		t.Errorf("the instance is %q with its sockets %v, and the harness was told %q", instance, sockets, told)
+	}
+	if !fixture {
+		t.Error("the fixture plugin was not declared")
 	}
 }

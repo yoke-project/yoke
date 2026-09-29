@@ -306,6 +306,13 @@ func (r *Run) NextUnit(within time.Duration) (*Harness, error) {
 	return h, nil
 }
 
+// Instance is the root of the instance the Core serves, where its administrative addresses are.
+func (r *Run) Instance() string { return "" }
+
+// Administrator is the harness the suite launched against the instance, for a contract spoken from
+// outside the deployment.
+func (r *Run) Administrator() (*Harness, error) { return nil, errors.New("not yet") }
+
 // Tree is the run's temporary tree.
 func (r *Run) Tree() string { return r.tree }
 
