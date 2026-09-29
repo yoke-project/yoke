@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -107,6 +108,8 @@ type Store struct {
 	closed  bool
 	queue   chan Entry
 	written chan struct{}
+	// watchers are told each time a batch is written.
+	watchers map[chan struct{}]bool
 }
 
 // Open opens the log store at path, creating it if absent, and migrates it forward. A file written by a
@@ -225,6 +228,14 @@ func (s *Store) write() {
 		if err := s.store(batch); err != nil {
 			s.report(fmt.Errorf("the log store %s lost %d entries: %w", s.path, len(batch), err))
 		}
+		s.mu.Lock()
+		for w := range s.watchers {
+			select {
+			case w <- struct{}{}:
+			default:
+			}
+		}
+		s.mu.Unlock()
 	}
 }
 
@@ -261,9 +272,14 @@ func nullNumber(n uint64) any {
 
 // Entries is every entry stored after the one numbered after, in the store's order.
 func (s *Store) Entries(after uint64) ([]Entry, error) {
-	rows, err := s.db.Query(`SELECT seq, at, coalesce(unit, ''), coalesce(incarnation, 0), source, severity, coalesce(type, ''),
-		coalesce(subject_kind, ''), coalesce(subject_id, ''), coalesce(actor, ''), coalesce(cause, 0), message, detail
-		FROM entry WHERE seq > ? ORDER BY seq`, int64(after))
+	return s.scan(selectEntries+" WHERE seq > ? ORDER BY seq", int64(after))
+}
+
+const selectEntries = `SELECT seq, at, coalesce(unit, ''), coalesce(incarnation, 0), source, severity, coalesce(type, ''),
+	coalesce(subject_kind, ''), coalesce(subject_id, ''), coalesce(actor, ''), coalesce(cause, 0), message, detail FROM entry`
+
+func (s *Store) scan(statement string, args ...any) ([]Entry, error) {
+	rows, err := s.db.Query(statement, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -296,10 +312,62 @@ type Query struct {
 
 // Query answers the entries a query selects, in the store's order, and whether its cursor named an entry
 // retention had removed.
-func (s *Store) Query(q Query) ([]Entry, bool, error) { return nil, false, nil }
+func (s *Store) Query(q Query) ([]Entry, bool, error) {
+	where, args := []string{"seq > ?"}, []any{int64(q.After)}
+	if q.Unit != "" {
+		where, args = append(where, "unit = ?"), append(args, q.Unit)
+	}
+	if q.Incarnation != 0 {
+		where, args = append(where, "incarnation = ?"), append(args, int64(q.Incarnation))
+	}
+	if !q.From.IsZero() {
+		where, args = append(where, "at >= ?"), append(args, q.From.UTC().Format(stamp))
+	}
+	if !q.Until.IsZero() {
+		where, args = append(where, "at < ?"), append(args, q.Until.UTC().Format(stamp))
+	}
+	if q.Floor > 0 {
+		where, args = append(where, "severity >= ?"), append(args, q.Floor)
+	}
+	statement := selectEntries + " WHERE " + strings.Join(where, " AND ") + " ORDER BY seq"
+	if q.Limit > 0 {
+		statement += fmt.Sprintf(" LIMIT %d", q.Limit)
+	}
+	entries, err := s.scan(statement, args...)
+	if err != nil || q.After == 0 {
+		return entries, false, err
+	}
+	// A cursor names an entry; one that is gone, with entries after it, was removed by retention.
+	var named, later bool
+	if err := s.db.QueryRow(`SELECT EXISTS (SELECT 1 FROM entry WHERE seq = ?), EXISTS (SELECT 1 FROM entry WHERE seq > ?)`,
+		int64(q.After), int64(q.After)).Scan(&named, &later); err != nil {
+		return nil, false, err
+	}
+	return entries, !named && later, nil
+}
+
+// Last is the sequence of the last entry written, zero for none.
+func (s *Store) Last() (uint64, error) {
+	var last uint64
+	err := s.db.QueryRow(`SELECT coalesce(max(seq), 0) FROM entry`).Scan(&last)
+	return last, err
+}
 
 // Watch is told each time entries are written, until it is stopped.
-func (s *Store) Watch() (<-chan struct{}, func()) { return make(chan struct{}), func() {} }
+func (s *Store) Watch() (<-chan struct{}, func()) {
+	w := make(chan struct{}, 1)
+	s.mu.Lock()
+	if s.watchers == nil {
+		s.watchers = map[chan struct{}]bool{}
+	}
+	s.watchers[w] = true
+	s.mu.Unlock()
+	return w, func() {
+		s.mu.Lock()
+		delete(s.watchers, w)
+		s.mu.Unlock()
+	}
+}
 
 // Next counts a launch of the unit, in one statement, and is the number of the life it begins.
 func (s *Store) Next(unit string) (uint64, error) {

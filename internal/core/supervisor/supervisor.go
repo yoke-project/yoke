@@ -351,6 +351,7 @@ func (s *Supervisor) attempt(m *managed) {
 	m.incarnation, m.process, m.exited = incarnation, command.Process, make(chan struct{})
 	m.status.Incarnation, m.status.PID, m.status.Token = incarnation, command.Process.Pid, token
 	s.publish(event.StateChanged(m.decl.ID, uint64(incarnation), "", unit.Starting))
+	m.status.Since = time.Now()
 	s.apply(m, unit.ProcessStarted{})
 
 	exited, window := m.exited, time.AfterFunc(s.policy(m).StartupWindow, func() { s.windowElapsed(m, incarnation) })
@@ -422,9 +423,14 @@ func (s *Supervisor) apply(m *managed, in unit.Input) {
 	t, moved := m.machine.Apply(in)
 	if moved {
 		s.publish(event.StateChanged(m.decl.ID, uint64(m.incarnation), t.From, t.To))
+		m.status.Since = time.Now()
 	}
 	m.status.State = m.machine.State()
-	m.status.Condition, m.status.HasCondition = m.machine.Condition()
+	condition, has := m.machine.Condition()
+	if has && (!m.status.HasCondition || condition != m.status.Condition) {
+		m.status.ConditionSince = time.Now()
+	}
+	m.status.Condition, m.status.HasCondition = condition, has
 	if moved && t.To == unit.Running {
 		m.readyAt = time.Now()
 	}
