@@ -283,6 +283,24 @@ func (s *Store) Entries(after uint64) ([]Entry, error) {
 	return entries, rows.Err()
 }
 
+// A Query selects entries: after a cursor, of a unit and one of its lives, between two moments, at or
+// above a floor; an axis left empty selects everything on it.
+type Query struct {
+	After       uint64
+	Unit        string
+	Incarnation uint64
+	From, Until time.Time
+	Floor       int
+	Limit       int
+}
+
+// Query answers the entries a query selects, in the store's order, and whether its cursor named an entry
+// retention had removed.
+func (s *Store) Query(q Query) ([]Entry, bool, error) { return nil, false, nil }
+
+// Watch is told each time entries are written, until it is stopped.
+func (s *Store) Watch() (<-chan struct{}, func()) { return make(chan struct{}), func() {} }
+
 // Next counts a launch of the unit, in one statement, and is the number of the life it begins.
 func (s *Store) Next(unit string) (uint64, error) {
 	var last uint64

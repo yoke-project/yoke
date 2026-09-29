@@ -86,13 +86,16 @@ type Config struct {
 
 // Status is what is observed of a unit: its state, and the facts about its next incarnation.
 type Status struct {
-	State        unit.State
-	Incarnation  int
-	PID          int
-	Token        string
-	Condition    unit.Condition
-	HasCondition bool
-	Failure      string
+	State unit.State
+	// Since is the moment of the last transition, and ConditionSince when the condition last changed.
+	Since          time.Time
+	ConditionSince time.Time
+	Incarnation    int
+	PID            int
+	Token          string
+	Condition      unit.Condition
+	HasCondition   bool
+	Failure        string
 
 	Waiting bool          // between attempts: a fact about the next incarnation, not a state
 	Attempt int           // the attempt the unit is on, within this episode
@@ -589,6 +592,28 @@ func (s *Supervisor) Plugin(unitID string) (string, bool) {
 		return "", false
 	}
 	return m.decl.Plugin, true
+}
+
+// IDs are every unit declared, in the order of their identities.
+func (s *Supervisor) IDs() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	ids := make([]string, 0, len(s.units))
+	for id := range s.units {
+		ids = append(ids, id)
+	}
+	slices.Sort(ids)
+	return ids
+}
+
+// Kind is a declared unit's kind, empty for none declared.
+func (s *Supervisor) Kind(unitID string) unit.Kind {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if m, ok := s.units[unitID]; ok {
+		return m.decl.Kind
+	}
+	return ""
 }
 
 // Of are the units declared to run a plugin, by identity.

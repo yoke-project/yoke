@@ -479,6 +479,20 @@ func (u supervised) Of(plugin string) []string {
 	return u.st.Supervisor.Of(plugin)
 }
 
+func (u supervised) IDs() []string {
+	if u.st.Supervisor == nil {
+		return nil
+	}
+	return u.st.Supervisor.IDs()
+}
+
+func (u supervised) Kind(id string) unit.Kind {
+	if u.st.Supervisor == nil {
+		return ""
+	}
+	return u.st.Supervisor.Kind(id)
+}
+
 func (u supervised) Status(id string) supervisor.Status { return u.st.Supervisor.Status(id) }
 func (u supervised) StartUnit(id string) error          { return u.st.Supervisor.StartUnit(id) }
 func (u supervised) StopUnit(id string) error           { return u.st.Supervisor.StopUnit(id) }

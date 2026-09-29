@@ -182,3 +182,44 @@ func TestThroughTheCoreAnOperatorDisablesAPlugin(t *testing.T) {
 			strings.Contains(l, "actor=operator") && strings.Contains(l, "person="+me(t).Username)
 	})
 }
+
+// std: yoke:reads-and-the-log.08
+func TestThroughTheCoreTheInstanceAPluginAndTheLogAreRead(t *testing.T) {
+	run, _ := started(t, "manifest: 1\nid: com.example.station\nprotocol: 1\nstreams: [ { id: station.data } ]\n"+
+		"capabilities: [ { name: stream.data.publish, governs: { stream: station.data } } ]\n")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	operator := administrativev1.NewOperatorClient(dial(t, filepath.Join(run, "operator.sock")))
+	resp, err := operator.Call(ctx, readOf("instance", ""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := resp.GetRead().GetRecords(); len(got) != 1 || !got[0].GetInstance().GetReady() || got[0].GetInstance().GetForm() != "service" {
+		t.Errorf("the instance read %v", got)
+	}
+	resp, err = operator.Call(ctx, readOf("plugin", station))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := resp.GetRead().GetRecords(); len(got) != 1 || !got[0].GetPlugin().GetObserved().GetManifestPresent() || !got[0].GetPlugin().GetAuthorized().GetEnabled() {
+		t.Errorf("the plugin read %v", got)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		resp, err = operator.Call(ctx, query(&administrativev1.LogQuery{}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		found := false
+		for _, e := range resp.GetLogQuery().GetEntries() {
+			found = found || e.GetType() == "instance.ready"
+		}
+		if found {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("the log holds no instance.ready: %v", resp.GetLogQuery().GetEntries())
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
