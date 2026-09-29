@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -26,6 +27,9 @@ import (
 
 // Version is the contract's version this Core speaks.
 const Version = 1
+
+// Standing is the call identity of the subscription a shell connection holds from the moment it opens.
+const Standing = "standing"
 
 // Projection is which of the surface's two a connection arrived on.
 type Projection string
@@ -81,11 +85,13 @@ type Surface struct {
 	mu    sync.Mutex
 	count uint64
 	open  map[string]Connection
+	// subs are the filters of the subscriptions each connection holds, by connection and call.
+	subs map[string]map[string]*administrativev1.Filter
 }
 
 // New makes the surface.
 func New(cfg Config) *Surface {
-	s := &Surface{cfg: cfg, accounts: cfg.Accounts, open: map[string]Connection{}}
+	s := &Surface{cfg: cfg, accounts: cfg.Accounts, open: map[string]Connection{}, subs: map[string]map[string]*administrativev1.Filter{}}
 	if s.accounts == nil {
 		s.accounts = hostAccounts
 	}
@@ -135,10 +141,40 @@ func (s *Surface) Connections() []Connection {
 	defer s.mu.Unlock()
 	out := make([]Connection, 0, len(s.open))
 	for _, c := range s.open {
+		calls := slices.Sorted(maps.Keys(s.subs[c.ID]))
+		for _, call := range calls {
+			c.Subscriptions = append(c.Subscriptions, s.subs[c.ID][call])
+		}
 		out = append(out, c)
 	}
 	slices.SortFunc(out, func(a, b Connection) int { return a.Opened.Compare(b.Opened) })
 	return out
+}
+
+// holding records that a connection holds a subscription under a call, and refuses one past the limit.
+func (s *Surface) holding(connection, call string, f *administrativev1.Filter) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.subs[connection] == nil {
+		s.subs[connection] = map[string]*administrativev1.Filter{}
+	}
+	if len(s.subs[connection]) >= Subscriptions {
+		return false
+	}
+	if f == nil {
+		f = &administrativev1.Filter{}
+	}
+	s.subs[connection][call] = f
+	return true
+}
+
+func (s *Surface) released(connection, call string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.subs[connection], call)
+	if len(s.subs[connection]) == 0 {
+		delete(s.subs, connection)
+	}
 }
 
 // opened issues a connection its identity, unique within this life of the instance and never reused, and
@@ -250,6 +286,10 @@ func (o operator) Watch(r *administrativev1.Request, stream administrativev1.Ope
 		return refused(ref)
 	}
 	c := o.opened(OperatorProjection, actor)
+	if r.GetSubscribe() != nil {
+		o.holding(c.ID, "", r.GetSubscribe().GetFilter())
+		defer o.released(c.ID, "")
+	}
 	ref = op.Stream(ctx, c.Actor, r, stream.Send)
 	reason := Completed
 	if ctx.Err() != nil {
@@ -291,13 +331,76 @@ func (sh shell) Connect(stream administrativev1.Shell_ConnectServer) error {
 		defer sending.Unlock()
 		return stream.Send(f)
 	}
+	refuse := func(call string, r *administrativev1.Refusal) {
+		send(&administrativev1.CoreFrame{Call: call, Carries: &administrativev1.CoreFrame_Refusal{Refusal: r}})
+	}
+	// begin runs one call: an answer once, or a stream completed explicitly. A subscription's events
+	// travel as event frames carrying its call.
+	begin := func(call, name string, op Operation, r *administrativev1.Request) {
+		mu.Lock()
+		if _, busy := inFlight[call]; busy {
+			mu.Unlock()
+			refuse(call, refusal("operation.malformed", "the call "+call+" is already in flight on this connection"))
+			return
+		}
+		if name == "subscribe" && !sh.holding(c.ID, call, r.GetSubscribe().GetFilter()) {
+			mu.Unlock()
+			refuse(call, refusal("operation.malformed", fmt.Sprintf("a connection holds at most %d subscriptions", Subscriptions)))
+			return
+		}
+		callCtx, stop := context.WithCancel(ctx)
+		inFlight[call] = stop
+		mu.Unlock()
+		calls.Add(1)
+		go func() {
+			defer calls.Done()
+			defer func() {
+				mu.Lock()
+				delete(inFlight, call)
+				mu.Unlock()
+				if name == "subscribe" {
+					sh.released(c.ID, call)
+				}
+				stop()
+			}()
+			if !Streams(name) {
+				resp, ref := op.Answer(callCtx, actor, r)
+				if ref != nil {
+					refuse(call, ref)
+					return
+				}
+				send(&administrativev1.CoreFrame{Call: call, Carries: &administrativev1.CoreFrame_Answer{Answer: resp}})
+				return
+			}
+			ref := op.Stream(callCtx, actor, r, func(resp *administrativev1.Response) error {
+				if callCtx.Err() != nil {
+					return callCtx.Err()
+				}
+				if e := resp.GetSubscribe().GetEvent(); e != nil {
+					return send(&administrativev1.CoreFrame{Call: call, Carries: &administrativev1.CoreFrame_Event{Event: e}})
+				}
+				return send(&administrativev1.CoreFrame{Call: call, Carries: &administrativev1.CoreFrame_Answer{Answer: resp}})
+			})
+			if ref != nil {
+				refuse(call, ref)
+				return
+			}
+			send(&administrativev1.CoreFrame{Call: call, Carries: &administrativev1.CoreFrame_Completion{Completion: &administrativev1.Completion{}}})
+		}()
+	}
+	// A subscription stands from the moment the connection opens, of every subject and every type.
+	standing, stands := "", false
+	if op, ok := sh.cfg.Operations["subscribe"]; ok && op.Stream != nil {
+		standing, stands = Standing, true
+	}
 	if err := send(&administrativev1.CoreFrame{Carries: &administrativev1.CoreFrame_Opening{Opening: &administrativev1.Opening{
-		Connection: c.ID, Actor: &administrativev1.Actor{Class: string(actor.Class), Person: actor.Person}, Version: Version,
+		Connection: c.ID, Actor: &administrativev1.Actor{Class: string(actor.Class), Person: actor.Person}, Subscription: standing, Version: Version,
 	}}}); err != nil {
 		return err
 	}
-	refuse := func(call string, r *administrativev1.Refusal) {
-		send(&administrativev1.CoreFrame{Call: call, Carries: &administrativev1.CoreFrame_Refusal{Refusal: r}})
+	if stands {
+		begin(standing, "subscribe", sh.cfg.Operations["subscribe"], &administrativev1.Request{Version: Version,
+			Operation: &administrativev1.Request_Subscribe{Subscribe: &administrativev1.Subscribe{Filter: &administrativev1.Filter{}}}})
 	}
 	for {
 		f, err := stream.Recv()
@@ -327,44 +430,6 @@ func (sh shell) Connect(stream administrativev1.Shell_ConnectServer) error {
 			refuse(call, ref)
 			continue
 		}
-		mu.Lock()
-		if _, busy := inFlight[call]; busy {
-			mu.Unlock()
-			refuse(call, refusal("operation.malformed", "the call "+call+" is already in flight on this connection"))
-			continue
-		}
-		callCtx, stop := context.WithCancel(ctx)
-		inFlight[call] = stop
-		mu.Unlock()
-		calls.Add(1)
-		go func() {
-			defer calls.Done()
-			defer func() {
-				mu.Lock()
-				delete(inFlight, call)
-				mu.Unlock()
-				stop()
-			}()
-			if !Streams(name) {
-				resp, ref := op.Answer(callCtx, actor, r)
-				if ref != nil {
-					refuse(call, ref)
-					return
-				}
-				send(&administrativev1.CoreFrame{Call: call, Carries: &administrativev1.CoreFrame_Answer{Answer: resp}})
-				return
-			}
-			ref := op.Stream(callCtx, actor, r, func(resp *administrativev1.Response) error {
-				if callCtx.Err() != nil {
-					return callCtx.Err()
-				}
-				return send(&administrativev1.CoreFrame{Call: call, Carries: &administrativev1.CoreFrame_Answer{Answer: resp}})
-			})
-			if ref != nil {
-				refuse(call, ref)
-				return
-			}
-			send(&administrativev1.CoreFrame{Call: call, Carries: &administrativev1.CoreFrame_Completion{Completion: &administrativev1.Completion{}}})
-		}()
+		begin(call, name, op, r)
 	}
 }

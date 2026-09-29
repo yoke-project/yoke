@@ -78,8 +78,20 @@ func cancel(t *testing.T, stream administrativev1.Shell_ConnectClient, call stri
 	}
 }
 
-// next reads the next frame, failing the test on none within two seconds.
+// next reads the next frame that is not the standing subscription's, failing the test on none within two
+// seconds.
 func next(t *testing.T, stream administrativev1.Shell_ConnectClient) *administrativev1.CoreFrame {
+	t.Helper()
+	for {
+		f := nextAny(t, stream)
+		if f.GetCall() != admin.Standing || f.GetOpening() != nil {
+			return f
+		}
+	}
+}
+
+// nextAny reads the next frame, whichever call it belongs to.
+func nextAny(t *testing.T, stream administrativev1.Shell_ConnectClient) *administrativev1.CoreFrame {
 	t.Helper()
 	got := make(chan *administrativev1.CoreFrame, 1)
 	go func() {

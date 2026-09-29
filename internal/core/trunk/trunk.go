@@ -469,7 +469,7 @@ func adminChannels(st *State) []Channel {
 				}
 				return st.Discovery.Manifest(id)
 			}}
-		core.Instance, core.Documents = st.instanceRecord, st.documents
+		core.Instance, core.Documents, core.Bus = st.instanceRecord, st.documents, st.Bus
 		core.Composed = func(plugin string) bool {
 			if st.Deployment == nil {
 				return false

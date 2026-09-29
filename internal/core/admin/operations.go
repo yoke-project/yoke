@@ -94,6 +94,7 @@ func (c *Core) Operations() map[string]Operation {
 		"read":                 {Answer: c.read},
 		"log.query":            {Answer: c.logQuery},
 		"log.follow":           {Stream: c.logFollow},
+		"subscribe":            {Stream: c.subscribe},
 	}
 }
 

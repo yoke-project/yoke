@@ -69,7 +69,7 @@ func (c *Core) Records(kind, identity string) ([]*administrativev1.Record, *admi
 			for _, k := range c.Connections() {
 				all, ids = append(all, &administrativev1.Record{Subject: &administrativev1.Record_Connection{Connection: &administrativev1.ConnectionRecord{
 					Identity: k.ID, Projection: string(k.Projection), Actor: &administrativev1.Actor{Class: string(k.Actor.Class), Person: k.Actor.Person},
-					Opened: stamp(k.Opened)}}}), append(ids, k.ID)
+					Opened: stamp(k.Opened), Subscriptions: k.Subscriptions}}}), append(ids, k.ID)
 			}
 		}
 	case "channel":
