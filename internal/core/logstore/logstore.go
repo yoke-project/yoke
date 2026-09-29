@@ -309,6 +309,16 @@ func (s *Store) Close() error {
 	return s.db.Close()
 }
 
+// Retention is a unit's retention override: each limit absent is unconstrained.
+type Retention struct {
+	Age     time.Duration // zero is unconstrained
+	Bytes   *uint64
+	Entries *uint64
+}
+
+// Override is a unit's retention override, and false where it has none.
+func (s *Store) Override(unit string) (Retention, bool, error) { return Retention{}, false, nil }
+
 // Counterpart is an event's durable counterpart: attributed to the unit it is about, or to no unit; a
 // unit's report under the source that says so.
 func Counterpart(e event.Event) Entry {
