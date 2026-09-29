@@ -17,6 +17,7 @@ import (
 	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
 
 	"github.com/yoke-project/yoke/internal/core/admin"
+	"github.com/yoke-project/yoke/internal/core/bus"
 	"github.com/yoke-project/yoke/internal/core/event"
 	"github.com/yoke-project/yoke/internal/core/logstore"
 	"github.com/yoke-project/yoke/internal/core/registry"
@@ -181,6 +182,7 @@ type bench struct {
 	operator administrativev1.OperatorClient
 	shell    administrativev1.ShellClient
 	dir      string
+	bus      *bus.Bus
 }
 
 func newBench(t *testing.T, units map[string]*fakeUnit, sessions map[string]string) *bench {
@@ -205,6 +207,8 @@ func newBench(t *testing.T, units map[string]*fakeUnit, sessions map[string]stri
 		Registry: r, Logs: logs, Units: b.units, Sessions: b.sessions, Publish: b.events.publish,
 		Manifest: func(id string) (*gate.Manifest, bool) { return manifest, id == station },
 	}
+	b.bus = bus.New()
+	b.core.Bus = b.bus
 	var s *admin.Surface
 	s, b.operator, b.shell = served(t, admin.Config{Operations: b.core.Operations()})
 	b.core.Connections = s.Connections

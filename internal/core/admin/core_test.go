@@ -223,3 +223,36 @@ func TestThroughTheCoreTheInstanceAPluginAndTheLogAreRead(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 }
+
+// std: yoke:subscriptions.06
+func TestThroughTheCoreAPersonOnTheShellSeesWhatAnOperatorDoes(t *testing.T) {
+	run, _ := started(t, "manifest: 1\nid: com.example.station\nprotocol: 1\nstreams: [ { id: station.data } ]\n"+
+		"capabilities: [ { name: stream.data.publish, governs: { stream: station.data } } ]\n")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	stream, err := administrativev1.NewShellClient(dial(t, filepath.Join(run, "shell.sock"))).Connect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opening := next(t, stream).GetOpening()
+	snap := next(t, stream)
+	ready := false
+	for _, r := range snap.GetAnswer().GetSubscribe().GetSnapshot().GetRecords() {
+		ready = ready || r.GetInstance().GetReady()
+	}
+	if snap.GetCall() != opening.GetSubscription() || !ready {
+		t.Fatalf("the standing snapshot is %v, want the instance ready in it", snap)
+	}
+	if _, err := administrativev1.NewOperatorClient(dial(t, filepath.Join(run, "operator.sock"))).Call(ctx, disable(station)); err != nil {
+		t.Fatal(err)
+	}
+	for {
+		f := next(t, stream)
+		if e := f.GetEvent(); e.GetType() == "plugin.policy.changed" {
+			if e.GetSubject().GetIdentity() != station || e.GetActor().GetClass() != "operator" || e.GetActor().GetPerson() != me(t).Username {
+				t.Errorf("plugin.policy.changed is %v", e)
+			}
+			return
+		}
+	}
+}
