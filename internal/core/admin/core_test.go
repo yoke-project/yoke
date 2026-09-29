@@ -31,8 +31,10 @@ func started(t *testing.T, manifests ...string) (string, func(what string, holds
 	declared, executables := filepath.Join(dir, "plugins.d"), filepath.Join(dir, "plugins")
 	os.MkdirAll(declared, 0o755)
 	os.MkdirAll(executables, 0o755)
-	for i, m := range manifests {
-		path := filepath.Join(declared, fmt.Sprint(i), "manifest.yaml")
+	for _, m := range manifests {
+		// A Manifest lives in a directory named for the plugin it declares.
+		id := strings.TrimSpace(strings.SplitN(strings.SplitN(m, "id:", 2)[1], "\n", 2)[0])
+		path := filepath.Join(declared, id, "manifest.yaml")
 		os.MkdirAll(filepath.Dir(path), 0o755)
 		os.WriteFile(path, []byte(m), 0o644)
 	}

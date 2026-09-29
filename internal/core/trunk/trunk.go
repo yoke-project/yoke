@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sync/atomic"
 	"time"
 
 	"google.golang.org/grpc"
@@ -103,6 +104,7 @@ type State struct {
 	tokens *admission.Tokens
 
 	stoppers []func() error
+	stopping atomic.Bool
 }
 
 // OnStop registers what undoes a step. The stop runs them in the reverse of the order they were given.
@@ -111,6 +113,7 @@ func (st *State) OnStop(undo func() error) { st.stoppers = append(st.stoppers, u
 // Stop undoes what the trunk set up, in reverse. That the instance is stopping is published first, so
 // that the silence which follows is an expected one.
 func (st *State) Stop() error {
+	st.stopping.Store(true)
 	st.publish(event.InstanceStopping(st.Paths.Name))
 	var failed []error
 	for i := len(st.stoppers) - 1; i >= 0; i-- {
@@ -439,13 +442,73 @@ func pluginChannel(st *State) Channel {
 // adminChannels are the administrative surface's two projections, one socket each, reached by whoever the
 // socket's mode lets reach it.
 func adminChannels(st *State) []Channel {
-	st.Admin = admin.New(admin.Config{Publish: st.publish, Log: st.Log})
+	cfg := admin.Config{Publish: st.publish, Log: st.Log, Stopping: st.stopping.Load}
+	if st.Registry != nil && st.Logs != nil {
+		core := &admin.Core{Registry: st.Registry, Logs: st.Logs, Publish: st.publish,
+			Units: supervised{st}, Sessions: held{st}, Manifest: func(id string) (*gate.Manifest, bool) {
+				if st.Discovery == nil {
+					return nil, false
+				}
+				return st.Discovery.Manifest(id)
+			}}
+		cfg.Operations = core.Operations()
+	}
+	st.Admin = admin.New(cfg)
 	operator, shell := st.Admin.Operator(), st.Admin.Shell()
 	st.OnStop(func() error { operator.Stop(); shell.Stop(); return nil })
 	return []Channel{
 		{Name: "operator", Path: "operator.sock", Serve: func(l Listener) { operator.Serve(l) }},
 		{Name: "shell", Path: "shell.sock", Serve: func(l Listener) { shell.Serve(l) }},
 	}
+}
+
+// supervised is the supervisor as the administrative operations reach it, from the moment it exists.
+type supervised struct{ st *State }
+
+func (u supervised) Plugin(id string) (string, bool) {
+	if u.st.Supervisor == nil {
+		return "", false
+	}
+	return u.st.Supervisor.Plugin(id)
+}
+
+func (u supervised) Of(plugin string) []string {
+	if u.st.Supervisor == nil {
+		return nil
+	}
+	return u.st.Supervisor.Of(plugin)
+}
+
+func (u supervised) Status(id string) supervisor.Status { return u.st.Supervisor.Status(id) }
+func (u supervised) StartUnit(id string) error          { return u.st.Supervisor.StartUnit(id) }
+func (u supervised) StopUnit(id string) error           { return u.st.Supervisor.StopUnit(id) }
+func (u supervised) RestartUnit(id string) error        { return u.st.Supervisor.RestartUnit(id) }
+
+// held are the Sessions as the administrative operations reach them, by the unit that holds one.
+type held struct{ st *State }
+
+func (s held) Open(unitID string) bool {
+	if s.st.Session == nil {
+		return false
+	}
+	_, ok := s.st.Session.Of(unitID)
+	return ok
+}
+
+func (s held) Ask(ctx context.Context, unitID string, q *pluginv1.Query_Question) (*pluginv1.Query_Answer, error) {
+	id, ok := s.st.Session.Of(unitID)
+	if !ok {
+		return nil, errors.New("the unit holds no Session")
+	}
+	return s.st.Session.Ask(ctx, id, q)
+}
+
+func (s held) Revoke(unitID string, cause pluginv1.SessionMessage_Revoked_Cause, line string) error {
+	id, ok := s.st.Session.Of(unitID)
+	if !ok {
+		return errors.New("the unit holds no Session")
+	}
+	return s.st.Session.Revoke(id, cause, line)
 }
 
 // units hands the declared units to the supervisor, which is stopped first on the way down.

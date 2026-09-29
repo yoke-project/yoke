@@ -540,10 +540,69 @@ func (s *Supervisor) StopUnit(unitID string) error {
 		return fmt.Errorf("no unit %s", unitID)
 	}
 	if quiet {
-		return fmt.Errorf("the unit %s cannot be stopped: the %s backend cannot be reached", unitID, backend)
+		return fmt.Errorf("the unit %s cannot be stopped on the %s backend: %w", unitID, backend, ErrUnreachable)
 	}
 	s.stopOne(m)
 	return nil
+}
+
+// StartUnit starts a unit that is not running: a new life, launched as any other is. A unit that is
+// already live, or waiting on its dependencies, is left as it is.
+func (s *Supervisor) StartUnit(unitID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	m, ok := s.units[unitID]
+	if !ok {
+		return fmt.Errorf("no unit %s", unitID)
+	}
+	if s.quiet {
+		return fmt.Errorf("the unit %s cannot be started on the %s backend: %w", unitID, backend, ErrUnreachable)
+	}
+	if m.held || (m.process != nil && !m.machine.State().Terminal()) {
+		return nil
+	}
+	if m.restart != nil {
+		m.restart.Stop()
+	}
+	m.failures = 0
+	if !slices.Contains(s.order, unitID) {
+		s.order = append(s.order, unitID)
+	}
+	s.attempt(m)
+	return nil
+}
+
+// RestartUnit stops a unit and starts it again: the life that ends and the one that begins are two.
+func (s *Supervisor) RestartUnit(unitID string) error {
+	if err := s.StopUnit(unitID); err != nil {
+		return err
+	}
+	return s.StartUnit(unitID)
+}
+
+// Plugin is the plugin a declared unit runs, empty for a unit of another kind; false for none declared.
+func (s *Supervisor) Plugin(unitID string) (string, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	m, ok := s.units[unitID]
+	if !ok {
+		return "", false
+	}
+	return m.decl.Plugin, true
+}
+
+// Of are the units declared to run a plugin, by identity.
+func (s *Supervisor) Of(plugin string) []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var ids []string
+	for id, m := range s.units {
+		if m.decl.Plugin == plugin {
+			ids = append(ids, id)
+		}
+	}
+	slices.Sort(ids)
+	return ids
 }
 
 // Stop stops every unit in the reverse of the order they were launched, each within its own window.
@@ -569,7 +628,7 @@ func (s *Supervisor) Stop() error {
 		quiet := s.quiet
 		s.mu.Unlock()
 		if quiet {
-			failed = append(failed, fmt.Errorf("the unit %s cannot be stopped: the %s backend cannot be reached", order[i], backend))
+			failed = append(failed, fmt.Errorf("the unit %s cannot be stopped on the %s backend: %w", order[i], backend, ErrUnreachable))
 			continue
 		}
 		s.stopOne(m)

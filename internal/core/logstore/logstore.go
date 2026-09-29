@@ -293,7 +293,12 @@ func (s *Store) Next(unit string) (uint64, error) {
 
 // Keep appends an event's durable counterpart. It is called where the event is published and not by a
 // subscriber, since a subscriber may be told of an overflow and a record may not be lost.
-func (s *Store) Keep(e event.Event) error { return s.Append(Counterpart(e)) }
+func (s *Store) Keep(e event.Event) error {
+	if e.Type == event.InRegistry {
+		return nil
+	}
+	return s.Append(Counterpart(e))
+}
 
 // Close writes what is queued, and closes the store.
 func (s *Store) Close() error {
@@ -317,13 +322,58 @@ type Retention struct {
 }
 
 // Override is a unit's retention override, and false where it has none.
-func (s *Store) Override(unit string) (Retention, bool, error) { return Retention{}, false, nil }
+func (s *Store) Override(unit string) (Retention, bool, error) {
+	var age, bytes, entries sql.NullInt64
+	err := s.db.QueryRow(`SELECT age, bytes, entries FROM retention_policy WHERE unit = ?`, unit).Scan(&age, &bytes, &entries)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Retention{}, false, nil
+	}
+	if err != nil {
+		return Retention{}, false, err
+	}
+	var r Retention
+	if age.Valid {
+		r.Age = time.Duration(age.Int64) * time.Second
+	}
+	if bytes.Valid {
+		n := uint64(bytes.Int64)
+		r.Bytes = &n
+	}
+	if entries.Valid {
+		n := uint64(entries.Int64)
+		r.Entries = &n
+	}
+	return r, true, nil
+}
+
+// SetOverride writes a unit's retention override, replacing the one it had.
+func (s *Store) SetOverride(unit string, r Retention) error {
+	var age, bytes, entries any
+	if r.Age > 0 {
+		age = int64(r.Age / time.Second)
+	}
+	if r.Bytes != nil {
+		bytes = int64(*r.Bytes)
+	}
+	if r.Entries != nil {
+		entries = int64(*r.Entries)
+	}
+	_, err := s.db.Exec(`INSERT INTO retention_policy (unit, age, bytes, entries) VALUES (?, ?, ?, ?)
+		ON CONFLICT (unit) DO UPDATE SET age = excluded.age, bytes = excluded.bytes, entries = excluded.entries`, unit, age, bytes, entries)
+	return err
+}
+
+// ClearOverride removes a unit's retention override.
+func (s *Store) ClearOverride(unit string) error {
+	_, err := s.db.Exec(`DELETE FROM retention_policy WHERE unit = ?`, unit)
+	return err
+}
 
 // Counterpart is an event's durable counterpart: attributed to the unit it is about, or to no unit; a
 // unit's report under the source that says so.
 func Counterpart(e event.Event) Entry {
 	entry := Entry{At: e.Time, Source: FromCore, Severity: e.Severity, Type: e.Type, SubjectKind: string(e.Subject.Kind),
-		SubjectID: e.Subject.ID, Actor: actor(e.Actor), Cause: e.Cause, Detail: e.Detail, Message: sentence(e)}
+		SubjectID: e.Subject.ID, Actor: Actor(e.Actor), Cause: e.Cause, Detail: e.Detail, Message: sentence(e)}
 	if e.Subject.Kind == event.Unit {
 		entry.Unit, entry.Incarnation = e.Subject.ID, e.Subject.Incarnation
 	}
@@ -333,9 +383,9 @@ func Counterpart(e event.Event) Entry {
 	return entry
 }
 
-// actor is who caused an event as the column keeps it: the class, and the person where the channel
+// Actor is who caused something as the column keeps it: the class, and the person where the channel
 // established one.
-func actor(a event.Actor) string {
+func Actor(a event.Actor) string {
 	if a.Person != "" {
 		return string(a.Class) + ":" + a.Person
 	}

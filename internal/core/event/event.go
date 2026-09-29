@@ -101,7 +101,12 @@ var declared = map[string]Class{
 	"document.rejected":        Edge,
 	"connection.opened":        Level,
 	"connection.closed":        Level,
+	"plugin.policy.changed":    Level,
 }
+
+// InRegistry is the one type whose durable counterpart is not a log entry: a decision about authority,
+// kept as the Registry's decision row beside what it changed.
+const InRegistry = "plugin.policy.changed"
 
 // occurrenceType is the one type that carries an occurrence.
 const occurrenceType = "unit.occurrence.reported"
@@ -241,6 +246,24 @@ func ConnectionOpened(id, projection string, actor Actor) Event {
 // or its transport went.
 func ConnectionClosed(id, projection, reason string, actor Actor) Event {
 	e := concluded("connection.closed", Subject{Kind: Connection, ID: id}, Routine, map[string]any{"projection": projection, "reason": reason})
+	e.Actor = actor
+	return e
+}
+
+// PolicyChanged is an operator's decision about a plugin's authority, attributed to them: its enablement
+// where that changed, and the capabilities granted and withdrawn.
+func PolicyChanged(plugin string, actor Actor, enabled *bool, granted, withdrawn []string) Event {
+	detail := map[string]any{}
+	if enabled != nil {
+		detail["enabled"] = *enabled
+	}
+	if granted != nil {
+		detail["granted"] = granted
+	}
+	if withdrawn != nil {
+		detail["withdrawn"] = withdrawn
+	}
+	e := concluded("plugin.policy.changed", Subject{Kind: Plugin, ID: plugin}, Notable, detail)
 	e.Actor = actor
 	return e
 }
