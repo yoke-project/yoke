@@ -61,6 +61,14 @@ func harness() int {
 			return 0
 		case d.Verb == "describe":
 			send(map[string]any{"type": "result", "id": d.ID, "value": map[string]any{"manifest": manifest}})
+		case d.Verb == "subscribe":
+			send(map[string]any{"type": "result", "id": d.ID, "value": map[string]any{}})
+			send(map[string]any{"type": "observation", "kind": "snapshot", "fields": map[string]any{
+				"records": []any{map[string]any{"plugin": map[string]any{"declared": map[string]any{"identity": conformance.Fixture}}}}}})
+		case d.Verb == "enable":
+			// The event reaches the harness before the change's result does.
+			send(map[string]any{"type": "observation", "kind": "event", "fields": map[string]any{"type": "plugin.policy.changed", "subject": conformance.Fixture}})
+			send(map[string]any{"type": "result", "id": d.ID, "value": map[string]any{}})
 		case d.Verb == "where":
 			send(map[string]any{"type": "result", "id": d.ID, "value": map[string]any{"instance": os.Getenv("CONFORMANCE_INSTANCE")}})
 		case d.Verb == "echo":
@@ -355,5 +363,24 @@ func TestAHarnessSpokenFromOutsideIsLaunchedAgainstTheInstance(t *testing.T) {
 	}
 	if !fixture {
 		t.Error("the fixture plugin was not declared")
+	}
+}
+
+// std: yoke:the-conformance-suite.09
+func TestTheSubscriptionCaseFindsAnEventThatCameBeforeTheResult(t *testing.T) {
+	var subscription conformance.Case
+	for _, c := range conformance.AdministrativeCases() {
+		if c.ID == "yoke:administrative.05" {
+			subscription = c
+		}
+	}
+	cfg, _ := config(t, subscription)
+	cfg.HarnessEnv["TEST_CONTRACT"] = "administrative"
+	report, err := conformance.Execute(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Rows) != 1 || report.Rows[0].Result != "pass" {
+		t.Errorf("the case was %+v", report.Rows)
 	}
 }

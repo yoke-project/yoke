@@ -108,3 +108,16 @@
 | **Precondition** | a harness saying hello for the administrative contract; one case of that contract and one of the plugin contract |
 | **Action** | run the suite with both cases |
 | **Expected** | the Core is started with the fixture plugin declared and no unit; the harness is launched by the suite once the Core is ready, with the instance's root in `CONFORMANCE_INSTANCE`, where both administrative sockets are; the administrative case runs against it and passes, and the plugin case is not in the table |
+
+## yoke:the-conformance-suite.09 — what a directive causes is read whether it arrives before or after the directive's result
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/90-sdks/04 §The control protocol |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an administrative harness whose subscription's event for a change reaches the suite before the change's result |
+| **Action** | run the administrative case that subscribes and then changes |
+| **Expected** | the case finds the event, and passes |
