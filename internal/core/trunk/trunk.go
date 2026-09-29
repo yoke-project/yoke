@@ -25,6 +25,7 @@ import (
 
 	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
 
+	"github.com/yoke-project/yoke/internal/core/admin"
 	"github.com/yoke-project/yoke/internal/core/admission"
 	"github.com/yoke-project/yoke/internal/core/bus"
 	"github.com/yoke-project/yoke/internal/core/config"
@@ -94,6 +95,7 @@ type State struct {
 	Deployment *gate.Deployment // what the composition in force declares, once it passed the gate
 	Admission  *admission.Admission
 	Session    *session.Service
+	Admin      *admin.Surface
 	Supervisor *supervisor.Supervisor
 	// Bus is the instance's event bus, which the subsystems publish on from the logging step on.
 	Bus *bus.Bus
@@ -239,6 +241,9 @@ func record(log *slog.Logger, s *bus.Subscription) {
 			subject += fmt.Sprintf("#%d", e.Subject.Incarnation)
 		}
 		attrs := []any{"seq", e.Seq, "type", e.Type, "subject", subject, "severity", e.Severity, "actor", string(e.Actor.Class)}
+		if e.Actor.Person != "" {
+			attrs = append(attrs, "person", e.Actor.Person)
+		}
 		if e.Occurrence != "" {
 			attrs = append(attrs, "occurrence", e.Occurrence)
 		}
@@ -357,9 +362,9 @@ func declarations(st *State) error {
 }
 
 // channels binds every channel with its terminator: the plugin surface's, where there is a deployment for
-// units to be admitted to, and then the others.
+// units to be admitted to; the administrative surface's two projections; and then the others.
 func channels(st *State) error {
-	all := st.Channels
+	all := append(adminChannels(st), st.Channels...)
 	if st.Registry != nil && st.Discovery != nil {
 		all = append([]Channel{pluginChannel(st)}, all...)
 	}
@@ -429,6 +434,18 @@ func pluginChannel(st *State) Channel {
 	pluginv1.RegisterSessionServer(server, st.Session)
 	st.OnStop(func() error { server.Stop(); return nil })
 	return Channel{Name: "plugin", Path: "plugin.sock", Serve: func(l Listener) { server.Serve(l) }}
+}
+
+// adminChannels are the administrative surface's two projections, one socket each, reached by whoever the
+// socket's mode lets reach it.
+func adminChannels(st *State) []Channel {
+	st.Admin = admin.New(admin.Config{Publish: st.publish, Log: st.Log})
+	operator, shell := st.Admin.Operator(), st.Admin.Shell()
+	st.OnStop(func() error { operator.Stop(); shell.Stop(); return nil })
+	return []Channel{
+		{Name: "operator", Path: "operator.sock", Serve: func(l Listener) { operator.Serve(l) }},
+		{Name: "shell", Path: "shell.sock", Serve: func(l Listener) { shell.Serve(l) }},
+	}
 }
 
 // units hands the declared units to the supervisor, which is stopped first on the way down.

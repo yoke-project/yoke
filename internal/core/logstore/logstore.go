@@ -313,7 +313,7 @@ func (s *Store) Close() error {
 // unit's report under the source that says so.
 func Counterpart(e event.Event) Entry {
 	entry := Entry{At: e.Time, Source: FromCore, Severity: e.Severity, Type: e.Type, SubjectKind: string(e.Subject.Kind),
-		SubjectID: e.Subject.ID, Actor: string(e.Actor.Class), Cause: e.Cause, Detail: e.Detail, Message: sentence(e)}
+		SubjectID: e.Subject.ID, Actor: actor(e.Actor), Cause: e.Cause, Detail: e.Detail, Message: sentence(e)}
 	if e.Subject.Kind == event.Unit {
 		entry.Unit, entry.Incarnation = e.Subject.ID, e.Subject.Incarnation
 	}
@@ -321,6 +321,15 @@ func Counterpart(e event.Event) Entry {
 		entry.Source = Reported
 	}
 	return entry
+}
+
+// actor is who caused an event as the column keeps it: the class, and the person where the channel
+// established one.
+func actor(a event.Actor) string {
+	if a.Person != "" {
+		return string(a.Class) + ":" + a.Person
+	}
+	return string(a.Class)
 }
 
 // sentence is what the Core concluded, for a person: a unit's report is its own line, and anything else

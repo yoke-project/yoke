@@ -19,6 +19,8 @@ var makes = map[string]string{
 	"unit.occurrence.reported": "OccurrenceReported",
 	"document.resolved":        "DocumentResolved",
 	"document.rejected":        "DocumentRejected",
+	"connection.opened":        "ConnectionOpened",
+	"connection.closed":        "ConnectionClosed",
 }
 
 // std: yoke:names-and-filtering.02

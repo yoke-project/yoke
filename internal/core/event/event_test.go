@@ -119,6 +119,7 @@ func TestEveryTypeIsDeclaredWithItsClass(t *testing.T) {
 	for typ, want := range map[string]event.Class{
 		"unit.state.changed": event.Level, "unit.condition.changed": event.Level, "instance.ready": event.Level,
 		"instance.stopping": event.Level, "document.resolved": event.Level,
+		"connection.opened": event.Level, "connection.closed": event.Level,
 		"unit.occurrence.reported": event.Edge, "document.rejected": event.Edge,
 	} {
 		if got, declared := event.ClassOf(typ); !declared || got != want {
