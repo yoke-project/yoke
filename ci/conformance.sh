@@ -1,21 +1,27 @@
 #!/usr/bin/env bash
-# The conformance suite, L2: this checkout's suite and Core against the Go family's plugin harness.
+# The conformance suite, L2: this checkout's suite and Core against the Go family's harnesses, the plugin
+# one and the administrative one.
 #
-# The harness comes from the module proxy at the version pinned here, never from a sibling; moving it is
+# The harnesses come from the module proxy at the version pinned here, never from a sibling; moving it is
 # a change like any other. The suite's lines go to standard output and to the results directory, where
 # the record writer reads them. Usage: conformance.sh [results directory]
 set -uo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 results="${1:-$root/.results}"
-harness=github.com/yoke-project/yoke-sdk-go/cmd/yoke-go-plugin-harness@v0.1.1-0.20260928175311-59b3deb0e677
+family=v0.1.1-0.20260929161618-91c66d348198
 bin="$(mktemp -d)"
 trap 'rm -rf "$bin"' EXIT
 mkdir -p "$results"
 
-GOBIN="$bin" go install "$harness" || exit 1
+GOBIN="$bin" go install "github.com/yoke-project/yoke-sdk-go/cmd/yoke-go-plugin-harness@$family" || exit 1
+GOBIN="$bin" go install "github.com/yoke-project/yoke-sdk-go/cmd/yoke-go-admin-harness@$family" || exit 1
 go -C "$root" build -o "$bin/yoke-core" ./cmd/yoke-core || exit 1
 go -C "$root" build -o "$bin/yoke-conformance" ./cmd/yoke-conformance || exit 1
 
+status=0
 "$bin/yoke-conformance" --core "$bin/yoke-core" --harness "$bin/yoke-go-plugin-harness" | tee "$results/conformance.txt"
-exit "${PIPESTATUS[0]}"
+(( PIPESTATUS[0] == 0 )) || status=1
+"$bin/yoke-conformance" --core "$bin/yoke-core" --harness "$bin/yoke-go-admin-harness" | tee -a "$results/conformance.txt"
+(( PIPESTATUS[0] == 0 )) || status=1
+exit "$status"
