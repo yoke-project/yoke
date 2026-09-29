@@ -234,8 +234,8 @@ func TestThroughTheCoreAPersonOnTheShellSeesWhatAnOperatorDoes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	opening := next(t, stream).GetOpening()
-	snap := next(t, stream)
+	opening := nextAny(t, stream).GetOpening()
+	snap := nextAny(t, stream)
 	ready := false
 	for _, r := range snap.GetAnswer().GetSubscribe().GetSnapshot().GetRecords() {
 		ready = ready || r.GetInstance().GetReady()
@@ -247,7 +247,7 @@ func TestThroughTheCoreAPersonOnTheShellSeesWhatAnOperatorDoes(t *testing.T) {
 		t.Fatal(err)
 	}
 	for {
-		f := next(t, stream)
+		f := nextAny(t, stream)
 		if e := f.GetEvent(); e.GetType() == "plugin.policy.changed" {
 			if e.GetSubject().GetIdentity() != station || e.GetActor().GetClass() != "operator" || e.GetActor().GetPerson() != me(t).Username {
 				t.Errorf("plugin.policy.changed is %v", e)

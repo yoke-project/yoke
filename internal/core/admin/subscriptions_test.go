@@ -160,7 +160,7 @@ func TestOnTheShellASubscriptionStandsFromTheStart(t *testing.T) {
 	if standing == "" {
 		t.Fatal("the opening names no standing subscription")
 	}
-	snap := next(t, stream)
+	snap := nextAny(t, stream)
 	if snap.GetCall() != standing || snap.GetAnswer().GetSubscribe().GetSnapshot() == nil {
 		t.Fatalf("after the opening came %v, want the standing subscription's snapshot", snap)
 	}
@@ -173,7 +173,7 @@ func TestOnTheShellASubscriptionStandsFromTheStart(t *testing.T) {
 	}
 	changed := b.publish(t, event.StateChanged("acquire", 1, unit.Running, unit.Failed))
 	for {
-		f := next(t, stream)
+		f := nextAny(t, stream)
 		if f.GetEvent().GetSeq() == changed.Seq {
 			if f.GetCall() != standing {
 				t.Errorf("the event carries %q, want the standing call %q", f.GetCall(), standing)
@@ -183,7 +183,7 @@ func TestOnTheShellASubscriptionStandsFromTheStart(t *testing.T) {
 	}
 	cancel(t, stream, standing)
 	for {
-		f := next(t, stream)
+		f := nextAny(t, stream)
 		if f.GetCompletion() != nil {
 			if f.GetCall() != standing {
 				t.Errorf("the completion carries %q", f.GetCall())
@@ -201,7 +201,6 @@ func TestOnTheShellASubscriptionStandsFromTheStart(t *testing.T) {
 func TestAShellConnectionHoldsAtMostEight(t *testing.T) {
 	b := newBench(t, map[string]*fakeUnit{"acquire": running(station, 1)}, map[string]string{})
 	stream, opening, _ := opened(t, b.shell)
-	next(t, stream)
 	for i := range 7 {
 		call := fmt.Sprintf("u%d", i)
 		issue(t, stream, call, subscribeTo(&administrativev1.Filter{SubjectKind: "unit"}))
