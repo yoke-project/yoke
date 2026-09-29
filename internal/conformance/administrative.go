@@ -2,6 +2,7 @@ package conformance
 
 import (
 	"fmt"
+	"slices"
 	"time"
 )
 
@@ -180,8 +181,16 @@ func subscriptionContinues(r *Run) Outcome {
 	if !ok || snapshot.Kind != "snapshot" || !held {
 		return Fail("`subscribe` to plugins", "a snapshot holding the fixture's record", fmt.Sprintf("%v", snapshot))
 	}
-	if enabled := h.Do("enable", map[string]any{"plugin": Fixture}); enabled.Unrecognised {
+	enabled := h.Do("enable", map[string]any{"plugin": Fixture})
+	if enabled.Unrecognised {
 		return Absent("enable")
+	}
+	policyChanged := func(o Observation) bool {
+		return o.Kind == "event" && o.Fields["type"] == "plugin.policy.changed" && o.Fields["subject"] == Fixture
+	}
+	// The event may reach the harness before the change's result does.
+	if slices.ContainsFunc(enabled.Before, policyChanged) {
+		return Pass()
 	}
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
@@ -189,7 +198,7 @@ func subscriptionContinues(r *Run) Outcome {
 		if !ok {
 			break
 		}
-		if o.Kind == "event" && o.Fields["type"] == "plugin.policy.changed" && o.Fields["subject"] == Fixture {
+		if policyChanged(o) {
 			return Pass()
 		}
 	}
