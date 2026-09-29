@@ -18,6 +18,8 @@ github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/yoke-project/yoke/proto v0.1.1-0.20260928174305-19456012f1af h1:wAhaTadGRd6mm7ru1O2eP+eL7xPRCS1Gmxi9w8TZAHc=
 github.com/yoke-project/yoke/proto v0.1.1-0.20260928174305-19456012f1af/go.mod h1:05vmHgz6Ng2GjbfPp0HdITHPlygSbZoWdAXhdJSYbKo=
+github.com/yoke-project/yoke/proto v0.1.1-0.20260928185119-88b2052b233f h1:lnuIB+fYRIu5dbEM98wTzsNEPW1gQGAr68Oj0EoP5mA=
+github.com/yoke-project/yoke/proto v0.1.1-0.20260928185119-88b2052b233f/go.mod h1:05vmHgz6Ng2GjbfPp0HdITHPlygSbZoWdAXhdJSYbKo=
 go.yaml.in/yaml/v3 v3.0.5 h1:N6y/pJk8buWs9NY5ERU2HSMfm+IuD/OtfdAnq6kESPw=
 go.yaml.in/yaml/v3 v3.0.5/go.mod h1:HVTZu1O7/Vkt2N+BFy8Zza+lnLsABggaTM2ZpNIGuKg=
 golang.org/x/mod v0.41.0 h1:qJmnOUb4YB+FsEuM3HcWucdZASCPGhsX6uljO6pog0c=

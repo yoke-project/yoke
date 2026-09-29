@@ -1,0 +1,104 @@
+package admin_test
+
+import (
+	"bufio"
+	"context"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
+	administrativev1 "github.com/yoke-project/yoke/proto/yoke/administrative/v1"
+)
+
+// std: yoke:reaching-the-surface.07
+func TestThroughTheCoreAShellConnectionOpensAsItsAccount(t *testing.T) {
+	binary := filepath.Join(t.TempDir(), "yoke-core")
+	if said, err := exec.Command("go", "build", "-o", binary, "github.com/yoke-project/yoke/cmd/yoke-core").CombinedOutput(); err != nil {
+		t.Fatalf("yoke-core does not build: %v\n%s", err, said)
+	}
+	dir := t.TempDir()
+	run, _ := os.MkdirTemp("", "yk")
+	t.Cleanup(func() { os.RemoveAll(run) })
+	manifests, executables := filepath.Join(dir, "plugins.d"), filepath.Join(dir, "plugins")
+	os.MkdirAll(manifests, 0o755)
+	os.MkdirAll(executables, 0o755)
+	core := filepath.Join(dir, "core.yaml")
+	os.WriteFile(core, []byte(fmt.Sprintf("state_dir: %s/state\nruntime_dir: %s\nplugins:\n  manifests: %s\n  executables: %s\n", dir, run, manifests, executables)), 0o644)
+
+	command := exec.Command(binary)
+	command.Env = append(os.Environ(), "YOKE_CONFIG="+core)
+	out, _ := command.StderrPipe()
+	if err := command.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { command.Process.Kill(); command.Wait() })
+	lines := make(chan string)
+	go func() {
+		scanner := bufio.NewScanner(out)
+		for scanner.Scan() {
+			lines <- scanner.Text()
+		}
+		close(lines)
+	}()
+	var said []string
+	await := func(what string, holds func(string) bool) {
+		t.Helper()
+		deadline := time.After(20 * time.Second)
+		for {
+			select {
+			case line, open := <-lines:
+				if !open {
+					t.Fatalf("the Core exited before %s:\n%s", what, strings.Join(said, "\n"))
+				}
+				said = append(said, line)
+				if holds(line) {
+					return
+				}
+			case <-deadline:
+				t.Fatalf("within twenty seconds, no %s; the Core said:\n%s", what, strings.Join(said, "\n"))
+			}
+		}
+	}
+	await("readiness", func(l string) bool { return strings.Contains(l, "msg=ready") })
+
+	for _, name := range []string{"operator.sock", "shell.sock"} {
+		info, err := os.Stat(filepath.Join(run, name))
+		if err != nil || info.Mode()&os.ModeSocket == 0 || info.Mode().Perm() != 0o660 {
+			t.Errorf("%s is %v (%v), want a socket of mode 0660", name, info, err)
+		}
+	}
+	conn, err := grpc.NewClient("unix://"+filepath.Join(run, "shell.sock"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	stream, err := administrativev1.NewShellClient(conn).Connect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	frame, err := stream.Recv()
+	if err != nil {
+		t.Fatalf("no opening: %v", err)
+	}
+	opening := frame.GetOpening()
+	if person := opening.GetActor().GetPerson(); person != me(t).Username {
+		t.Errorf("the opening names %q, want %q", person, me(t).Username)
+	}
+	about := "subject=connection:" + opening.GetConnection()
+	await("connection.opened", func(l string) bool {
+		return strings.Contains(l, "type=connection.opened") && strings.Contains(l, about) && strings.Contains(l, "actor=operator")
+	})
+	stream.CloseSend()
+	await("connection.closed", func(l string) bool {
+		return strings.Contains(l, "type=connection.closed") && strings.Contains(l, about) && strings.Contains(l, "actor=operator")
+	})
+}
