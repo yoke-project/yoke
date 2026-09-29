@@ -152,13 +152,24 @@ func Execute(cfg Config) (Report, error) {
 		return report, fmt.Errorf("the harness did not say hello: %w", err)
 	}
 	report.Ran.Harnesses = append(report.Ran.Harnesses, h.Hello())
-	described := h.Do("describe", nil)
-	h.finish()
-	describing.Wait()
-	text, _ := described.Value["manifest"].(string)
+	contract := h.Hello().Contract
+	// A contract spoken from outside the deployment has no Manifest to describe: its harness is launched
+	// again against the instance once the Core is ready, and administers the fixture.
+	outside := contract == "administrative"
+	var text string
 	var head struct{ ID string }
-	if err := yaml.Unmarshal([]byte(text), &head); err != nil || head.ID == "" {
-		return report, fmt.Errorf("the harness described no Manifest with an identity: %q", text)
+	if outside {
+		h.finish()
+		describing.Wait()
+		text, head.ID = fixtureManifest, Fixture
+	} else {
+		described := h.Do("describe", nil)
+		h.finish()
+		describing.Wait()
+		text, _ = described.Value["manifest"].(string)
+		if err := yaml.Unmarshal([]byte(text), &head); err != nil || head.ID == "" {
+			return report, fmt.Errorf("the harness described no Manifest with an identity: %q", text)
+		}
 	}
 
 	// Compose.
@@ -172,8 +183,10 @@ func Execute(cfg Config) (Report, error) {
 		return report, err
 	}
 	harness, _ := filepath.Abs(cfg.Harness)
-	if err := os.Symlink(harness, filepath.Join(paths["plugins"], head.ID)); err != nil {
-		return report, err
+	if !outside {
+		if err := os.Symlink(harness, filepath.Join(paths["plugins"], head.ID)); err != nil {
+			return report, err
+		}
 	}
 	coreYAML, _ := yaml.Marshal(map[string]any{"state_dir": paths["state"], "runtime_dir": paths["run"],
 		"plugins": map[string]any{"manifests": paths["plugins.d"], "executables": paths["plugins"]}})
@@ -181,7 +194,11 @@ func Execute(cfg Config) (Report, error) {
 	for k, v := range cfg.HarnessEnv {
 		env[k] = v
 	}
-	composition, _ := yaml.Marshal(map[string]any{"units": map[string]any{"harness": map[string]any{"kind": "plugin", "plugin": head.ID, "env": env}}})
+	units := map[string]any{"harness": map[string]any{"kind": "plugin", "plugin": head.ID, "env": env}}
+	if outside {
+		units = map[string]any{}
+	}
+	composition, _ := yaml.Marshal(map[string]any{"units": units})
 	os.WriteFile(filepath.Join(tree, "core.yaml"), coreYAML, 0o644)
 	os.WriteFile(filepath.Join(tree, "composition.yaml"), composition, 0o644)
 
@@ -200,21 +217,40 @@ func Execute(cfg Config) (Report, error) {
 		return report, fmt.Errorf("the Core was not ready within %v; it said:\n%s", cfg.ReadyWithin, strings.Join(said(), "\n"))
 	}
 
-	// Drive.
-	run := &Run{tree: tree, control: control, described: text}
+	// Drive: only the cases of the contract the harness implements.
+	run := &Run{tree: tree, control: control, described: text, instance: paths["run"]}
+	if outside {
+		administering, err := control.launch(cfg, "CONFORMANCE_INSTANCE="+paths["run"])
+		if err != nil {
+			return report, err
+		}
+		defer administering.Wait()
+		run.admin, run.adminErr = control.next("", 15*time.Second)
+		if run.adminErr != nil {
+			administering.Process.Kill()
+		}
+	}
 	for _, c := range cfg.Cases {
+		if c.Contract != "" && c.Contract != contract {
+			continue
+		}
 		outcome := c.Run(run)
 		language := ""
-		if run.unit != nil {
+		switch {
+		case run.unit != nil:
 			language = run.unit.Hello().Language
-		} else if len(report.Ran.Harnesses) > 0 {
+		case run.admin != nil:
+			language = run.admin.Hello().Language
+		case len(report.Ran.Harnesses) > 0:
 			language = report.Ran.Harnesses[0].Language
 		}
 		report.Rows = append(report.Rows, Row{Case: c.ID, Language: language, Result: outcome.Result, Detail: outcome.Detail})
 	}
-	if run.unit != nil {
-		report.Ran.Harnesses = append(report.Ran.Harnesses, run.unit.Hello())
-		run.unit.finish()
+	for _, h := range []*Harness{run.unit, run.admin} {
+		if h != nil {
+			report.Ran.Harnesses = append(report.Ran.Harnesses, h.Hello())
+			h.finish()
+		}
 	}
 
 	// Report.
@@ -291,6 +327,9 @@ type Run struct {
 	control   *control
 	unit      *Harness
 	described string
+	instance  string
+	admin     *Harness
+	adminErr  error
 }
 
 // Described is the Manifest the harness described at the start of the run.
@@ -307,11 +346,19 @@ func (r *Run) NextUnit(within time.Duration) (*Harness, error) {
 }
 
 // Instance is the root of the instance the Core serves, where its administrative addresses are.
-func (r *Run) Instance() string { return "" }
+func (r *Run) Instance() string { return r.instance }
 
 // Administrator is the harness the suite launched against the instance, for a contract spoken from
 // outside the deployment.
-func (r *Run) Administrator() (*Harness, error) { return nil, errors.New("not yet") }
+func (r *Run) Administrator() (*Harness, error) {
+	if r.admin == nil {
+		if r.adminErr != nil {
+			return nil, r.adminErr
+		}
+		return nil, errors.New("no harness was launched against the instance")
+	}
+	return r.admin, nil
+}
 
 // Tree is the run's temporary tree.
 func (r *Run) Tree() string { return r.tree }
@@ -356,10 +403,11 @@ func listen(path string) (*control, error) {
 
 func (c *control) close() { c.listener.Close() }
 
-// launch starts the harness out of band, as the suite does to have it describe itself.
-func (c *control) launch(cfg Config) (*exec.Cmd, error) {
+// launch starts the harness out of band, as the suite does to have it describe itself, and to have an
+// administrative harness administer the instance.
+func (c *control) launch(cfg Config, env ...string) (*exec.Cmd, error) {
 	cmd := exec.Command(cfg.Harness)
-	cmd.Env = append(os.Environ(), "CONFORMANCE_SOCKET="+c.path)
+	cmd.Env = append(append(os.Environ(), "CONFORMANCE_SOCKET="+c.path), env...)
 	for k, v := range cfg.HarnessEnv {
 		cmd.Env = append(cmd.Env, k+"="+v)
 	}
