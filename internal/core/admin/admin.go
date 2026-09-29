@@ -49,6 +49,8 @@ type Connection struct {
 	Projection Projection
 	Actor      event.Actor
 	Opened     time.Time
+	// Subscriptions are the filters of the subscriptions it holds.
+	Subscriptions []*administrativev1.Filter
 }
 
 // Config is what the surface is served with.

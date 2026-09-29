@@ -12,6 +12,7 @@ import (
 	administrativev1 "github.com/yoke-project/yoke/proto/yoke/administrative/v1"
 	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
 
+	"github.com/yoke-project/yoke/internal/core/bus"
 	"github.com/yoke-project/yoke/internal/core/event"
 	"github.com/yoke-project/yoke/internal/core/logstore"
 	"github.com/yoke-project/yoke/internal/core/registry"
@@ -70,6 +71,8 @@ type Core struct {
 	Composed func(plugin string) bool
 	// Connections are the administrative connections open now.
 	Connections func() []Connection
+	// Bus is the instance's bus, which a subscription projects outwards.
+	Bus *bus.Bus
 	// Wait replaces the 30 s wait, for a test.
 	Wait time.Duration
 }
