@@ -10,6 +10,7 @@ import (
 	"io"
 	"log/slog"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -34,10 +35,12 @@ const (
 	ShellProjection    Projection = "shell"
 )
 
-// The reasons a connection closes: its caller ended it, or its transport went.
+// The reasons a connection closes: its caller ended it, its transport went, or — for an operator call
+// answered by a stream — the Core completed the stream.
 const (
 	Cancelled = "cancelled"
 	Dropped   = "dropped"
+	Completed = "completed"
 )
 
 // A Connection is a person or a tool attached to the surface. It is not a Session: that word is a unit's.
@@ -158,14 +161,50 @@ func refusal(code, message string) *administrativev1.Refusal {
 	return &administrativev1.Refusal{Code: code, Message: message}
 }
 
-// answer answers one request from actor. No operation is served yet: every one is refused as unknown.
-func (s *Surface) answer(_ context.Context, _ event.Actor, _ *administrativev1.Request) (*administrativev1.Response, *administrativev1.Refusal) {
-	return nil, refusal("operation.unknown", "this Core serves no operation yet")
+var operationOneof = (&administrativev1.Request{}).ProtoReflect().Descriptor().Oneofs().ByName("operation")
+
+// Name is the operation a request names, as the contract writes it — `plugin.enable`, `log.follow` — and
+// empty where it names none.
+func Name(r *administrativev1.Request) string {
+	f := r.ProtoReflect().WhichOneof(operationOneof)
+	if f == nil {
+		return ""
+	}
+	return strings.ReplaceAll(string(f.Name()), "_", ".")
+}
+
+// Streams says whether an operation is answered by a stream, which decides the method that carries it.
+func Streams(name string) bool { return name == "subscribe" || name == "log.follow" }
+
+// operation is what answers a request: the member it names, by the shape the carrying method has.
+func (s *Surface) operation(r *administrativev1.Request, stream bool) (string, Operation, *administrativev1.Refusal) {
+	name := Name(r)
+	if name == "" {
+		return "", Operation{}, refusal("operation.malformed", "the request names no operation")
+	}
+	if stream != Streams(name) {
+		if Streams(name) {
+			return name, Operation{}, refusal("operation.malformed", name+" is answered by a stream, which a unary call cannot carry")
+		}
+		return name, Operation{}, refusal("operation.malformed", name+" is answered once, and a stream does not carry it")
+	}
+	op, served := s.cfg.Operations[name]
+	if !served || (stream && op.Stream == nil) || (!stream && op.Answer == nil) {
+		return name, Operation{}, refusal("operation.unknown", "this Core does not serve "+name)
+	}
+	return name, op, nil
 }
 
 // refused is a refusal carried in the transport's status, which it does not replace.
 func refused(r *administrativev1.Refusal) error {
-	st, err := status.New(codes.Unimplemented, r.GetMessage()).WithDetails(r)
+	c := codes.FailedPrecondition
+	switch r.GetCode() {
+	case "operation.malformed":
+		c = codes.InvalidArgument
+	case "operation.unknown":
+		c = codes.Unimplemented
+	}
+	st, err := status.New(c, r.GetMessage()).WithDetails(r)
 	if err != nil {
 		return status.Error(codes.Internal, r.GetCode())
 	}
@@ -180,20 +219,37 @@ type operator struct {
 // Call answers one request, established anew as the account that made it: a call has nothing that
 // survives it.
 func (o operator) Call(ctx context.Context, r *administrativev1.Request) (*administrativev1.Response, error) {
-	resp, ref := o.answer(ctx, o.actor(ctx), r)
+	actor := o.actor(ctx)
+	_, op, ref := o.operation(r, false)
+	if ref != nil {
+		return nil, refused(ref)
+	}
+	resp, ref := op.Answer(ctx, actor, r)
 	if ref != nil {
 		return nil, refused(ref)
 	}
 	return resp, nil
 }
 
-// Watch answers one request with a stream.
+// Watch answers one request with a stream, and is a connection while the stream lasts.
 func (o operator) Watch(r *administrativev1.Request, stream administrativev1.Operator_WatchServer) error {
-	_, ref := o.answer(stream.Context(), o.actor(stream.Context()), r)
-	if ref == nil {
-		ref = refusal("operation.unknown", "this Core serves no operation yet")
+	ctx := stream.Context()
+	actor := o.actor(ctx)
+	_, op, ref := o.operation(r, true)
+	if ref != nil {
+		return refused(ref)
 	}
-	return refused(ref)
+	c := o.opened(OperatorProjection, actor)
+	ref = op.Stream(ctx, c.Actor, r, stream.Send)
+	reason := Completed
+	if ctx.Err() != nil {
+		reason = Cancelled
+	}
+	o.closed(c, reason)
+	if ref != nil {
+		return refused(ref)
+	}
+	return nil
 }
 
 type shell struct {
@@ -202,14 +258,24 @@ type shell struct {
 }
 
 // Connect holds a connection open: the actor is established once, when it opens, and every request on it
-// is that actor's.
+// is that actor's. Calls interleave, each answer carries the identity its caller chose, and every call
+// completes explicitly.
 func (sh shell) Connect(stream administrativev1.Shell_ConnectServer) error {
-	ctx := stream.Context()
+	ctx, end := context.WithCancel(stream.Context())
 	actor := sh.actor(ctx)
 	c := sh.opened(ShellProjection, actor)
 	reason := Dropped
-	defer func() { sh.closed(c, reason) }()
-	var sending sync.Mutex
+	var (
+		sending  sync.Mutex
+		mu       sync.Mutex
+		inFlight = map[string]context.CancelFunc{}
+		calls    sync.WaitGroup
+	)
+	defer func() {
+		end()
+		calls.Wait()
+		sh.closed(c, reason)
+	}()
 	send := func(f *administrativev1.CoreFrame) error {
 		sending.Lock()
 		defer sending.Unlock()
@@ -220,6 +286,9 @@ func (sh shell) Connect(stream administrativev1.Shell_ConnectServer) error {
 	}}}); err != nil {
 		return err
 	}
+	refuse := func(call string, r *administrativev1.Refusal) {
+		send(&administrativev1.CoreFrame{Call: call, Carries: &administrativev1.CoreFrame_Refusal{Refusal: r}})
+	}
 	for {
 		f, err := stream.Recv()
 		if errors.Is(err, io.EOF) {
@@ -227,23 +296,65 @@ func (sh shell) Connect(stream administrativev1.Shell_ConnectServer) error {
 			return nil
 		}
 		if err != nil {
-			if status.Code(err) == codes.Canceled && ctx.Err() == nil {
-				reason = Cancelled
-			}
 			return nil
 		}
-		if f.GetRequest() == nil {
+		call := f.GetCall()
+		if f.GetCancel() != nil {
+			mu.Lock()
+			if stop, ok := inFlight[call]; ok {
+				stop()
+			}
+			mu.Unlock()
 			continue
 		}
-		resp, ref := sh.answer(ctx, actor, f.GetRequest())
-		out := &administrativev1.CoreFrame{Call: f.GetCall()}
+		r := f.GetRequest()
+		if r == nil {
+			continue
+		}
+		name := Name(r)
+		_, op, ref := sh.operation(r, Streams(name))
 		if ref != nil {
-			out.Carries = &administrativev1.CoreFrame_Refusal{Refusal: ref}
-		} else {
-			out.Carries = &administrativev1.CoreFrame_Answer{Answer: resp}
+			refuse(call, ref)
+			continue
 		}
-		if err := send(out); err != nil {
-			return err
+		mu.Lock()
+		if _, busy := inFlight[call]; busy {
+			mu.Unlock()
+			refuse(call, refusal("operation.malformed", "the call "+call+" is already in flight on this connection"))
+			continue
 		}
+		callCtx, stop := context.WithCancel(ctx)
+		inFlight[call] = stop
+		mu.Unlock()
+		calls.Add(1)
+		go func() {
+			defer calls.Done()
+			defer func() {
+				mu.Lock()
+				delete(inFlight, call)
+				mu.Unlock()
+				stop()
+			}()
+			if !Streams(name) {
+				resp, ref := op.Answer(callCtx, actor, r)
+				if ref != nil {
+					refuse(call, ref)
+					return
+				}
+				send(&administrativev1.CoreFrame{Call: call, Carries: &administrativev1.CoreFrame_Answer{Answer: resp}})
+				return
+			}
+			ref := op.Stream(callCtx, actor, r, func(resp *administrativev1.Response) error {
+				if callCtx.Err() != nil {
+					return callCtx.Err()
+				}
+				return send(&administrativev1.CoreFrame{Call: call, Carries: &administrativev1.CoreFrame_Answer{Answer: resp}})
+			})
+			if ref != nil {
+				refuse(call, ref)
+				return
+			}
+			send(&administrativev1.CoreFrame{Call: call, Carries: &administrativev1.CoreFrame_Completion{Completion: &administrativev1.Completion{}}})
+		}()
 	}
 }
