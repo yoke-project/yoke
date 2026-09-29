@@ -151,6 +151,14 @@ func occurrenceWithheld(r *Run) Outcome {
 	if res.Unrecognised {
 		return Absent("report")
 	}
+	// The refusal may reach the harness before the report's result does.
+	withheld := func(o Observation) bool { return o.Kind == "refused" && o.Fields["code"] == "scope.withheld" }
+	if i := slices.IndexFunc(res.Before, withheld); i >= 0 {
+		if h.Gone(time.Second) {
+			return Fail("`report` outside the granted scope", "the Session going on", "the harness gone")
+		}
+		return Pass()
+	}
 	o, before, ok := observed(h, "refused", 10*time.Second)
 	if !ok || o.Fields["code"] != "scope.withheld" {
 		return Fail("`report` outside the granted scope", "an observation `refused` with `scope.withheld`", fmt.Sprintf("%v %v", o, before))
