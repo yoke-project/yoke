@@ -169,19 +169,31 @@ func readable(path string, implements int) error {
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
-	db, err := sql.Open(driver, "file:"+path+"?mode=ro")
+	at, err := stamped(path, "file:"+path+"?mode=ro")
 	if err != nil {
-		return err
+		// A process killed inside a write leaves a journal a read-only connection cannot roll back. Rolling
+		// it back restores the file as it was last committed, and sets nothing.
+		at, err = stamped(path, "file:"+path)
 	}
-	defer db.Close()
-	var at int
-	if err := db.QueryRow("PRAGMA user_version").Scan(&at); err != nil {
+	if err != nil {
 		return fmt.Errorf("the log store %s cannot be read: %w", path, err)
 	}
 	if at > implements {
 		return newer(path, at)
 	}
 	return nil
+}
+
+// stamped is the schema number a file holds, read through a connection opened with dsn.
+func stamped(path, dsn string) (int, error) {
+	db, err := sql.Open(driver, dsn)
+	if err != nil {
+		return 0, err
+	}
+	defer db.Close()
+	var at int
+	err = db.QueryRow("PRAGMA user_version").Scan(&at)
+	return at, err
 }
 
 func newer(path string, at int) error {
