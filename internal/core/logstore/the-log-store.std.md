@@ -95,3 +95,16 @@
 | **Precondition** | `yoke-core` built, with a composition running one oneshot unit that prints a line to its standard output and one to its standard error, and exits zero |
 | **Action** | start the Core, stop it once the unit completed, and start it again |
 | **Expected** | `logs.db` in the state directory holds the two lines with sources `stdout` and `stderr`, attributed to the unit's first life; the unit's state changes of that life, with source `core`; and, after the second start, lines attributed to its second life |
+
+## yoke:the-log-store.08 — a file a killed Core left mid-write is recovered, and opened
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/30.43 · specs/30.44 · arch/40-state/01 §How a store is opened · arch/30-core/03 §Cleanup belongs to the next start |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the log store's file, left by a process killed inside a write with its journal on disk |
+| **Action** | open it |
+| **Expected** | it is opened: the unfinished write is rolled back, and the schema number read from what the file holds |

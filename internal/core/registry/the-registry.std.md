@@ -186,3 +186,16 @@
 | **Precondition** | `yoke-core` built, its `state_dir` a regular file where a directory should be; then a writable `state_dir` |
 | **Action** | start it each time |
 | **Expected** | the first exits non-zero before `ready`, naming the step `stores`; the second is ready and `registry.db` exists under `state_dir` |
+
+## yoke:the-registry.15 — a file a killed Core left mid-write is recovered, and opened
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/30.43 · specs/30.44 · arch/40-state/01 §How a store is opened · arch/30-core/03 §Cleanup belongs to the next start |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the Registry's file, left by a process killed inside a write with its journal on disk |
+| **Action** | open it |
+| **Expected** | it is opened: the unfinished write is rolled back, and the schema number read from what the file holds |
