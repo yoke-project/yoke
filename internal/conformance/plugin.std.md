@@ -83,3 +83,81 @@
 | **Precondition** | the harness of case 5, gone |
 | **Action** | nothing, until the Core launches the unit again; then `start` |
 | **Expected** | a new process saying hello with the same unit, and an acceptance |
+
+## yoke:plugin.07 — an occurrence outside the granted scope is refused, and the Session goes on
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/50.30 · specs/50.64 · specs/50.105 · arch/50-plugin-surface/06 §Four families, closed · arch/50-plugin-surface/04 §Revocation |
+| **Level** | L2 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the harness of case 6, admitted and granted nothing |
+| **Action** | `report` of the occurrence its Manifest declares, at 40 |
+| **Expected** | an observation `refused` with `scope.withheld`, and no end of the Session |
+
+## yoke:plugin.08 — a grant reaches the unit at its next admission
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/50.30 · specs/50.32 · specs/60.33 · arch/50-plugin-surface/03 §The grant is an intersection, computed once |
+| **Level** | L2 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the harness of case 7 |
+| **Action** | every capability the Manifest declares granted and the unit restarted, on the administrative surface; then `start` in the life that follows |
+| **Expected** | each grant effective at the next admission; the next life accepted without restriction, granted every capability, stream, command and query declared |
+
+## yoke:plugin.09 — the Core's question reaches the unit, and its answer comes back, opaque
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/50.61 · specs/50.69 · specs/60.46 · arch/50-plugin-surface/05 §The eight · arch/60-administrative-surface/04 §The one operation whose content the Core does not read |
+| **Level** | L2 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the harness of case 8, granted everything |
+| **Action** | a question of the type its Manifest declares, asked of the unit on the administrative surface with some bytes; then `answer` with other bytes |
+| **Expected** | an observation `question` of that type carrying the bytes asked; the administrative answer is the bytes answered |
+
+## yoke:plugin.10 — an occurrence is carried at the author's severity
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/50.64 · specs/50.104 · specs/90.34 · arch/50-plugin-surface/05 §The event family is where a unit declares a severity |
+| **Level** | L2 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the harness of case 8, granted everything, and a subscription to `unit.occurrence.reported` on the administrative surface |
+| **Action** | `report` of the occurrence its Manifest declares, at 70, with a line |
+| **Expected** | an event about the unit carrying the occurrence, severity 70 and the unit as its actor |
+
+## yoke:plugin.11 — a health report is carried as the unit graded it
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/50.65 · specs/50.66 · specs/90.34 · arch/50-plugin-surface/05 §What a health report carries |
+| **Level** | L2 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the harness of case 8, and a subscription to `unit.condition.changed` on the administrative surface |
+| **Action** | `report-health` at 80, with a line |
+| **Expected** | an event about the unit at severity 80, with the unit as its actor |
+
+## yoke:plugin.12 — disabling the plugin revokes the Session, and the process ends
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/50.49 · specs/50.51 · specs/60.29 · specs/90.29 · arch/50-plugin-surface/04 §Revocation |
+| **Level** | L2 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the harness of case 8, its Session open |
+| **Action** | the plugin disabled on the administrative surface |
+| **Expected** | the end observed as a revocation, the plugin disabled, and then the harness gone |

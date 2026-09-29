@@ -23,7 +23,7 @@ type Contract struct {
 // Plugin is the plugin contract, as the suite measures it.
 func Plugin() Contract {
 	return Contract{Name: "plugin", Feature: "the plugin contract, as the conformance suite measures it against a real Core through a family's harness",
-		Item: "yoke-project/yoke#19", Cases: Cases()}
+		Item: "yoke-project/yoke#19", Cases: append(Cases(), FamilyCases()...)}
 }
 
 // Administrative is the administrative contract, as the suite measures it.

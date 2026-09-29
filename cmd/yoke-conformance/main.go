@@ -30,5 +30,5 @@ func main() {
 		fmt.Fprintln(os.Stderr, "yoke-conformance: --harness names the harness of the library under test")
 		os.Exit(2)
 	}
-	os.Exit(conformance.Main(conformance.Config{Core: *core, Harness: *harness, Cases: append(conformance.Cases(), conformance.AdministrativeCases()...), Out: os.Stdout}))
+	os.Exit(conformance.Main(conformance.Config{Core: *core, Harness: *harness, Cases: append(append(conformance.Cases(), conformance.FamilyCases()...), conformance.AdministrativeCases()...), Out: os.Stdout}))
 }
