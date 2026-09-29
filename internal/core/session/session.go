@@ -461,6 +461,18 @@ func (s *Service) Revoke(id string, cause pluginv1.SessionMessage_Revoked_Cause,
 	return nil
 }
 
+// Of is the Session a unit holds now, by its identity, and false where it holds none.
+func (s *Service) Of(unitID string) (string, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for id, l := range s.open {
+		if l.terms.Unit == unitID && !l.ended {
+			return id, true
+		}
+	}
+	return "", false
+}
+
 // Forget ends a unit's Session because its incarnation ended: the machine has already concluded, and
 // nothing is told to it.
 func (s *Service) Forget(unitID string) {

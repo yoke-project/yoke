@@ -68,7 +68,7 @@
 | **Label** | blocking |
 | **Precondition** | one event of every declared type |
 | **Action** | take each one's durable counterpart |
-| **Expected** | each is a log entry carrying its type and subject; a unit's report has the source `reported`, everything else `core`; a unit's events are attributed to the unit and its life, and nothing else to any unit |
+| **Expected** | each is a log entry carrying its type and subject; a unit's report has the source `reported`, everything else `core`; a unit's events are attributed to the unit and its life, and nothing else to any unit — except `plugin.policy.changed`, whose counterpart is the Registry's decision row and which the log store does not keep |
 
 ## yoke:names-and-filtering.06 — a unit's condition changes when its grade does, and not otherwise
 

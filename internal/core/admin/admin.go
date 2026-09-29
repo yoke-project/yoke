@@ -180,6 +180,9 @@ func Streams(name string) bool { return name == "subscribe" || name == "log.foll
 
 // operation is what answers a request: the member it names, by the shape the carrying method has.
 func (s *Surface) operation(r *administrativev1.Request, stream bool) (string, Operation, *administrativev1.Refusal) {
+	if r.GetVersion() != Version {
+		return "", Operation{}, refusal("compat.unsupported", fmt.Sprintf("this Core speaks the contract's version %d, and the request states %d", Version, r.GetVersion()))
+	}
 	name := Name(r)
 	if name == "" {
 		return "", Operation{}, refusal("operation.malformed", "the request names no operation")
@@ -189,6 +192,9 @@ func (s *Surface) operation(r *administrativev1.Request, stream bool) (string, O
 			return name, Operation{}, refusal("operation.malformed", name+" is answered by a stream, which a unary call cannot carry")
 		}
 		return name, Operation{}, refusal("operation.malformed", name+" is answered once, and a stream does not carry it")
+	}
+	if Changes(name) && s.cfg.Stopping != nil && s.cfg.Stopping() {
+		return name, Operation{}, refusal("instance.stopping", "the instance is stopping, and "+name+" would change something")
 	}
 	op, served := s.cfg.Operations[name]
 	if !served || (stream && op.Stream == nil) || (!stream && op.Answer == nil) {

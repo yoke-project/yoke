@@ -290,6 +290,10 @@ func TestEveryDeclaredTypeIsKeptAsAnEntry(t *testing.T) {
 		"connection.closed":        event.ConnectionClosed("c-1", "shell", "cancelled", event.Actor{Class: event.ByOperator, Person: "ada"}),
 	}
 	for _, name := range event.Names() {
+		if name == event.InRegistry {
+			// Its counterpart is the Registry's decision row, and nothing is kept here.
+			continue
+		}
 		e, made := one[name]
 		if !made {
 			t.Errorf("%s is declared, and this case makes none", name)

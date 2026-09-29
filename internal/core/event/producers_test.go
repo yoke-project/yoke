@@ -21,6 +21,7 @@ var makes = map[string]string{
 	"document.rejected":        "DocumentRejected",
 	"connection.opened":        "ConnectionOpened",
 	"connection.closed":        "ConnectionClosed",
+	"plugin.policy.changed":    "PolicyChanged",
 }
 
 // std: yoke:names-and-filtering.02
