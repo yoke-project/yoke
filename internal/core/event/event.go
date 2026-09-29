@@ -99,6 +99,8 @@ var declared = map[string]Class{
 	"unit.occurrence.reported": Edge,
 	"document.resolved":        Level,
 	"document.rejected":        Edge,
+	"connection.opened":        Level,
+	"connection.closed":        Level,
 }
 
 // occurrenceType is the one type that carries an occurrence.
@@ -225,6 +227,22 @@ func DocumentResolved(path, resolved, digest string) Event {
 // code and its place, in the validator's vocabulary.
 func DocumentRejected(path, code, place string) Event {
 	return concluded("document.rejected", Subject{Kind: Document, ID: path}, Notable, map[string]any{"finding": map[string]string{"code": code, "place": place}})
+}
+
+// ConnectionOpened is the administrative surface's conclusion that a connection opened on one of its
+// projections, attributed to the operator the channel established.
+func ConnectionOpened(id, projection string, actor Actor) Event {
+	e := concluded("connection.opened", Subject{Kind: Connection, ID: id}, Routine, map[string]any{"projection": projection})
+	e.Actor = actor
+	return e
+}
+
+// ConnectionClosed is the surface's conclusion that a connection closed, and why: its caller ended it,
+// or its transport went.
+func ConnectionClosed(id, projection, reason string, actor Actor) Event {
+	e := concluded("connection.closed", Subject{Kind: Connection, ID: id}, Routine, map[string]any{"projection": projection, "reason": reason})
+	e.Actor = actor
+	return e
 }
 
 // Filter selects events on four independent axes; an axis left empty selects everything on it.

@@ -286,6 +286,8 @@ func TestEveryDeclaredTypeIsKeptAsAnEntry(t *testing.T) {
 		"unit.occurrence.reported": event.OccurrenceReported("acquire", 2, &pluginv1.Event{Occurrence: "calibration.drift", Severity: 40}),
 		"document.resolved":        event.DocumentResolved("/etc/yoke/bench.yaml", "bench", "sha256:00"),
 		"document.rejected":        event.DocumentRejected("/etc/yoke/bad.yaml", "yaml.syntax", "line 3"),
+		"connection.opened":        event.ConnectionOpened("c-1", "shell", event.Actor{Class: event.ByOperator, Person: "ada"}),
+		"connection.closed":        event.ConnectionClosed("c-1", "shell", "cancelled", event.Actor{Class: event.ByOperator, Person: "ada"}),
 	}
 	for _, name := range event.Names() {
 		e, made := one[name]
