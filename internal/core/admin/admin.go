@@ -59,7 +59,9 @@ type Config struct {
 	Accounts func(uid string) (string, error)
 	// Operations answer the union's members, by the operation's name: `read`, `log.follow`.
 	Operations map[string]Operation
-	Log        *slog.Logger
+	// Stopping says whether the instance is stopping, when a change is refused and a read answered.
+	Stopping func() bool
+	Log      *slog.Logger
 }
 
 // An Operation answers one member of the union, whichever projection carried it: once, or by a stream

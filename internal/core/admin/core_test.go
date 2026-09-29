@@ -19,7 +19,7 @@ import (
 
 // started builds yoke-core and starts it in the service form, with nothing to run; it returns the
 // runtime directory and a wait for a line of its output.
-func started(t *testing.T) (string, func(what string, holds func(string) bool)) {
+func started(t *testing.T, manifests ...string) (string, func(what string, holds func(string) bool)) {
 	t.Helper()
 	binary := filepath.Join(t.TempDir(), "yoke-core")
 	if said, err := exec.Command("go", "build", "-o", binary, "github.com/yoke-project/yoke/cmd/yoke-core").CombinedOutput(); err != nil {
@@ -28,11 +28,16 @@ func started(t *testing.T) (string, func(what string, holds func(string) bool)) 
 	dir := t.TempDir()
 	run, _ := os.MkdirTemp("", "yk")
 	t.Cleanup(func() { os.RemoveAll(run) })
-	manifests, executables := filepath.Join(dir, "plugins.d"), filepath.Join(dir, "plugins")
-	os.MkdirAll(manifests, 0o755)
+	declared, executables := filepath.Join(dir, "plugins.d"), filepath.Join(dir, "plugins")
+	os.MkdirAll(declared, 0o755)
 	os.MkdirAll(executables, 0o755)
+	for i, m := range manifests {
+		path := filepath.Join(declared, fmt.Sprint(i), "manifest.yaml")
+		os.MkdirAll(filepath.Dir(path), 0o755)
+		os.WriteFile(path, []byte(m), 0o644)
+	}
 	core := filepath.Join(dir, "core.yaml")
-	os.WriteFile(core, []byte(fmt.Sprintf("state_dir: %s/state\nruntime_dir: %s\nplugins:\n  manifests: %s\n  executables: %s\n", dir, run, manifests, executables)), 0o644)
+	os.WriteFile(core, []byte(fmt.Sprintf("state_dir: %s/state\nruntime_dir: %s\nplugins:\n  manifests: %s\n  executables: %s\n", dir, run, declared, executables)), 0o644)
 
 	command := exec.Command(binary)
 	command.Env = append(os.Environ(), "YOKE_CONFIG="+core)
@@ -146,4 +151,32 @@ func TestThroughTheCoreBothProjectionsAnswerAlike(t *testing.T) {
 	if !calls["x"] || !calls["y"] {
 		t.Errorf("the refusals carried %v, want x and y", calls)
 	}
+}
+
+// std: yoke:the-operations.10
+func TestThroughTheCoreAnOperatorDisablesAPlugin(t *testing.T) {
+	run, await := started(t, "manifest: 1\nid: com.example.station\nprotocol: 1\nstreams: [ { id: station.data } ]\n"+
+		"capabilities: [ { name: stream.data.publish, governs: { stream: station.data } } ]\n")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	resp, err := administrativev1.NewOperatorClient(dial(t, filepath.Join(run, "operator.sock"))).Call(ctx, disable(station))
+	if err != nil {
+		t.Fatalf("the disable by Call failed: %v", err)
+	}
+	if !resp.GetPluginDisable().GetPreviously().GetEnabled() {
+		t.Errorf("the disable by Call answered %v, want that it was enabled", resp)
+	}
+	stream, err := administrativev1.NewShellClient(dial(t, filepath.Join(run, "shell.sock"))).Connect(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	next(t, stream)
+	issue(t, stream, "again", disable(station))
+	if frame := next(t, stream); frame.GetCall() != "again" || frame.GetAnswer() == nil || frame.GetAnswer().GetPluginDisable().GetPreviously().GetEnabled() {
+		t.Errorf("the disable on the shell answered %v, want that it was disabled", frame)
+	}
+	await("plugin.policy.changed", func(l string) bool {
+		return strings.Contains(l, "type=plugin.policy.changed") && strings.Contains(l, "subject=plugin:"+station) &&
+			strings.Contains(l, "actor=operator") && strings.Contains(l, "person="+me(t).Username)
+	})
 }

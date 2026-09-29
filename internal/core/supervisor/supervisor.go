@@ -109,6 +109,9 @@ type Status struct {
 // The backend this supervisor launches on.
 const backend = "host"
 
+// ErrUnreachable is the error of an act that needs the backend while it cannot be reached.
+var ErrUnreachable = errors.New("the backend cannot be reached")
+
 type managed struct {
 	decl        Unit
 	machine     *unit.Machine
