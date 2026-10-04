@@ -69,3 +69,16 @@
 | **Precondition** | ten units whose states change continuously on the bus |
 | **Action** | subscribe while the changes are being published, read what follows, and stop publishing |
 | **Expected** | every event delivered is numbered after the snapshot, in increasing order; for every unit, the last value the subscriber holds — delivered, or else in the snapshot — is the last change published for it |
+
+## yoke:a-subscription.06 — a stream's state is one level per stream, its current value the last of its two types
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/31.21 · specs/31.27 · arch/45-events/06 §`unit` · arch/45-events/04 §1 — The snapshot |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a bus |
+| **Action** | publish one unit's two streams activated, then the second stopped; take a snapshot |
+| **Expected** | the snapshot holds the first stream's activation and the second stream's stop, and not the second stream's activation |

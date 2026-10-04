@@ -95,3 +95,16 @@
 | **Precondition** | `yoke-core` built, with a composition running one unit of a program that registers, opens its Session, heartbeats, and sends a command |
 | **Action** | start the Core |
 | **Expected** | the unit receives `session.direction` correlated to its command, and the Core's output records the refusal |
+
+## yoke:the-families.08 — an error answering the Core's message closes the exchange, and its caller is handed it
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/50.69 · arch/50-plugin-surface/05 §An error answering the Core's message closes the exchange |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an open Session, and a question the Core asked with a wait of two seconds |
+| **Action** | the unit answers it with an error carrying its own code and a message; then answers it again |
+| **Expected** | the caller is handed, at once, the unit's failure with its code and message; the exchange is closed, so the second answer is refused as correlated to nothing awaiting one |

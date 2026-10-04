@@ -51,6 +51,14 @@ type Refused struct {
 
 func (r *Refused) Error() string { return codeName(r.Code) + ": " + r.Reason }
 
+// UnitFailed is a unit's error answering the Core's message: its own code, which names a failure in the
+// unit's terms, and its message.
+type UnitFailed struct {
+	Code, Message string
+}
+
+func (u *UnitFailed) Error() string { return "the unit failed it, " + u.Code + ": " + u.Message }
+
 // permitted checks what the Core would send against the unit's grant: a command, a question, and a
 // stream's activation or stop each name an object a capability governs.
 func permitted(sc *scope.Scope, e *pluginv1.Envelope) error {

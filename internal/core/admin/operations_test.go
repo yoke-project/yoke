@@ -21,6 +21,7 @@ import (
 	"github.com/yoke-project/yoke/internal/core/event"
 	"github.com/yoke-project/yoke/internal/core/logstore"
 	"github.com/yoke-project/yoke/internal/core/registry"
+	"github.com/yoke-project/yoke/internal/core/session"
 	"github.com/yoke-project/yoke/internal/core/supervisor"
 	"github.com/yoke-project/yoke/internal/core/unit"
 	"github.com/yoke-project/yoke/internal/gate"
@@ -164,6 +165,12 @@ func (f *fakeSessions) Ask(ctx context.Context, id string, q *pluginv1.Query_Que
 	if how == "silent" {
 		<-ctx.Done()
 		return nil, ctx.Err()
+	}
+	if q.GetType() == "undeclared.type" {
+		return nil, &session.Refused{Code: pluginv1.Code_CODE_SCOPE_UNDECLARED, Reason: "never declared"}
+	}
+	if how == "failing" {
+		return nil, &session.UnitFailed{Code: "instrument.busy", Message: "the lamp is warming"}
 	}
 	answer := slices.Clone(q.GetPayload())
 	slices.Reverse(answer)

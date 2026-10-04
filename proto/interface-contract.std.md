@@ -94,7 +94,7 @@
 | **Label** | blocking |
 | **Precondition** | the interface contract's enumeration of codes |
 | **Action** | read each value's dotted name |
-| **Expected** | the sixteen codes of this surface, each under the grammar, and no other |
+| **Expected** | the seventeen codes of this surface, each under the grammar, and no other |
 
 ## yoke:interface-contract.08 — a refusal is a code, a message and a typed detail
 

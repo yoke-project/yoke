@@ -134,3 +134,16 @@
 | **Precondition** | `yoke-core` built and started in the service form, with one Manifest in its Plugin directory |
 | **Action** | disable the plugin by `Call`; disable it again on a shell connection |
 | **Expected** | the first answers that it was enabled; the second that it was disabled; the Core's output records `plugin.policy.changed` about the plugin, with the operator as its actor, naming the account the test runs under |
+
+## yoke:the-operations.11 — a question of an undeclared type, and a unit's error, are refused as what they are
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/60.47 · arch/60-administrative-surface/07 §This surface's codes · arch/50-plugin-surface/05 §An error answering the Core's message closes the exchange |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a running unit with a Session, which answers one question with an error |
+| **Action** | `unit.ask` with a type its Plugin never declared; then with the type it fails |
+| **Expected** | the first is refused `scope.undeclared` naming the type; the second is refused `unit.failed`, its detail carrying the unit's code and its message the unit's |
