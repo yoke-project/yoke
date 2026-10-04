@@ -368,6 +368,15 @@ func (s *Supervisor) attempt(m *managed) {
 
 // Environment is what a unit is handed: the reserved variables, then the declaration's own.
 func (s *Supervisor) Environment(u Unit, token string) []string {
+	if u.Kind == unit.Interface {
+		// A managed interface consumes a channel the Core bound: it is told where, and nothing a Plugin is
+		// told, having nothing to bind, no admission to present a token to and no Manifest.
+		env := []string{"YOKE_UNIT=" + u.ID, "YOKE_SOCKET=" + u.Channel}
+		for name, value := range u.Env {
+			env = append(env, name+"="+value)
+		}
+		return env
+	}
 	env := []string{
 		"YOKE_UNIT=" + u.ID,
 		"YOKE_SOCKET=" + filepath.Join(s.cfg.Root, "plugin.sock"),
