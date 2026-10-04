@@ -20,6 +20,7 @@ import (
 
 	administrativev1 "github.com/yoke-project/yoke/proto/yoke/administrative/v1"
 	interfacev1 "github.com/yoke-project/yoke/proto/yoke/interface/v1"
+	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
 )
 
 // The test binary is also the managed interface the Core launches: this variable, declared in the
@@ -32,6 +33,8 @@ func TestMain(m *testing.M) {
 		os.Exit(reachTheChannel())
 	case "once":
 		os.Exit(0)
+	case "commanded":
+		os.Exit(acknowledgeCommands())
 	}
 	os.Exit(m.Run())
 }
@@ -62,9 +65,13 @@ func startCore(t *testing.T, composition string) (string, <-chan string) {
 	run, _ := os.MkdirTemp("", "yk")
 	t.Cleanup(func() { os.RemoveAll(run) })
 	manifests, executables := filepath.Join(dir, "plugins.d"), filepath.Join(dir, "plugins")
-	os.MkdirAll(manifests, 0o755)
+	os.MkdirAll(filepath.Join(manifests, "com.example.station"), 0o755)
 	os.MkdirAll(executables, 0o755)
 	self, _ := os.Executable()
+	// The one Plugin a composition may run is this binary, declaring the command it acknowledges.
+	os.WriteFile(filepath.Join(manifests, "com.example.station", "manifest.yaml"), []byte("manifest: 1\nid: com.example.station\nprotocol: 1\n"+
+		"commands: [ { id: calibrate } ]\ncapabilities: [ { name: command.calibrate.accept, governs: { command: calibrate } } ]\n"), 0o644)
+	os.Symlink(self, filepath.Join(executables, "com.example.station"))
 	path := filepath.Join(dir, "bench.yaml")
 	os.WriteFile(path, []byte(fmt.Sprintf(composition, self, role)), 0o644)
 	core := filepath.Join(dir, "core.yaml")
@@ -269,5 +276,115 @@ channels:
 	}
 	if len(got) != 2 || got["panel"] != me.Username || got["remote"] != "" {
 		t.Errorf("the operator read the channels as %v", got)
+	}
+}
+
+// acknowledgeCommands registers, opens its Session, reports its health every second, and acknowledges
+// every command as done, with a line.
+func acknowledgeCommands() int {
+	conn, err := grpc.NewClient("unix://"+os.Getenv("YOKE_SOCKET"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return 1
+	}
+	defer conn.Close()
+	resp, err := pluginv1.NewRegisterClient(conn).Register(context.Background(), &pluginv1.RegisterRequest{
+		Plugin: os.Getenv("YOKE_PLUGIN"), Unit: os.Getenv("YOKE_UNIT"), Token: os.Getenv("YOKE_TOKEN"), Protocol: 1,
+		Declared: &pluginv1.Surface{Capabilities: []string{"command.calibrate.accept"}, Commands: []string{"calibrate"}},
+	})
+	if err != nil || resp.SessionId == "" {
+		fmt.Println("not admitted:", err, resp)
+		return 1
+	}
+	s, err := pluginv1.NewSessionClient(conn).Open(context.Background())
+	if err != nil {
+		return 1
+	}
+	var mu sync.Mutex
+	n := 0
+	send := func(fill func(*pluginv1.Envelope)) {
+		mu.Lock()
+		defer mu.Unlock()
+		n++
+		e := &pluginv1.Envelope{MessageId: fmt.Sprint(n), SessionId: resp.SessionId, SentAtUnixNano: time.Now().UnixNano()}
+		fill(e)
+		s.Send(e)
+	}
+	send(func(e *pluginv1.Envelope) {
+		e.Payload = &pluginv1.Envelope_Session{Session: &pluginv1.SessionMessage{Kind: &pluginv1.SessionMessage_Open_{Open: &pluginv1.SessionMessage_Open{}}}}
+	})
+	go func() {
+		for {
+			send(func(e *pluginv1.Envelope) {
+				e.Payload = &pluginv1.Envelope_Health{Health: &pluginv1.Health{Grade: 10, Line: "ready"}}
+			})
+			time.Sleep(time.Second)
+		}
+	}()
+	for {
+		e, err := s.Recv()
+		if err != nil {
+			return 0
+		}
+		if e.GetControl().GetCommand() != nil {
+			send(func(a *pluginv1.Envelope) {
+				a.CorrelationId = e.MessageId
+				a.Payload = &pluginv1.Envelope_Ack{Ack: &pluginv1.Ack{Outcome: pluginv1.Ack_OUTCOME_DONE, Line: "calibrated"}}
+			})
+		}
+	}
+}
+
+// std: yoke:channel-operations.06
+func TestThroughTheCoreACommandOnAChannelReachesTheUnit(t *testing.T) {
+	run, lines := startCore(t, `units:
+  acquire: { kind: plugin, plugin: com.example.station, env: { %[2]s: commanded } }
+channels:
+  panel: { transport: local, clients: single }
+# %[1]s
+`)
+	_ = run
+	opened := make(chan struct{}, 4)
+	go func() {
+		for line := range lines {
+			if strings.Contains(line, "msg=session") && strings.Contains(line, "event=opened") {
+				opened <- struct{}{}
+			}
+		}
+	}()
+	await := func(what string) {
+		t.Helper()
+		select {
+		case <-opened:
+		case <-time.After(20 * time.Second):
+			t.Fatalf("no %s within twenty seconds", what)
+		}
+	}
+	await("first Session")
+	conn, err := grpc.NewClient("unix://"+filepath.Join(run, "operator.sock"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	operator := administrativev1.NewOperatorClient(conn)
+	for _, r := range []*administrativev1.Request{
+		{Version: 1, Operation: &administrativev1.Request_PluginGrant{PluginGrant: &administrativev1.PluginGrant{Plugin: "com.example.station", Capability: "command.calibrate.accept"}}},
+		{Version: 1, Operation: &administrativev1.Request_UnitRestart{UnitRestart: &administrativev1.UnitAct{Unit: "acquire"}}},
+	} {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		_, err := operator.Call(ctx, r)
+		cancel()
+		if err != nil {
+			t.Fatalf("%v was refused: %v", r, err)
+		}
+	}
+	await("next life's Session")
+	a, err := attachTo(t, filepath.Join(run, "interfaces", "panel.sock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.next(t)
+	f := a.answerTo(t, "c", command("acquire", "calibrate", []byte("now")))
+	if ack := f.GetAnswer().GetCommand(); ack.GetOutcome() != interfacev1.Acknowledged_OUTCOME_DONE || ack.GetLine() != "calibrated" {
+		t.Errorf("the command was answered %v", f)
 	}
 }
