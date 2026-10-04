@@ -68,6 +68,8 @@ type Config struct {
 	Channel gate.Channel
 	// Root is the instance root, under which a subscriber's socket is created.
 	Root string
+	// Queue replaces the frames a delivery holds for its client, for a test.
+	Queue int
 	// Bus is what the standing subscription and the picture's sequence are taken from. Optional.
 	Bus *bus.Bus
 	// Publish is told what the channel concludes about itself. Optional.
