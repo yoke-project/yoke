@@ -2,6 +2,7 @@ package conformance
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"slices"
@@ -208,7 +209,41 @@ func grantedAtNextLife(r *Run) Outcome {
 		!slices.Equal(sorted(stringList(granted["queries"])), sorted(d.Queries)) {
 		return Fail("`start` in the next life", "an acceptance granting everything declared", fmt.Sprintf("%v %s", res.Value, res.Refusal))
 	}
+	// The library has sent its OPEN, which the Core may not have read: the life is started once the Core
+	// sees it running, and what follows asks it things.
+	if err := running(ctx, op, unit); err != nil {
+		return Fail("`start` in the next life", "the Core seeing the next life running", err.Error())
+	}
 	return Pass()
+}
+
+// running waits until the Core sees the unit running: in a subscription's snapshot, or in the event
+// that follows it. A life that ended is no longer in the snapshot as running, so only a live one counts.
+func running(ctx context.Context, op administrativev1.OperatorClient, unit string) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	stream, err := op.Watch(ctx, request(&administrativev1.Request{Operation: &administrativev1.Request_Subscribe{Subscribe: &administrativev1.Subscribe{
+		Filter: &administrativev1.Filter{Type: "unit.state.changed"}}}}))
+	if err != nil {
+		return err
+	}
+	for {
+		r, err := stream.Recv()
+		if err != nil {
+			return err
+		}
+		for _, rec := range r.GetSubscribe().GetSnapshot().GetRecords() {
+			if u := rec.GetUnit(); u.GetDeclared().GetIdentity() == unit && u.GetObserved().GetState() == "Running" {
+				return nil
+			}
+		}
+		if e := r.GetSubscribe().GetEvent(); e != nil && e.GetSubject().GetIdentity() == unit {
+			var moved struct{ To string }
+			if json.Unmarshal(e.GetDetail(), &moved) == nil && moved.To == "Running" {
+				return nil
+			}
+		}
+	}
 }
 
 // std: yoke:plugin.09
