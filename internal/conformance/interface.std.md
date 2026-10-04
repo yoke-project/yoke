@@ -84,15 +84,15 @@
 | **Action** | `confirm` of the standing subscription |
 | **Expected** | an answer, and no refusal |
 
-## yoke:interface.07 — a subscription opens with a snapshot of what the channel sees
+## yoke:interface.07 — a subscription opens with a snapshot of what the channel sees, and a channel sees itself alone
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.7 · specs/90.32 · arch/70-interface-surface/05 §What a subscription promises |
+| **Cites** | specs/70.7 · specs/70.8 · specs/90.32 · arch/70-interface-surface/05 §What a subscription promises · arch/70-interface-surface/05 §Three subject kinds, and three it does not see |
 | **Level** | L2 |
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
 | **Precondition** | the harness attached to `panel` |
 | **Action** | `subscribe` to the subject kind `channel` |
-| **Expected** | a snapshot holding the records of `panel` and of `bench` |
+| **Expected** | a snapshot holding `panel`'s record, and not `bench`'s |

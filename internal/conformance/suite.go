@@ -11,6 +11,7 @@ package conformance
 
 import (
 	"bufio"
+	"context"
 	"debug/buildinfo"
 	"encoding/json"
 	"errors"
@@ -27,7 +28,11 @@ import (
 
 	"go.yaml.in/yaml/v3"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
 	administrativev1 "github.com/yoke-project/yoke/proto/yoke/administrative/v1"
+	interfacev1 "github.com/yoke-project/yoke/proto/yoke/interface/v1"
 )
 
 // The three values a cell can hold. There is no fourth.
@@ -159,8 +164,9 @@ func Execute(cfg Config) (Report, error) {
 	report.Ran.Harnesses = append(report.Ran.Harnesses, h.Hello())
 	contract := h.Hello().Contract
 	// A contract spoken from outside the deployment has no Manifest to describe: its harness is launched
-	// again against the instance once the Core is ready, and administers the fixture.
-	outside := contract == "administrative"
+	// again against the instance once the Core is ready, and administers the fixture or attaches to a
+	// channel the instance binds.
+	outside := contract == "administrative" || contract == "interface"
 	var text string
 	var head struct{ ID string }
 	if outside {
@@ -206,7 +212,11 @@ func Execute(cfg Config) (Report, error) {
 	// A beat every second shows within seconds what a library sends on its own; a hundred and twenty
 	// missed intervals keep a unit whose author has not reported yet alive for the whole run.
 	policy := map[string]any{"heartbeat": map[string]any{"interval": Beat.String(), "tolerance": "120"}}
-	composition, _ := yaml.Marshal(map[string]any{"policy": policy, "units": units})
+	composed := map[string]any{"policy": policy, "units": units}
+	if contract == "interface" {
+		composed["channels"], composed["arbitration"] = interfaceChannels, interfaceArbitration
+	}
+	composition, _ := yaml.Marshal(composed)
 	os.WriteFile(filepath.Join(tree, "core.yaml"), coreYAML, 0o644)
 	os.WriteFile(filepath.Join(tree, "composition.yaml"), composition, 0o644)
 
@@ -227,6 +237,7 @@ func Execute(cfg Config) (Report, error) {
 
 	// Drive: only the cases of the contract the harness implements.
 	run := &Run{tree: tree, control: control, described: text, instance: paths["run"]}
+	defer run.release()
 	if outside {
 		administering, err := control.launch(cfg, "CONFORMANCE_INSTANCE="+paths["run"])
 		if err != nil {
@@ -339,7 +350,8 @@ type Run struct {
 	admin     *Harness
 	adminErr  error
 	operator  administrativev1.OperatorClient
-	opening   *Result // the harness's attachment, once an interface case has made it
+	opening   *Result  // the harness's attachment, once an interface case has made it
+	held      []func() // the attachments the suite holds itself
 }
 
 // Described is the Manifest the harness described at the start of the run.
@@ -371,10 +383,43 @@ func (r *Run) Administrator() (*Harness, error) {
 }
 
 // Client is the harness the suite launched against the instance for the interface contract.
-func (r *Run) Client() (*Harness, error) { return nil, errors.New("not yet") }
+func (r *Run) Client() (*Harness, error) { return r.Administrator() }
 
-// Hold attaches the suite itself to a channel of the instance, for as long as the run lasts.
-func (r *Run) Hold(channel string) error { return errors.New("not yet") }
+// Hold attaches the suite itself to a channel of the instance, for as long as the run lasts: it reads
+// the opening, and holds the attachment open without reading further.
+func (r *Run) Hold(channel string) error {
+	conn, err := grpc.NewClient("unix://"+filepath.Join(r.instance, "interfaces", channel+".sock"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return err
+	}
+	ctx, end := context.WithCancel(context.Background())
+	r.held = append(r.held, func() { end(); conn.Close() })
+	stream, err := interfacev1.NewInterfaceClient(conn).Attach(ctx)
+	if err != nil {
+		return err
+	}
+	opened := make(chan error, 1)
+	go func() {
+		f, err := stream.Recv()
+		if err == nil && f.GetOpening() == nil {
+			err = fmt.Errorf("the attachment opened with %v", f)
+		}
+		opened <- err
+	}()
+	select {
+	case err := <-opened:
+		return err
+	case <-time.After(10 * time.Second):
+		return errors.New("no opening within ten seconds")
+	}
+}
+
+// release lets go of every attachment the suite holds.
+func (r *Run) release() {
+	for _, let := range r.held {
+		let()
+	}
+}
 
 // Tree is the run's temporary tree.
 func (r *Run) Tree() string { return r.tree }

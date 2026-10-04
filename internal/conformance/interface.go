@@ -62,11 +62,11 @@ func InterfaceCases() []Case {
 			Issues:       "`confirm` of the standing subscription",
 			Requires:     "an answer, and no refusal",
 			Run:          confirmed},
-		{ID: "yoke:interface.07", Title: "a subscription opens with a snapshot of what the channel sees", Contract: "interface",
-			Cites:        []string{"specs/70.7", "specs/90.32", "arch/70-interface-surface/05 §What a subscription promises"},
+		{ID: "yoke:interface.07", Title: "a subscription opens with a snapshot of what the channel sees, and a channel sees itself alone", Contract: "interface",
+			Cites:        []string{"specs/70.7", "specs/70.8", "specs/90.32", "arch/70-interface-surface/05 §What a subscription promises", "arch/70-interface-surface/05 §Three subject kinds, and three it does not see"},
 			Precondition: "the harness attached to `panel`",
 			Issues:       "`subscribe` to the subject kind `channel`",
-			Requires:     "a snapshot holding the records of `panel` and of `bench`",
+			Requires:     "a snapshot holding `panel`'s record, and not `bench`'s",
 			Run:          subscribedToChannels},
 	}
 }
@@ -175,7 +175,7 @@ func displacedAndRefused(r *Run) Outcome {
 		return Fail("the suite attaching to `bench`", "an attachment", err.Error())
 	}
 	suspended := func(o Observation) bool {
-		return o.Kind == "event" && o.Fields["type"] == "channel.suspended" && field(o.Fields, "subject", "identity") == Panel
+		return o.Kind == "event" && o.Fields["type"] == "channel.suspended" && o.Fields["subject"] == Panel
 	}
 	seen := false
 	for deadline := time.Now().Add(10 * time.Second); !seen && time.Now().Before(deadline); {
@@ -244,7 +244,7 @@ func subscribedToChannels(r *Run) Outcome {
 		return Fail("`subscribe` to channels", "a subscription", res.Refusal)
 	}
 	isSnapshot := func(o Observation) bool {
-		return o.Kind == "snapshot" && channelRecord(o.Fields["records"], Panel) != nil && channelRecord(o.Fields["records"], Bench) != nil
+		return o.Kind == "snapshot" && channelRecord(o.Fields["records"], Panel) != nil && channelRecord(o.Fields["records"], Bench) == nil
 	}
 	if slices.ContainsFunc(res.Before, isSnapshot) {
 		return Pass()
@@ -258,5 +258,5 @@ func subscribedToChannels(r *Run) Outcome {
 			return Pass()
 		}
 	}
-	return Fail("`subscribe` to channels", "a snapshot holding `panel` and `bench`", "none")
+	return Fail("`subscribe` to channels", "a snapshot holding `panel`'s record, and not `bench`'s", "none")
 }
