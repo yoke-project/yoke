@@ -38,6 +38,7 @@ type Unit struct {
 	RestartOnFailure bool     // `restart.on_failure`, a unit that runs to completion's to declare
 	DependsOn        []string // the units this one waits on, each until it is ready by its kind
 	Policy           *Policy  // the unit's own figures; nil takes the deployment's
+	Channel          string   // a managed interface's: the address of the channel that names it
 }
 
 // Policy holds the deployment's figures.
@@ -332,7 +333,7 @@ func (s *Supervisor) attempt(m *managed) {
 	command := &exec.Cmd{
 		Path:        "/proc/self/fd/3",
 		Args:        append([]string{m.decl.Exec}, m.decl.Args...),
-		Env:         s.environment(m.decl, token),
+		Env:         s.Environment(m.decl, token),
 		ExtraFiles:  []*os.File{file},
 		SysProcAttr: &syscall.SysProcAttr{Setpgid: true},
 		WaitDelay:   time.Second,
@@ -365,8 +366,8 @@ func (s *Supervisor) attempt(m *managed) {
 	}()
 }
 
-// environment is what a unit is handed: the reserved variables, then the declaration's own.
-func (s *Supervisor) environment(u Unit, token string) []string {
+// Environment is what a unit is handed: the reserved variables, then the declaration's own.
+func (s *Supervisor) Environment(u Unit, token string) []string {
 	env := []string{
 		"YOKE_UNIT=" + u.ID,
 		"YOKE_SOCKET=" + filepath.Join(s.cfg.Root, "plugin.sock"),
