@@ -17,6 +17,7 @@ import (
 	"github.com/yoke-project/yoke/internal/core/logstore"
 	"github.com/yoke-project/yoke/internal/core/registry"
 	"github.com/yoke-project/yoke/internal/core/session"
+	"github.com/yoke-project/yoke/internal/core/streams"
 	"github.com/yoke-project/yoke/internal/core/supervisor"
 	"github.com/yoke-project/yoke/internal/core/unit"
 	"github.com/yoke-project/yoke/internal/gate"
@@ -47,6 +48,15 @@ type Sessions interface {
 	Open(unit string) bool
 	Ask(ctx context.Context, unit string, q *pluginv1.Query_Question) (*pluginv1.Query_Answer, error)
 	Revoke(unit string, cause pluginv1.SessionMessage_Revoked_Cause, line string) error
+	// Instruct hands a unit a control instruction on its Session, and returns its acknowledgement.
+	Instruct(ctx context.Context, unit string, c *pluginv1.Control) (*pluginv1.Ack, error)
+}
+
+// Transports are the streams' own transports.
+type Transports interface {
+	Open(unit string, incarnation uint64, stream string, t streams.Tolerances) (streams.Transport, string, error)
+	Close(unit, stream, reason string) bool
+	Active(unit string) []string
 }
 
 // Wait is how long the Core waits for a unit's acknowledgement or answer. It is not declarable.
@@ -61,6 +71,7 @@ type Core struct {
 	Manifest func(plugin string) (*gate.Manifest, bool)
 	Units    Units
 	Sessions Sessions
+	Streams  Transports
 	Logs     *logstore.Store
 	Publish  func(event.Event)
 	// Instance is the instance's own record, as it stands.

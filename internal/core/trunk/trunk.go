@@ -606,6 +606,14 @@ func (s held) Revoke(unitID string, cause pluginv1.SessionMessage_Revoked_Cause,
 	return s.st.Session.Revoke(id, cause, line)
 }
 
+func (s held) Instruct(ctx context.Context, unitID string, c *pluginv1.Control) (*pluginv1.Ack, error) {
+	id, ok := s.st.Session.Of(unitID)
+	if !ok {
+		return nil, errors.New("the unit holds no Session")
+	}
+	return s.st.Session.Instruct(ctx, id, c)
+}
+
 // units hands the declared units to the supervisor, which is stopped first on the way down.
 func units(st *State) error {
 	cfg := supervisor.Config{

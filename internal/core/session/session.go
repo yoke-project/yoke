@@ -409,6 +409,11 @@ func (s *Service) Command(ctx context.Context, id string, c *pluginv1.Control_Co
 	return got.GetAck(), err
 }
 
+// Instruct sends a control instruction and waits for the unit's first acknowledgement.
+func (s *Service) Instruct(ctx context.Context, id string, c *pluginv1.Control) (*pluginv1.Ack, error) {
+	return nil, errors.New("not yet")
+}
+
 // Ask sends a question on an open Session and hands back the unit's answer, or the context's error when
 // the caller's wait runs out first.
 func (s *Service) Ask(ctx context.Context, id string, q *pluginv1.Query_Question) (*pluginv1.Query_Answer, error) {
