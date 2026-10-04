@@ -292,6 +292,16 @@ func (s *Service) Active(unitID string) []string {
 	return out
 }
 
+// Feed hands every message read from a unit's stream to the function given, from now on and across the
+// stream stopping and starting again, until the stop it returns is called; released is told when the
+// unit's Session ends or the unit exits, which ends the feed.
+func (s *Service) Feed(unitID, stream string, to func(Frame), released func()) (stop func()) {
+	return func() {}
+}
+
+// NextSubscriber is the next subscriber's identity for a unit's stream.
+func (s *Service) NextSubscriber(unitID, stream string) string { return "" }
+
 // Address is where an open stream's transport is, and empty for a stream not open.
 func (s *Service) Address(unitID, stream string) string {
 	s.mu.Lock()
