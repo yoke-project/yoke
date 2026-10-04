@@ -461,10 +461,11 @@ func interfaceChannels(st *State) error {
 	}
 	confirm := &interfaces.Confirmation{Every: interfaces.ConfirmEvery, Tolerance: interfaces.ConfirmTolerance, Required: required}
 	transports := st.transports()
+	arbiter := interfaces.NewArbiter(declared, st.Deployment.Arbitration, st.publish)
 	surface := func(ch gate.Channel) interfacev1.InterfaceServer {
 		return interfaces.NewSurface(interfaces.Config{
 			Channel: ch, Bus: st.Bus, Publish: st.publish, Confirm: confirm, Units: supervised{st}, Active: transports.Active,
-			Sessions: held{st}, Transports: transports, Stopping: st.stopping.Load,
+			Sessions: held{st}, Transports: transports, Stopping: st.stopping.Load, Arbiter: arbiter,
 			Declared: func(id string) (*gate.Manifest, bool) {
 				u, ok := st.Deployment.Units[id]
 				if !ok || u.Plugin == "" || st.Discovery == nil {
@@ -655,9 +656,21 @@ func (st *State) documents() []*administrativev1.DocumentRecord {
 // supervised is the supervisor as the administrative operations reach it, from the moment it exists.
 type supervised struct{ st *State }
 
+// declared is a unit as the deployment declares it, before the supervisor has started: from ready to the
+// units step a unit is declared and observed as nothing yet.
+func (u supervised) declared(id string) (supervisor.Unit, bool) {
+	for _, d := range u.st.Units {
+		if d.ID == id {
+			return d, true
+		}
+	}
+	return supervisor.Unit{}, false
+}
+
 func (u supervised) Plugin(id string) (string, bool) {
 	if u.st.Supervisor == nil {
-		return "", false
+		d, ok := u.declared(id)
+		return d.Plugin, ok
 	}
 	return u.st.Supervisor.Plugin(id)
 }
@@ -671,22 +684,33 @@ func (u supervised) Of(plugin string) []string {
 
 func (u supervised) IDs() []string {
 	if u.st.Supervisor == nil {
-		return nil
+		var ids []string
+		for _, d := range u.st.Units {
+			ids = append(ids, d.ID)
+		}
+		slices.Sort(ids)
+		return ids
 	}
 	return u.st.Supervisor.IDs()
 }
 
 func (u supervised) Kind(id string) unit.Kind {
 	if u.st.Supervisor == nil {
-		return ""
+		d, _ := u.declared(id)
+		return d.Kind
 	}
 	return u.st.Supervisor.Kind(id)
 }
 
-func (u supervised) Status(id string) supervisor.Status { return u.st.Supervisor.Status(id) }
-func (u supervised) StartUnit(id string) error          { return u.st.Supervisor.StartUnit(id) }
-func (u supervised) StopUnit(id string) error           { return u.st.Supervisor.StopUnit(id) }
-func (u supervised) RestartUnit(id string) error        { return u.st.Supervisor.RestartUnit(id) }
+func (u supervised) Status(id string) supervisor.Status {
+	if u.st.Supervisor == nil {
+		return supervisor.Status{}
+	}
+	return u.st.Supervisor.Status(id)
+}
+func (u supervised) StartUnit(id string) error   { return u.st.Supervisor.StartUnit(id) }
+func (u supervised) StopUnit(id string) error    { return u.st.Supervisor.StopUnit(id) }
+func (u supervised) RestartUnit(id string) error { return u.st.Supervisor.RestartUnit(id) }
 
 // held are the Sessions as the administrative operations reach them, by the unit that holds one.
 type held struct{ st *State }

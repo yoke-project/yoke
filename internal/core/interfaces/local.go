@@ -115,6 +115,19 @@ type Surface struct {
 
 	mu      sync.Mutex
 	clients []string // the clients attached now, in the order they attached
+	current int      // the attachments whose picture is current: what makes the channel hold
+}
+
+// hold counts an attachment becoming current, or no longer current, and tells the arbiter whether the
+// channel holds.
+func (s *Surface) hold(delta int) {
+	s.mu.Lock()
+	s.current += delta
+	holds := s.current > 0
+	s.mu.Unlock()
+	if s.cfg.Arbiter != nil {
+		s.cfg.Arbiter.Hold(s.cfg.Channel.Name, holds)
+	}
 }
 
 // NewSurface is a terminator serving the operations given.
@@ -165,9 +178,19 @@ func (s *Surface) Attach(stream interfacev1.Interface_AttachServer) error {
 		return refusedStatus(refusal("channel.in_use", "the channel "+s.cfg.Channel.Name+" takes one client, and one is attached"))
 	}
 	s.publish(event.ChannelAttached(s.cfg.Channel.Name, client))
+	var confirmed sync.Mutex
+	last, stale := time.Now(), false
+	s.hold(1)
 	reason := "lost"
 	defer func() {
 		s.detach(client)
+		confirmed.Lock()
+		current := !stale
+		stale = true
+		confirmed.Unlock()
+		if current {
+			s.hold(-1)
+		}
 		s.publish(event.ChannelDetached(s.cfg.Channel.Name, client, reason))
 	}()
 
@@ -228,9 +251,7 @@ func (s *Surface) Attach(stream interfacev1.Interface_AttachServer) error {
 	}
 
 	// On a channel named in an arbitration rule the subscription must be confirmed, and goes stale when
-	// it is not: a connection that looks open proves nothing.
-	var confirmed sync.Mutex
-	last, stale := time.Now(), false
+	// it is not: a connection that looks open proves nothing, and a stale channel stops holding.
 	if c := s.cfg.Confirm; c != nil && c.Required[s.cfg.Channel.Name] {
 		calls.Add(1)
 		go func() {
@@ -252,6 +273,7 @@ func (s *Surface) Attach(stream interfacev1.Interface_AttachServer) error {
 				confirmed.Unlock()
 				if due {
 					s.publish(event.SubscriptionStale(s.cfg.Channel.Name, since))
+					s.hold(-1)
 				}
 			}
 		}()
@@ -302,10 +324,39 @@ func (s *Surface) Attach(stream interfacev1.Interface_AttachServer) error {
 		if name == "confirm" {
 			// The position is the attachment's own, so confirming is answered here.
 			confirmed.Lock()
+			wasStale := stale
 			last, stale = time.Now(), false
 			confirmed.Unlock()
+			if wasStale {
+				s.hold(1)
+			}
 			send(&interfacev1.CoreFrame{Call: call, Carries: &interfacev1.CoreFrame_Answer{Answer: &interfacev1.Response{Answer: &interfacev1.Response_Confirm{Confirm: &interfacev1.Confirmed{}}}}})
 			continue
+		}
+		if name == "reclaim" {
+			// Never withdrawn by any grade: it is the floor that ends a suspension a person at the machine
+			// cannot otherwise end.
+			if s.cfg.Channel.Address != nil && s.cfg.Channel.Address.Class != "local" {
+				refuse(call, refusal("channel.not_local", "the channel "+s.cfg.Channel.Name+" is not bound as a local socket, and may not reclaim"))
+				continue
+			}
+			changed := s.cfg.Arbiter != nil && s.cfg.Arbiter.Reclaim(s.cfg.Channel.Name)
+			send(&interfacev1.CoreFrame{Call: call, Carries: &interfacev1.CoreFrame_Answer{Answer: &interfacev1.Response{
+				Answer: &interfacev1.Response_Reclaim{Reclaim: &interfacev1.Reclaimed{Channel: s.channelRecord(), Changed: changed}}}}})
+			continue
+		}
+		if withdrawn("", name) || withdrawn("dark", name) {
+			if s.cfg.Stopping != nil && s.cfg.Stopping() {
+				refuse(call, refusal("instance.stopping", "the instance is stopping, and "+name+" would act"))
+				continue
+			}
+			if s.cfg.Arbiter != nil {
+				if suspended, grade, by, _ := s.cfg.Arbiter.State(s.cfg.Channel.Name); suspended && withdrawn(grade, name) {
+					refuse(call, &interfacev1.Refusal{Code: "channel.suspended", Message: "the channel " + s.cfg.Channel.Name + " is suspended " + grade + " in favour of " + by,
+						Detail: &interfacev1.Refusal_Suspension{Suspension: &interfacev1.Suspension{Grade: grade, By: by}}})
+					continue
+				}
+			}
 		}
 		op, served := s.cfg.Operations[name]
 		if !served || (op.Answer == nil && op.Stream == nil) {

@@ -23,6 +23,8 @@ var makes = map[string]string{
 	"document.rejected":          "DocumentRejected",
 	"connection.opened":          "ConnectionOpened",
 	"channel.attached":           "ChannelAttached",
+	"channel.suspended":          "ChannelSuspended",
+	"channel.resumed":            "ChannelResumed",
 	"channel.detached":           "ChannelDetached",
 	"channel.subscription.stale": "SubscriptionStale",
 	"connection.closed":          "ConnectionClosed",

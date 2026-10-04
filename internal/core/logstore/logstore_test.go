@@ -287,6 +287,8 @@ func TestEveryDeclaredTypeIsKeptAsAnEntry(t *testing.T) {
 		"unit.stream.activated":      event.StreamActivated("acquire", 2, "station.spectra"),
 		"unit.stream.stopped":        event.StreamStopped("acquire", 2, "station.spectra", "asked", true),
 		"channel.attached":           event.ChannelAttached("panel", "davide"),
+		"channel.suspended":          event.ChannelSuspended("panel", "displaced", "bench", "read-only"),
+		"channel.resumed":            event.ChannelResumed("panel"),
 		"channel.detached":           event.ChannelDetached("panel", "davide", "closed"),
 		"channel.subscription.stale": event.SubscriptionStale("panel", time.Unix(1000, 0)),
 		"document.resolved":          event.DocumentResolved("/etc/yoke/bench.yaml", "bench", "sha256:00"),
