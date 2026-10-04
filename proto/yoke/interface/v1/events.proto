@@ -1,0 +1,54 @@
+// An event as a channel receives it, and what a subscription selects with.
+syntax = "proto3";
+
+package yoke.interface.v1;
+
+import "google/protobuf/timestamp.proto";
+import "yoke/interface/v1/codes.proto";
+
+option go_package = "github.com/yoke-project/yoke/proto/yoke/interface/v1;interfacev1";
+
+// One conclusion the Core reached: eight fields, the same on every event and on every surface.
+message Event {
+  // Numbers the event within one life of the instance; what a snapshot's sequence, a confirmation and a
+  // cause refer to.
+  uint64 seq = 1;
+  // What happened: <subject-kind>.<object>.<verb>, and what a subscription filters on.
+  string type = 2;
+  Subject subject = 3;
+  // The Core's clock, at the conclusion.
+  google.protobuf.Timestamp time = 4;
+  Actor actor = 5;
+  // 0 to 99, higher more serious.
+  uint32 severity = 6;
+  // The class a unit declared and was granted, on unit.occurrence.reported alone.
+  string occurrence = 7;
+  // The event this one follows from; zero where there is none.
+  uint64 cause = 8;
+  // Typed per type, and skippable: a consumer decodes only what it knows.
+  bytes detail = 9;
+}
+
+// Who caused an event, established by the Core and never claimed.
+message Actor {
+  // core, operator, unit or host: four, closed.
+  string class = 1;
+  // The person the channel established, where it established one.
+  string person = 2;
+}
+
+// What a subscription selects, on four independent axes combined by conjunction. An axis left empty
+// selects everything on it, and a kind this channel does not observe matches nothing.
+message Filter {
+  // A subject kind, and an identity where one is named.
+  string subject_kind = 1;
+  string subject_identity = 2;
+  // At or above.
+  uint32 floor = 3;
+  // Exactly, or by prefix of segments.
+  string type = 4;
+  bool type_prefix = 5;
+  // Exactly, or by prefix of segments; reaches only the events that carry one.
+  string occurrence = 6;
+  bool occurrence_prefix = 7;
+}

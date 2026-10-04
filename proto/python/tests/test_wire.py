@@ -28,6 +28,9 @@ class Wire(unittest.TestCase):
 
         self.assertTrue(hasattr(register_pb2_grpc, "RegisterStub"))
         self.assertTrue(hasattr(session_pb2_grpc, "SessionStub"))
+        from yoke.interface.v1 import interface_pb2_grpc
+
+        self.assertTrue(hasattr(interface_pb2_grpc, "InterfaceStub"))
 
 
 if __name__ == "__main__":

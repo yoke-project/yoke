@@ -1,0 +1,76 @@
+// The typed projection: one service and one method, because an interface is always attached. Opening
+// the stream is attaching; one stream carries many calls, each correlated by an identity the caller
+// chose, and each ending with exactly one completion.
+syntax = "proto3";
+
+package yoke.interface.v1;
+
+import "yoke/interface/v1/codes.proto";
+import "yoke/interface/v1/events.proto";
+import "yoke/interface/v1/operations.proto";
+import "yoke/interface/v1/records.proto";
+
+option go_package = "github.com/yoke-project/yoke/proto/yoke/interface/v1;interfacev1";
+
+service Interface {
+  rpc Attach(stream ClientFrame) returns (stream CoreFrame);
+}
+
+message ClientFrame {
+  // Chosen by the caller, unique within this attachment.
+  string call = 1;
+  oneof carries {
+    Request request = 2;
+    Cancel cancel = 3;
+  }
+}
+
+// Ends a call in flight.
+message Cancel {}
+
+message CoreFrame {
+  // The call this frame belongs to; empty on the opening.
+  string call = 1;
+  oneof carries {
+    Opening opening = 2;
+    Response answer = 3;
+    Event event = 4;
+    // A stream's data, where the client cannot reach a path in the instance's tree.
+    StreamDelivery delivery = 5;
+    // A refusal belongs to one call and does not end the attachment.
+    Refusal refusal = 6;
+    Completion completion = 7;
+  }
+}
+
+// The Core's first frame: the opening picture, before anything the client asked for.
+message Opening {
+  // What this channel may address and observe, the state of each, and the channel's own state.
+  Snapshot picture = 1;
+  // The call identity of the standing subscription, which the client may replace or cancel.
+  string subscription = 2;
+  // The contract version this Core speaks.
+  uint32 version = 3;
+}
+
+// A stream's data on the connection: the delivery, and the frame's header and payload unchanged.
+message StreamDelivery {
+  string delivery = 1;
+  // Per stream, from 1, never reused within an activation.
+  uint64 sequence = 2;
+  // The sender's clock at emission, in nanoseconds.
+  uint64 sent_at = 3;
+  bytes payload = 4;
+}
+
+// The end of a call; never inferred from silence.
+message Completion {
+  enum By {
+    BY_UNSPECIFIED = 0;
+    // The caller cancelled it.
+    BY_CALLER = 1;
+    // The Core ended it.
+    BY_CORE = 2;
+  }
+  By by = 1;
+}

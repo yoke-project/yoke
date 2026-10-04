@@ -1,0 +1,84 @@
+// This surface's error codes. On the wire a code is its dotted name, which grows under one grammar across
+// every surface; this enum is where every party reads the names from, each stated in its `code` option,
+// and a code's meaning never changes under its name.
+syntax = "proto3";
+
+package yoke.interface.v1;
+
+import "google/protobuf/descriptor.proto";
+
+option go_package = "github.com/yoke-project/yoke/proto/yoke/interface/v1;interfacev1";
+
+extend google.protobuf.EnumValueOptions {
+  // The code's dotted name, as it travels.
+  string code = 50002;
+}
+
+enum Code {
+  CODE_UNSPECIFIED = 0;
+  // The request does not decode, or a required field is absent.
+  CODE_OPERATION_MALFORMED = 1 [(code) = "operation.malformed"];
+  // It names an operation this Core does not implement.
+  CODE_OPERATION_UNKNOWN = 2 [(code) = "operation.unknown"];
+  // The contract version is absent, or this Core does not support it.
+  CODE_COMPAT_UNSUPPORTED = 3 [(code) = "compat.unsupported"];
+  // The channel's class requires a credential and none was presented.
+  CODE_AUTH_REQUIRED = 4 [(code) = "auth.required"];
+  // The credential was not accepted.
+  CODE_AUTH_INVALID = 5 [(code) = "auth.invalid"];
+  // A single channel is already held; the first client is untouched.
+  CODE_CHANNEL_IN_USE = 6 [(code) = "channel.in_use"];
+  // A control request arrived with no live attachment: the browser projection only.
+  CODE_CHANNEL_NOT_ATTACHED = 7 [(code) = "channel.not_attached"];
+  // The operation is withdrawn by this channel's grade.
+  CODE_CHANNEL_SUSPENDED = 8 [(code) = "channel.suspended"];
+  // A reclaim on a channel not bound as a local socket.
+  CODE_CHANNEL_NOT_LOCAL = 9 [(code) = "channel.not_local"];
+  // Nothing this channel may address bears that identity.
+  CODE_SUBJECT_UNKNOWN = 10 [(code) = "subject.unknown"];
+  // The object was never declared by the unit's Plugin.
+  CODE_SCOPE_UNDECLARED = 11 [(code) = "scope.undeclared"];
+  // It is declared and not granted to that plugin.
+  CODE_SCOPE_WITHHELD = 12 [(code) = "scope.withheld"];
+  // The operation needs a running unit and this one is not.
+  CODE_UNIT_NOT_RUNNING = 13 [(code) = "unit.not_running"];
+  // The unit holds no Session, so nothing can be issued on one.
+  CODE_UNIT_NO_SESSION = 14 [(code) = "unit.no_session"];
+  // The wait elapsed with no acknowledgement or answer.
+  CODE_UNIT_UNANSWERED = 15 [(code) = "unit.unanswered"];
+  // An orderly stop is in progress and the operation would act.
+  CODE_INSTANCE_STOPPING = 16 [(code) = "instance.stopping"];
+}
+
+// A refusal: a code, a message for a person, and what it names in a detail typed per code.
+message Refusal {
+  // One of Code's names.
+  string code = 1;
+  string message = 2;
+  oneof detail {
+    // The subject named: for subject.unknown, and for the refusals about a unit.
+    Subject subject = 3;
+    // The object withheld or undeclared: a stream, a command type or a query type.
+    string item = 4;
+    // For channel.suspended: the grade, and the channel that prevails.
+    Suspension suspension = 5;
+  }
+}
+
+// What an operation, a record or an event is about: a kind and an identity, and a unit's life where
+// one is named.
+message Subject {
+  // instance, unit or channel.
+  string kind = 1;
+  string identity = 2;
+  // A unit's life; zero where none is named.
+  uint64 incarnation = 3;
+}
+
+// Why an operation was withdrawn: the suspended channel's grade, and the channel that prevails.
+message Suspension {
+  // read-only or dark.
+  string grade = 1;
+  // The channel that prevails; empty where none is holding.
+  string by = 2;
+}

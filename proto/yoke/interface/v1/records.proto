@@ -1,0 +1,97 @@
+// The one record the opening picture, a read and a subscription's snapshot are all made of, over the
+// three subject kinds a channel observes. Every field is fixed for the life of the instance or maintained
+// by a level.
+syntax = "proto3";
+
+package yoke.interface.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/yoke-project/yoke/proto/yoke/interface/v1;interfacev1";
+
+message Record {
+  oneof subject {
+    InstanceRecord instance = 1;
+    UnitRecord unit = 2;
+    ChannelRecord channel = 3;
+  }
+}
+
+message InstanceRecord {
+  bool ready = 1;
+  bool stopping = 2;
+  google.protobuf.Timestamp since = 3;
+}
+
+message UnitRecord {
+  message Declared {
+    string identity = 1;
+    // plugin, oneshot or interface.
+    string kind = 2;
+  }
+  message Observed {
+    string state = 1;
+    uint64 incarnation = 2;
+    // The moment of the last transition.
+    google.protobuf.Timestamp since = 3;
+    // None where the unit has never reported.
+    Condition condition = 4;
+    // The streams currently activated.
+    repeated string streams = 5;
+  }
+  // What a channel may address on a Plugin unit: the objects its plugin was granted. Empty on any other.
+  message Addressed {
+    repeated string streams = 1;
+    repeated string commands = 2;
+    repeated string queries = 3;
+  }
+  Declared declared = 1;
+  Observed observed = 2;
+  Addressed addressed = 3;
+}
+
+// A unit's own account of how well it is.
+message Condition {
+  uint32 grade = 1;
+  string line = 2;
+  google.protobuf.Timestamp since = 3;
+}
+
+// The channel the record is read on: a channel observes only its own.
+message ChannelRecord {
+  message Declared {
+    string name = 1;
+    // local or http+ws.
+    string projection = 2;
+    // local-socket, loopback or routable.
+    string address_class = 3;
+    // single or multiple.
+    string clients = 4;
+  }
+  message Observed {
+    bool attached = 1;
+    // The client the channel established; unestablished where its class establishes none.
+    string client = 2;
+    bool suspended = 3;
+    // read-only or dark, while suspended.
+    string grade = 4;
+    // The channel that prevails, while suspended.
+    string by = 5;
+    // Why it was suspended.
+    string reason = 6;
+  }
+  Declared declared = 1;
+  Observed observed = 2;
+}
+
+// The current value of every level a filter selects, taken at a sequence: the stream that follows
+// begins at the next.
+message Snapshot {
+  uint64 at = 1;
+  repeated Record records = 2;
+}
+
+// A read's answer: the snapshot's records, and nothing follows.
+message Records {
+  repeated Record records = 1;
+}
