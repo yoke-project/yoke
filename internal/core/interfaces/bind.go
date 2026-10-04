@@ -34,6 +34,15 @@ type Bound struct {
 // transport nor the credential such a channel requires. Binding is all or nothing: on any failure what
 // was bound is unbound, and the error names the channel.
 func Bind(root string, mode os.FileMode, channels []gate.Channel) (*Bound, error) {
+	return BindServing(root, mode, channels, nil)
+}
+
+// BindServing is Bind, each channel carrying the local projection served by the surface given; with
+// none, a local channel answers as the interface service and serves no operation.
+func BindServing(root string, mode os.FileMode, channels []gate.Channel, local interfacev1.InterfaceServer) (*Bound, error) {
+	if local == nil {
+		local = NewSurface(Config{})
+	}
 	b := &Bound{addresses: map[string]string{}}
 	ordered := slices.Clone(channels)
 	slices.SortFunc(ordered, func(x, y gate.Channel) int { return cmp.Compare(x.Name, y.Name) })
@@ -44,7 +53,7 @@ func Bind(root string, mode os.FileMode, channels []gate.Channel) (*Bound, error
 			return nil, fmt.Errorf("the channel %s: %w", ch.Name, err)
 		}
 		b.addresses[ch.Name] = address
-		b.closers = append(b.closers, serve(ch, listener))
+		b.closers = append(b.closers, serve(ch, listener, local))
 	}
 	return b, nil
 }
@@ -85,14 +94,14 @@ func listen(root string, mode os.FileMode, ch gate.Channel) (net.Listener, strin
 }
 
 // serve starts the channel's terminator in the projection it declares, and returns what stops it.
-func serve(ch gate.Channel, listener net.Listener) func() {
+func serve(ch gate.Channel, listener net.Listener, local interfacev1.InterfaceServer) func() {
 	if ch.Transport == "http+ws" {
 		server := &http.Server{Handler: http.HandlerFunc(http.NotFound)}
 		go server.Serve(listener)
 		return func() { server.Close() }
 	}
 	server := grpc.NewServer()
-	interfacev1.RegisterInterfaceServer(server, interfacev1.UnimplementedInterfaceServer{})
+	interfacev1.RegisterInterfaceServer(server, local)
 	go server.Serve(listener)
 	return func() {
 		server.Stop()
