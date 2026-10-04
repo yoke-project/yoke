@@ -64,15 +64,26 @@ func (s *Surface) channelRecord() *interfacev1.ChannelRecord {
 	if len(s.clients) > 0 {
 		client = s.clients[len(s.clients)-1]
 	}
-	return &interfacev1.ChannelRecord{
+	r := &interfacev1.ChannelRecord{
 		Declared: &interfacev1.ChannelRecord_Declared{Name: ch.Name, Projection: ch.Transport, AddressClass: class, Clients: ch.Clients},
 		Observed: &interfacev1.ChannelRecord_Observed{Attached: len(s.clients) > 0, Client: client},
 	}
+	if s.cfg.Arbiter != nil {
+		o := r.Observed
+		o.Suspended, o.Grade, o.By, o.Reason = s.cfg.Arbiter.State(ch.Name)
+	}
+	return r
 }
 
 // observes says whether the channel sees an event: every unit, the instance, and itself, and nothing
 // about plugins, documents, connections or other channels.
 func (s *Surface) observes(e event.Event) bool {
+	if s.cfg.Arbiter != nil {
+		// A channel suspended dark keeps only its own channel state.
+		if suspended, grade, _, _ := s.cfg.Arbiter.State(s.cfg.Channel.Name); suspended && grade == "dark" {
+			return e.Subject.Kind == event.Channel && e.Subject.ID == s.cfg.Channel.Name
+		}
+	}
 	switch e.Subject.Kind {
 	case event.Unit, event.Instance:
 		return true

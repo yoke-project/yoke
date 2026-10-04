@@ -104,6 +104,8 @@ var declared = map[string]Class{
 	"connection.opened":          Level,
 	"channel.attached":           Level,
 	"channel.detached":           Level,
+	"channel.suspended":          Level,
+	"channel.resumed":            Level,
 	"channel.subscription.stale": Level,
 	"connection.closed":          Level,
 	"plugin.policy.changed":      Level,
@@ -281,6 +283,17 @@ func ChannelAttached(name, client string) Event {
 // client, or lost.
 func ChannelDetached(name, client, reason string) Event {
 	return concluded("channel.detached", Subject{Kind: Channel, ID: name}, Routine, map[string]any{"client": client, "reason": reason})
+}
+
+// ChannelSuspended is the Core's conclusion that a channel was suspended, why, by which channel, and what
+// it keeps meanwhile.
+func ChannelSuspended(name, reason, by, retains string) Event {
+	return concluded("channel.suspended", Subject{Kind: Channel, ID: name}, Notable, map[string]any{"reason": reason, "by": by, "retains": retains})
+}
+
+// ChannelResumed is the Core's conclusion that a suspended channel is no longer suspended.
+func ChannelResumed(name string) Event {
+	return concluded("channel.resumed", Subject{Kind: Channel, ID: name}, Routine, nil)
 }
 
 // SubscriptionStale is the Core's conclusion that a channel's confirmed subscription stopped being
