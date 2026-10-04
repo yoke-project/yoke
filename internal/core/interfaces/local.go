@@ -186,7 +186,9 @@ func (s *Surface) Attach(stream interfacev1.Interface_AttachServer) error {
 	last, stale := time.Now(), false
 	s.hold(1)
 	reason := "lost"
+	held := &deliveries{}
 	defer func() {
+		held.all()
 		s.detach(client)
 		confirmed.Lock()
 		current := !stale
@@ -361,6 +363,25 @@ func (s *Surface) Attach(stream interfacev1.Interface_AttachServer) error {
 					continue
 				}
 			}
+		}
+		if name == "stream.subscribe" || name == "stream.unsubscribe" {
+			// A delivery is the attachment's, and ends with it.
+			if name == "stream.subscribe" {
+				resp, ref := s.subscribeStream(r, held, send)
+				if ref != nil {
+					refuse(call, ref)
+					continue
+				}
+				send(&interfacev1.CoreFrame{Call: call, Carries: &interfacev1.CoreFrame_Answer{Answer: resp}})
+				continue
+			}
+			if !held.drop(r.GetStreamUnsubscribe().GetDelivery()) {
+				refuse(call, refusal("operation.malformed", "this attachment holds no delivery "+r.GetStreamUnsubscribe().GetDelivery()))
+				continue
+			}
+			send(&interfacev1.CoreFrame{Call: call, Carries: &interfacev1.CoreFrame_Answer{Answer: &interfacev1.Response{
+				Answer: &interfacev1.Response_StreamUnsubscribe{StreamUnsubscribe: &interfacev1.Released{}}}}})
+			continue
 		}
 		op, served := s.cfg.Operations[name]
 		if !served || (op.Answer == nil && op.Stream == nil) {

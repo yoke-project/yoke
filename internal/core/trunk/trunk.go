@@ -464,7 +464,7 @@ func interfaceChannels(st *State) error {
 	arbiter := interfaces.NewArbiter(declared, st.Deployment.Arbitration, st.publish)
 	surface := func(ch gate.Channel) interfacev1.InterfaceServer {
 		return interfaces.NewSurface(interfaces.Config{
-			Channel: ch, Bus: st.Bus, Publish: st.publish, Confirm: confirm, Units: supervised{st}, Active: transports.Active,
+			Channel: ch, Root: st.Paths.Root, Bus: st.Bus, Publish: st.publish, Confirm: confirm, Units: supervised{st}, Active: transports.Active,
 			Sessions: held{st}, Transports: transports, Stopping: st.stopping.Load, Arbiter: arbiter,
 			Declared: func(id string) (*gate.Manifest, bool) {
 				u, ok := st.Deployment.Units[id]
