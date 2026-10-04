@@ -388,3 +388,53 @@ channels:
 		t.Errorf("the command was answered %v", f)
 	}
 }
+
+// std: yoke:arbitration.06
+func TestThroughTheCoreAPrevailingChannelSuspendsAnotherAndItsCommandIsRefused(t *testing.T) {
+	run, lines := startCore(t, `units:
+  calibrate-once: { kind: oneshot, exec: %s, env: { %s: once } }
+channels:
+  bench: { transport: local, clients: single }
+  panel: { transport: local, clients: single }
+arbitration:
+  - { prevails: bench, over: [ panel ] }
+`)
+	ready, suspended := make(chan struct{}), make(chan struct{})
+	go func() {
+		r, s := false, false
+		for line := range lines {
+			if !r && strings.Contains(line, "msg=ready") {
+				r = true
+				close(ready)
+			}
+			if !s && strings.Contains(line, "type=channel.suspended") && strings.Contains(line, "channel:panel") {
+				s = true
+				close(suspended)
+			}
+		}
+	}()
+	select {
+	case <-ready:
+	case <-time.After(20 * time.Second):
+		t.Fatal("the Core was not ready within twenty seconds")
+	}
+	panel, err := attachTo(t, filepath.Join(run, "interfaces", "panel.sock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	panel.next(t)
+	bench, err := attachTo(t, filepath.Join(run, "interfaces", "bench.sock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	bench.next(t)
+	select {
+	case <-suspended:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the Core recorded no suspension of panel")
+	}
+	ref := panel.answerTo(t, "c", command("calibrate-once", "calibrate", nil)).GetRefusal()
+	if ref.GetCode() != "channel.suspended" || ref.GetSuspension().GetBy() != "bench" {
+		t.Errorf("the command on panel was refused %v", ref)
+	}
+}
