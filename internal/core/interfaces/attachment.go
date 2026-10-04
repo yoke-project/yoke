@@ -32,6 +32,8 @@ type attachment struct {
 
 	held    *deliveries
 	opening *interfacev1.Opening
+	sub     *bus.Subscription
+	started bool
 }
 
 // begin attaches a client: a single channel already held refuses it; otherwise the attachment is
@@ -53,19 +55,33 @@ func (s *Surface) begin(parent context.Context, client string, live func(*interf
 
 	a.opening = &interfacev1.Opening{Picture: &interfacev1.Snapshot{}, Version: Version}
 	if s.cfg.Bus != nil {
-		sub, snap := s.cfg.Bus.SubscribeTo(event.Filter{})
+		var snap bus.Snapshot
+		a.sub, snap = s.cfg.Bus.SubscribeTo(event.Filter{})
 		a.opening.Picture = &interfacev1.Snapshot{At: snap.At, Records: s.records()}
 		a.opening.Subscription = Standing
-		a.calls.Add(1)
-		go a.standing(sub)
 	} else if s.cfg.Picture != nil {
 		a.opening.Picture = s.cfg.Picture()
 	}
-	if c := s.cfg.Confirm; c != nil && c.Required[s.cfg.Channel.Name] {
+	return a, nil
+}
+
+// start sends the opening, and only then lets the standing subscription and the confirmation watch run,
+// so the opening is the first frame whatever happens meanwhile: the subscription opened at begin, so
+// nothing concluded since is missed.
+func (a *attachment) start() error {
+	if err := a.live(&interfacev1.CoreFrame{Carries: &interfacev1.CoreFrame_Opening{Opening: a.opening}}); err != nil {
+		return err
+	}
+	a.started = true
+	if a.sub != nil {
+		a.calls.Add(1)
+		go a.standing(a.sub)
+	}
+	if c := a.s.cfg.Confirm; c != nil && c.Required[a.s.cfg.Channel.Name] {
 		a.calls.Add(1)
 		go a.watch(c)
 	}
-	return a, nil
+	return nil
 }
 
 // standing carries what the channel observes on the subscription that stands from the attachment on.
@@ -119,6 +135,9 @@ func (a *attachment) watch(c *Confirmation) {
 func (a *attachment) finish(reason string) {
 	a.end()
 	a.calls.Wait()
+	if !a.started && a.sub != nil {
+		a.sub.Close()
+	}
 	a.held.all()
 	a.s.detach(a.client)
 	a.confirmed.Lock()

@@ -139,7 +139,7 @@ func (s *Surface) events(w http.ResponseWriter, r *http.Request) {
 		s.web.mu.Unlock()
 		a.finish(reason)
 	}()
-	if a.live(&interfacev1.CoreFrame{Carries: &interfacev1.CoreFrame_Opening{Opening: a.opening}}) != nil {
+	if a.start() != nil {
 		return
 	}
 	for {
