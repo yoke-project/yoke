@@ -120,6 +120,26 @@ type State struct {
 	stoppingAt     time.Time
 	compositionSum string   // the digest the composition in force was read at
 	weaker         []string // the weaker arrangements the gate reported, in force
+	interfaces     *interfaces.Bound
+}
+
+// channelRecords are the declared channels, as the administrative surface reads them.
+func (st *State) channelRecords() []*administrativev1.ChannelRecord {
+	st.mu.Lock()
+	bound := st.interfaces
+	st.mu.Unlock()
+	if bound == nil {
+		return nil
+	}
+	var out []*administrativev1.ChannelRecord
+	for _, c := range bound.Channels() {
+		d, o := c.GetDeclared(), c.GetObserved()
+		out = append(out, &administrativev1.ChannelRecord{
+			Declared: &administrativev1.ChannelRecord_Declared{Name: d.GetName(), Projection: d.GetProjection(), AddressClass: d.GetAddressClass()},
+			Observed: &administrativev1.ChannelRecord_Observed{Attached: o.GetAttached(), Client: o.GetClient(), Suspended: o.GetSuspended(), Reason: o.GetReason()},
+		})
+	}
+	return out
 }
 
 // transports are the streams' own transports, made the first time a step needs them: the plugin channel
@@ -461,6 +481,9 @@ func interfaceChannels(st *State) error {
 		return err
 	}
 	st.OnStop(bound.Close)
+	st.mu.Lock()
+	st.interfaces = bound
+	st.mu.Unlock()
 	for _, ch := range declared {
 		st.Log.Info("channel", "name", ch.Name, "transport", ch.Transport, "address", bound.Address(ch.Name))
 		if ch.Unit == "" {
@@ -547,6 +570,7 @@ func adminChannels(st *State) []Channel {
 			}}
 		core.Instance, core.Documents, core.Bus = st.instanceRecord, st.documents, st.Bus
 		core.Streams = st.transports()
+		core.Channels = st.channelRecords
 		core.Composed = func(plugin string) bool {
 			if st.Deployment == nil {
 				return false

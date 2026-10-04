@@ -89,7 +89,19 @@ type Surface struct {
 }
 
 // NewSurface is a terminator serving the operations given.
-func NewSurface(cfg Config) *Surface { return &Surface{cfg: cfg} }
+func NewSurface(cfg Config) *Surface {
+	s := &Surface{cfg: cfg}
+	ops := map[string]Operation{}
+	if cfg.Bus != nil {
+		ops["read"] = Operation{Answer: s.read}
+		ops["subscribe"] = Operation{Stream: s.subscribe}
+	}
+	for name, op := range cfg.Operations {
+		ops[name] = op
+	}
+	s.cfg.Operations = ops
+	return s
+}
 
 var operationOneof = (&interfacev1.Request{}).ProtoReflect().Descriptor().Oneofs().ByName("operation")
 
