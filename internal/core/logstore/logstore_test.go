@@ -279,17 +279,20 @@ func TestAWriteThatFailsIsReportedAndNotFatal(t *testing.T) {
 // std: yoke:names-and-filtering.05
 func TestEveryDeclaredTypeIsKeptAsAnEntry(t *testing.T) {
 	one := map[string]event.Event{
-		"instance.ready":           event.InstanceReady("bench"),
-		"instance.stopping":        event.InstanceStopping("bench"),
-		"unit.state.changed":       event.StateChanged("acquire", 2, unit.Starting, unit.Running),
-		"unit.condition.changed":   event.ConditionChanged("acquire", 2, nil, 90, "warm"),
-		"unit.occurrence.reported": event.OccurrenceReported("acquire", 2, &pluginv1.Event{Occurrence: "calibration.drift", Severity: 40}),
-		"unit.stream.activated":    event.StreamActivated("acquire", 2, "station.spectra"),
-		"unit.stream.stopped":      event.StreamStopped("acquire", 2, "station.spectra", "asked", true),
-		"document.resolved":        event.DocumentResolved("/etc/yoke/bench.yaml", "bench", "sha256:00"),
-		"document.rejected":        event.DocumentRejected("/etc/yoke/bad.yaml", "yaml.syntax", "line 3"),
-		"connection.opened":        event.ConnectionOpened("c-1", "shell", event.Actor{Class: event.ByOperator, Person: "ada"}),
-		"connection.closed":        event.ConnectionClosed("c-1", "shell", "cancelled", event.Actor{Class: event.ByOperator, Person: "ada"}),
+		"instance.ready":             event.InstanceReady("bench"),
+		"instance.stopping":          event.InstanceStopping("bench"),
+		"unit.state.changed":         event.StateChanged("acquire", 2, unit.Starting, unit.Running),
+		"unit.condition.changed":     event.ConditionChanged("acquire", 2, nil, 90, "warm"),
+		"unit.occurrence.reported":   event.OccurrenceReported("acquire", 2, &pluginv1.Event{Occurrence: "calibration.drift", Severity: 40}),
+		"unit.stream.activated":      event.StreamActivated("acquire", 2, "station.spectra"),
+		"unit.stream.stopped":        event.StreamStopped("acquire", 2, "station.spectra", "asked", true),
+		"channel.attached":           event.ChannelAttached("panel", "davide"),
+		"channel.detached":           event.ChannelDetached("panel", "davide", "closed"),
+		"channel.subscription.stale": event.SubscriptionStale("panel", time.Unix(1000, 0)),
+		"document.resolved":          event.DocumentResolved("/etc/yoke/bench.yaml", "bench", "sha256:00"),
+		"document.rejected":          event.DocumentRejected("/etc/yoke/bad.yaml", "yaml.syntax", "line 3"),
+		"connection.opened":          event.ConnectionOpened("c-1", "shell", event.Actor{Class: event.ByOperator, Person: "ada"}),
+		"connection.closed":          event.ConnectionClosed("c-1", "shell", "cancelled", event.Actor{Class: event.ByOperator, Person: "ada"}),
 	}
 	for _, name := range event.Names() {
 		if name == event.InRegistry {

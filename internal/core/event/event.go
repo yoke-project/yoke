@@ -92,18 +92,21 @@ type Event struct {
 // declared is every type a producer in this Core emits, with its class and, where the Core grades its
 // own conclusion, nothing more: the grading is the constructor's.
 var declared = map[string]Class{
-	"instance.ready":           Level,
-	"instance.stopping":        Level,
-	"unit.state.changed":       Level,
-	"unit.condition.changed":   Level,
-	"unit.occurrence.reported": Edge,
-	"unit.stream.activated":    Level,
-	"unit.stream.stopped":      Level,
-	"document.resolved":        Level,
-	"document.rejected":        Edge,
-	"connection.opened":        Level,
-	"connection.closed":        Level,
-	"plugin.policy.changed":    Level,
+	"instance.ready":             Level,
+	"instance.stopping":          Level,
+	"unit.state.changed":         Level,
+	"unit.condition.changed":     Level,
+	"unit.occurrence.reported":   Edge,
+	"unit.stream.activated":      Level,
+	"unit.stream.stopped":        Level,
+	"document.resolved":          Level,
+	"document.rejected":          Edge,
+	"connection.opened":          Level,
+	"channel.attached":           Level,
+	"channel.detached":           Level,
+	"channel.subscription.stale": Level,
+	"connection.closed":          Level,
+	"plugin.policy.changed":      Level,
 }
 
 // InRegistry is the one type whose durable counterpart is not a log entry: a decision about authority,
@@ -266,6 +269,24 @@ func ConnectionClosed(id, projection, reason string, actor Actor) Event {
 	e := concluded("connection.closed", Subject{Kind: Connection, ID: id}, Routine, map[string]any{"projection": projection, "reason": reason})
 	e.Actor = actor
 	return e
+}
+
+// ChannelAttached is the Core's conclusion that a client attached to a channel: the client the channel
+// established, never one it stated.
+func ChannelAttached(name, client string) Event {
+	return concluded("channel.attached", Subject{Kind: Channel, ID: name}, Routine, map[string]any{"client": client})
+}
+
+// ChannelDetached is the Core's conclusion that a client's attachment ended, and why: closed by the
+// client, or lost.
+func ChannelDetached(name, client, reason string) Event {
+	return concluded("channel.detached", Subject{Kind: Channel, ID: name}, Routine, map[string]any{"client": client, "reason": reason})
+}
+
+// SubscriptionStale is the Core's conclusion that a channel's confirmed subscription stopped being
+// confirmed, and when it last was.
+func SubscriptionStale(name string, since time.Time) Event {
+	return concluded("channel.subscription.stale", Subject{Kind: Channel, ID: name}, Serious, map[string]any{"since": since})
 }
 
 // PolicyChanged is an operator's decision about a plugin's authority, attributed to them: its enablement
