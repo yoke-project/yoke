@@ -75,6 +75,8 @@ type Config struct {
 	Units    Units
 	Granted  func(unit string) (streams, commands, queries []string)
 	Active   func(unit string) []string
+	// Arbiter decides which channels are suspended. Optional.
+	Arbiter *Arbiter
 	// Confirm is what a confirmed subscription is held to. Optional.
 	Confirm *Confirmation
 	// Accounts resolves an account's number to its name; the host's database where nil.
