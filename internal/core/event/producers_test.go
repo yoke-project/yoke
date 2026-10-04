@@ -17,6 +17,8 @@ var makes = map[string]string{
 	"unit.state.changed":       "StateChanged",
 	"unit.condition.changed":   "ConditionChanged",
 	"unit.occurrence.reported": "OccurrenceReported",
+	"unit.stream.activated":    "StreamActivated",
+	"unit.stream.stopped":      "StreamStopped",
 	"document.resolved":        "DocumentResolved",
 	"document.rejected":        "DocumentRejected",
 	"connection.opened":        "ConnectionOpened",

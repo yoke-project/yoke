@@ -548,27 +548,20 @@ func TestWhileStoppingAChangeIsRefusedAndAReadAnswered(t *testing.T) {
 }
 
 // std: yoke:the-operations.09
-func TestStreamControlWaitsForItsTransports(t *testing.T) {
+func TestTheCoreServesEveryOperationTheContractDefines(t *testing.T) {
 	b := newBench(t, map[string]*fakeUnit{"acquire": running(station, 1)}, map[string]string{})
 	var served []string
 	for name := range b.core.Operations() {
 		served = append(served, name)
 	}
 	slices.Sort(served)
-	want := []string{"plugin.disable", "plugin.enable", "plugin.grant", "plugin.withdraw", "unit.ask", "unit.restart",
-		"unit.retention.clear", "unit.retention.set", "unit.start", "unit.stop"}
-	for _, name := range want {
-		if !slices.Contains(served, name) {
-			t.Errorf("the Core does not serve %s", name)
-		}
+	var defined []string
+	members := (&administrativev1.Request{}).ProtoReflect().Descriptor().Oneofs().ByName("operation").Fields()
+	for i := 0; i < members.Len(); i++ {
+		defined = append(defined, strings.ReplaceAll(string(members.Get(i).Name()), "_", "."))
 	}
-	for _, name := range []string{"unit.stream.start", "unit.stream.stop"} {
-		if slices.Contains(served, name) {
-			t.Errorf("the Core serves %s", name)
-		}
-	}
-	start := v1(&administrativev1.Request{Operation: &administrativev1.Request_UnitStreamStart{UnitStreamStart: &administrativev1.UnitStream{Unit: "acquire", Stream: "station.data"}}})
-	if _, ref := b.call(t, start); ref.GetCode() != "operation.unknown" {
-		t.Errorf("unit.stream.start was answered %v, want operation.unknown", ref)
+	slices.Sort(defined)
+	if !slices.Equal(served, defined) {
+		t.Errorf("the Core serves %v, and the contract defines %v", served, defined)
 	}
 }

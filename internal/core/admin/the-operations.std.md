@@ -109,7 +109,7 @@
 | **Action** | issue each |
 | **Expected** | `plugin.enable` and `unit.ask` are refused with `instance.stopping`; `read` is answered |
 
-## yoke:the-operations.09 — stream control waits for streams on their own transports
+## yoke:the-operations.09 — the Core serves every operation the contract defines
 
 | Field | Value |
 | --- | --- |
@@ -118,9 +118,9 @@
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
-| **Precondition** | the Core's operations |
-| **Action** | list the operations it serves; issue `unit.stream.start` |
-| **Expected** | it serves the nine other changes and `unit.ask`, and not `unit.stream.start` or `unit.stream.stop`, which is refused with `operation.unknown`: a stream travels on a transport of its own, and no such transport exists before 0.3 |
+| **Precondition** | the Core's operations, and the contract's union |
+| **Action** | list the operations it serves, and every member of the union |
+| **Expected** | the two are the same sixteen: the eleven changes, `unit.ask`, `read`, `log.query`, `log.follow` and `subscribe`; since streams travel on transports of their own, `unit.stream.start` and `unit.stream.stop` are among them |
 
 ## yoke:the-operations.10 — through the Core, an operator disables a plugin and the decision is theirs
 

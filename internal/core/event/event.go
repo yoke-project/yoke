@@ -97,6 +97,8 @@ var declared = map[string]Class{
 	"unit.state.changed":       Level,
 	"unit.condition.changed":   Level,
 	"unit.occurrence.reported": Edge,
+	"unit.stream.activated":    Level,
+	"unit.stream.stopped":      Level,
 	"document.resolved":        Level,
 	"document.rejected":        Edge,
 	"connection.opened":        Level,
@@ -181,6 +183,22 @@ func StateChanged(unitID string, incarnation uint64, from, to unit.State) Event 
 		detail["from"] = from
 	}
 	return concluded("unit.state.changed", UnitSubject(unitID, incarnation), severity, detail)
+}
+
+// StreamActivated is the Core's conclusion that a stream of a unit's life was activated: its transport
+// exists and the unit accepted the activation.
+func StreamActivated(unitID string, incarnation uint64, stream string) Event {
+	return concluded("unit.stream.activated", UnitSubject(unitID, incarnation), Routine, map[string]any{"stream": stream})
+}
+
+// StreamStopped is the Core's conclusion that a stream of a unit's life stopped and its transport went,
+// and why: routine where it was asked, notable where the life or its Session took it.
+func StreamStopped(unitID string, incarnation uint64, stream, reason string, asked bool) Event {
+	severity := Notable
+	if asked {
+		severity = Routine
+	}
+	return concluded("unit.stream.stopped", UnitSubject(unitID, incarnation), severity, map[string]any{"stream": stream, "reason": reason})
 }
 
 // InstanceReady is the trunk's conclusion that the instance became observable.

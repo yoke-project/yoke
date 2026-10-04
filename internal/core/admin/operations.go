@@ -56,6 +56,7 @@ type Sessions interface {
 type Transports interface {
 	Open(unit string, incarnation uint64, stream string, t streams.Tolerances) (streams.Transport, string, error)
 	Close(unit, stream, reason string) bool
+	Discard(unit, stream string)
 	Active(unit string) []string
 }
 
@@ -88,8 +89,7 @@ type Core struct {
 	Wait time.Duration
 }
 
-// Operations are the operations the Core serves, by name. Stream control is not among them: a stream
-// travels on a transport of its own, and there is none yet to create.
+// Operations are the operations the Core serves, by name.
 func (c *Core) Operations() map[string]Operation {
 	return map[string]Operation{
 		"plugin.enable":        {Answer: c.policy(true)},
@@ -99,6 +99,8 @@ func (c *Core) Operations() map[string]Operation {
 		"unit.start":           {Answer: c.act("start")},
 		"unit.stop":            {Answer: c.act("stop")},
 		"unit.restart":         {Answer: c.act("restart")},
+		"unit.stream.start":    {Answer: c.streamStart},
+		"unit.stream.stop":     {Answer: c.streamStop},
 		"unit.retention.set":   {Answer: c.retention(true)},
 		"unit.retention.clear": {Answer: c.retention(false)},
 		"unit.ask":             {Answer: c.ask},

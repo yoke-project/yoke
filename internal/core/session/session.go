@@ -411,7 +411,8 @@ func (s *Service) Command(ctx context.Context, id string, c *pluginv1.Control_Co
 
 // Instruct sends a control instruction and waits for the unit's first acknowledgement.
 func (s *Service) Instruct(ctx context.Context, id string, c *pluginv1.Control) (*pluginv1.Ack, error) {
-	return nil, errors.New("not yet")
+	got, err := s.issue(ctx, id, &pluginv1.Envelope{Payload: &pluginv1.Envelope_Control{Control: c}})
+	return got.GetAck(), err
 }
 
 // Ask sends a question on an open Session and hands back the unit's answer, or the context's error when

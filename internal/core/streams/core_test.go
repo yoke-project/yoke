@@ -176,7 +176,20 @@ func TestThroughTheCoreAStreamStartedFlowsAndStops(t *testing.T) {
 		defer cancel()
 		resp, err := operator.Call(ctx, r)
 		if err != nil {
-			t.Fatalf("%v was refused: %v", r, err)
+			drained := time.After(time.Second)
+		drain:
+			for {
+				select {
+				case line, open := <-lines:
+					if !open {
+						break drain
+					}
+					said = append(said, line)
+				case <-drained:
+					break drain
+				}
+			}
+			t.Fatalf("%v was refused: %v; the Core said:\n%s", r, err, strings.Join(said, "\n"))
 		}
 		return resp
 	}

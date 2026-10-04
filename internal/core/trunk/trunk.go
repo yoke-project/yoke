@@ -40,6 +40,7 @@ import (
 	"github.com/yoke-project/yoke/internal/core/logstore"
 	"github.com/yoke-project/yoke/internal/core/registry"
 	"github.com/yoke-project/yoke/internal/core/session"
+	"github.com/yoke-project/yoke/internal/core/streams"
 	"github.com/yoke-project/yoke/internal/core/supervisor"
 	"github.com/yoke-project/yoke/internal/core/unit"
 	"github.com/yoke-project/yoke/internal/gate"
@@ -100,6 +101,8 @@ type State struct {
 	Deployment *gate.Deployment // what the composition in force declares, once it passed the gate
 	Admission  *admission.Admission
 	Session    *session.Service
+	// Streams are the streams' own transports, which the Core creates before it activates a stream.
+	Streams    *streams.Service
 	Admin      *admin.Surface
 	Supervisor *supervisor.Supervisor
 	// Bus is the instance's event bus, which the subsystems publish on from the logging step on.
@@ -115,6 +118,18 @@ type State struct {
 	stoppingAt     time.Time
 	compositionSum string   // the digest the composition in force was read at
 	weaker         []string // the weaker arrangements the gate reported, in force
+}
+
+// transports are the streams' own transports, made the first time a step needs them: the plugin channel
+// activates streams, the administrative one starts and stops them, and the supervisor ends them with a
+// life.
+func (st *State) transports() *streams.Service {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	if st.Streams == nil {
+		st.Streams = streams.New(streams.Config{Root: st.Paths.Root, Log: st.Log, Publish: st.publish})
+	}
+	return st.Streams
 }
 
 // OnStop registers what undoes a step. The stop runs them in the reverse of the order they were given.
@@ -429,6 +444,7 @@ func pluginChannel(st *State) Channel {
 			}
 		},
 	})
+	transports := st.transports()
 	st.Session = session.New(session.Config{
 		Lookup: func(id string) (session.Admitted, bool) {
 			s, ok := st.Admission.Lookup(id)
@@ -443,6 +459,10 @@ func pluginChannel(st *State) Channel {
 				Tolerance: s.Heartbeat.GetTolerance(), Scope: s.Scope}, true
 		},
 		Observe: func(id string, in unit.Input) {
+			// A Session that ends takes every stream with it, before its machine concludes anything.
+			if _, ended := in.(unit.SessionEnded); ended {
+				transports.CloseAll(id, streams.SessionEnded)
+			}
 			if st.Supervisor != nil {
 				st.Supervisor.Input(id, in)
 			}
@@ -470,6 +490,7 @@ func adminChannels(st *State) []Channel {
 				return st.Discovery.Manifest(id)
 			}}
 		core.Instance, core.Documents, core.Bus = st.instanceRecord, st.documents, st.Bus
+		core.Streams = st.transports()
 		core.Composed = func(plugin string) bool {
 			if st.Deployment == nil {
 				return false
@@ -625,6 +646,14 @@ func units(st *State) error {
 		cfg.Tokens = st.tokens
 		// An incarnation that ended is no longer live, and its Session goes with it.
 		cfg.Ended = func(id string) { st.Admission.Release(id); st.Session.Forget(id) }
+	}
+	// An incarnation that ended takes its streams' transports with it, whatever its own code did.
+	release, transports := cfg.Ended, st.transports()
+	cfg.Ended = func(id string) {
+		transports.CloseAll(id, streams.UnitExited)
+		if release != nil {
+			release(id)
+		}
 	}
 	// A unit whose dependency never arrived is reported, and nothing more: past readiness a failure is
 	// reported rather than fatal.
