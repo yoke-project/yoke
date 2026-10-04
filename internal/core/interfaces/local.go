@@ -66,6 +66,8 @@ type Config struct {
 
 	// Channel is the channel this surface serves.
 	Channel gate.Channel
+	// Root is the instance root, under which a subscriber's socket is created.
+	Root string
 	// Bus is what the standing subscription and the picture's sequence are taken from. Optional.
 	Bus *bus.Bus
 	// Publish is told what the channel concludes about itself. Optional.
@@ -106,6 +108,8 @@ type Transports interface {
 	Close(unit, stream, reason string) bool
 	Discard(unit, stream string)
 	Active(unit string) []string
+	Feed(unit, stream string, to func(streams.Frame), released func()) (stop func())
+	NextSubscriber(unit, stream string) string
 }
 
 // Surface is the local projection's terminator: one bidirectional stream per attachment, many calls on it.

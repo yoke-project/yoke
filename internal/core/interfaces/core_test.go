@@ -3,6 +3,7 @@ package interfaces_test
 import (
 	"bufio"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"net"
 	"os"
@@ -17,6 +18,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/proto"
 
 	administrativev1 "github.com/yoke-project/yoke/proto/yoke/administrative/v1"
 	interfacev1 "github.com/yoke-project/yoke/proto/yoke/interface/v1"
@@ -35,6 +37,8 @@ func TestMain(m *testing.M) {
 		os.Exit(0)
 	case "commanded":
 		os.Exit(acknowledgeCommands())
+	case "streamer":
+		os.Exit(emitWhenActivated())
 	}
 	os.Exit(m.Run())
 }
@@ -70,7 +74,8 @@ func startCore(t *testing.T, composition string) (string, <-chan string) {
 	self, _ := os.Executable()
 	// The one Plugin a composition may run is this binary, declaring the command it acknowledges.
 	os.WriteFile(filepath.Join(manifests, "com.example.station", "manifest.yaml"), []byte("manifest: 1\nid: com.example.station\nprotocol: 1\n"+
-		"commands: [ { id: calibrate } ]\ncapabilities: [ { name: command.calibrate.accept, governs: { command: calibrate } } ]\n"), 0o644)
+		"commands: [ { id: calibrate } ]\nstreams: [ { id: station.data } ]\n"+
+		"capabilities: [ { name: command.calibrate.accept, governs: { command: calibrate } }, { name: stream.data.publish, governs: { stream: station.data } } ]\n"), 0o644)
 	os.Symlink(self, filepath.Join(executables, "com.example.station"))
 	path := filepath.Join(dir, "bench.yaml")
 	os.WriteFile(path, []byte(fmt.Sprintf(composition, self, role)), 0o644)
@@ -289,7 +294,8 @@ func acknowledgeCommands() int {
 	defer conn.Close()
 	resp, err := pluginv1.NewRegisterClient(conn).Register(context.Background(), &pluginv1.RegisterRequest{
 		Plugin: os.Getenv("YOKE_PLUGIN"), Unit: os.Getenv("YOKE_UNIT"), Token: os.Getenv("YOKE_TOKEN"), Protocol: 1,
-		Declared: &pluginv1.Surface{Capabilities: []string{"command.calibrate.accept"}, Commands: []string{"calibrate"}},
+		Declared: &pluginv1.Surface{Capabilities: []string{"command.calibrate.accept", "stream.data.publish"}, Commands: []string{"calibrate"},
+			Streams: []string{"station.data"}},
 	})
 	if err != nil || resp.SessionId == "" {
 		fmt.Println("not admitted:", err, resp)
@@ -436,5 +442,132 @@ arbitration:
 	ref := panel.answerTo(t, "c", command("calibrate-once", "calibrate", nil)).GetRefusal()
 	if ref.GetCode() != "channel.suspended" || ref.GetSuspension().GetBy() != "bench" {
 		t.Errorf("the command on panel was refused %v", ref)
+	}
+}
+
+// emitWhenActivated registers as acknowledgeCommands does; told to activate its stream it accepts,
+// connects to the address it was given and sends three data messages.
+func emitWhenActivated() int {
+	conn, err := grpc.NewClient("unix://"+os.Getenv("YOKE_SOCKET"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return 1
+	}
+	defer conn.Close()
+	resp, err := pluginv1.NewRegisterClient(conn).Register(context.Background(), &pluginv1.RegisterRequest{
+		Plugin: os.Getenv("YOKE_PLUGIN"), Unit: os.Getenv("YOKE_UNIT"), Token: os.Getenv("YOKE_TOKEN"), Protocol: 1,
+		Declared: &pluginv1.Surface{Capabilities: []string{"command.calibrate.accept", "stream.data.publish"}, Commands: []string{"calibrate"},
+			Streams: []string{"station.data"}},
+	})
+	if err != nil || resp.SessionId == "" {
+		fmt.Println("not admitted:", err, resp)
+		return 1
+	}
+	s, err := pluginv1.NewSessionClient(conn).Open(context.Background())
+	if err != nil {
+		return 1
+	}
+	var mu sync.Mutex
+	n := 0
+	send := func(fill func(*pluginv1.Envelope)) {
+		mu.Lock()
+		defer mu.Unlock()
+		n++
+		e := &pluginv1.Envelope{MessageId: fmt.Sprint(n), SessionId: resp.SessionId, SentAtUnixNano: time.Now().UnixNano()}
+		fill(e)
+		s.Send(e)
+	}
+	send(func(e *pluginv1.Envelope) {
+		e.Payload = &pluginv1.Envelope_Session{Session: &pluginv1.SessionMessage{Kind: &pluginv1.SessionMessage_Open_{Open: &pluginv1.SessionMessage_Open{}}}}
+	})
+	go func() {
+		for {
+			send(func(e *pluginv1.Envelope) {
+				e.Payload = &pluginv1.Envelope_Health{Health: &pluginv1.Health{Grade: 10, Line: "ready"}}
+			})
+			time.Sleep(time.Second)
+		}
+	}()
+	for {
+		e, err := s.Recv()
+		if err != nil {
+			return 0
+		}
+		if a := e.GetControl().GetActivate(); a != nil {
+			send(func(r *pluginv1.Envelope) {
+				r.CorrelationId = e.MessageId
+				r.Payload = &pluginv1.Envelope_Ack{Ack: &pluginv1.Ack{Outcome: pluginv1.Ack_OUTCOME_DONE}}
+			})
+			data, err := net.Dial("unixpacket", a.GetAddress())
+			if err != nil {
+				continue
+			}
+			for i := uint64(1); i <= 3; i++ {
+				raw, _ := proto.Marshal(&pluginv1.Envelope{MessageId: fmt.Sprintf("d-%d", i), SessionId: resp.SessionId, SentAtUnixNano: time.Now().UnixNano(),
+					Payload: &pluginv1.Envelope_Data{Data: &pluginv1.Data{Sequence: i, Payload: []byte(fmt.Sprint("sample ", i))}}})
+				data.Write(raw)
+			}
+		}
+	}
+}
+
+// std: yoke:streams-delivered.06
+func TestThroughTheCoreAClientSubscribesStartsAndReads(t *testing.T) {
+	run, lines := startCore(t, `units:
+  acquire: { kind: plugin, plugin: com.example.station, env: { %[2]s: streamer } }
+channels:
+  panel: { transport: local, clients: single }
+# %[1]s
+`)
+	opened := make(chan struct{}, 4)
+	go func() {
+		for line := range lines {
+			if strings.Contains(line, "msg=session") && strings.Contains(line, "event=opened") {
+				opened <- struct{}{}
+			}
+		}
+	}()
+	await := func(what string) {
+		t.Helper()
+		select {
+		case <-opened:
+		case <-time.After(20 * time.Second):
+			t.Fatalf("no %s within twenty seconds", what)
+		}
+	}
+	await("first Session")
+	conn, err := grpc.NewClient("unix://"+filepath.Join(run, "operator.sock"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	operator := administrativev1.NewOperatorClient(conn)
+	for _, r := range []*administrativev1.Request{
+		{Version: 1, Operation: &administrativev1.Request_PluginGrant{PluginGrant: &administrativev1.PluginGrant{Plugin: "com.example.station", Capability: "stream.data.publish"}}},
+		{Version: 1, Operation: &administrativev1.Request_UnitRestart{UnitRestart: &administrativev1.UnitAct{Unit: "acquire"}}},
+	} {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		_, err := operator.Call(ctx, r)
+		cancel()
+		if err != nil {
+			t.Fatalf("%v was refused: %v", r, err)
+		}
+	}
+	await("next life's Session")
+	a, err := attachTo(t, filepath.Join(run, "interfaces", "panel.sock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.next(t)
+	got := a.answerTo(t, "sub", &interfacev1.Request{Version: 1, Operation: &interfacev1.Request_StreamSubscribe{StreamSubscribe: &interfacev1.UnitStream{Unit: "acquire", Stream: "station.data"}}})
+	read := reader(t, got.GetAnswer().GetStreamSubscribe().GetSocket())
+	start := a.answerTo(t, "start", &interfacev1.Request{Version: 1, Operation: &interfacev1.Request_StreamStart{StreamStart: &interfacev1.UnitStream{Unit: "acquire", Stream: "station.data"}}})
+	if start.GetAnswer().GetStreamStart().GetOutcome() != interfacev1.Acknowledged_OUTCOME_DONE {
+		t.Fatalf("the start was answered %v", start)
+	}
+	for i := uint64(1); i <= 3; i++ {
+		p := read()
+		if len(p) < 16 || binary.LittleEndian.Uint64(p[0:8]) != i || string(p[16:]) != fmt.Sprint("sample ", i) {
+			t.Errorf("message %d read as %x", i, p)
+		}
 	}
 }
