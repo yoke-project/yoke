@@ -91,6 +91,9 @@ func (c *Core) unitRecord(id string) *administrativev1.UnitRecord {
 		Declared: &administrativev1.UnitRecord_Declared{Identity: id, Kind: string(c.Units.Kind(id)), Backend: "host", Plugin: plugin},
 		Observed: &administrativev1.UnitRecord_Observed{State: string(st.State), Incarnation: uint64(st.Incarnation), Since: stamp(st.Since)},
 	}
+	if c.Streams != nil {
+		r.Observed.Streams = c.Streams.Active(id)
+	}
 	if st.HasCondition {
 		r.Observed.Condition = &administrativev1.Condition{Grade: uint32(st.Condition.Grade), Line: st.Condition.Line, Since: stamp(st.ConditionSince)}
 	}
