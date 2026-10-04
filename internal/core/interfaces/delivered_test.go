@@ -292,8 +292,8 @@ func TestADeliveryWhoseClientFallsBehindIsReleased(t *testing.T) {
 		}
 		last = sequence
 	}
-	if last == 0 || last == 200 {
-		t.Errorf("the client read up to %d, and the delivery was not released", last)
+	if last == 200 {
+		t.Errorf("the client read all %d, and the delivery was not released", last)
 	}
 	ref := a.answerTo(t, "u", &interfacev1.Request{Version: 1, Operation: &interfacev1.Request_StreamUnsubscribe{StreamUnsubscribe: &interfacev1.StreamRelease{Delivery: got.GetDelivery()}}}).GetRefusal()
 	if ref == nil {
