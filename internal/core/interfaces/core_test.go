@@ -7,8 +7,11 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -23,8 +26,11 @@ import (
 const role = "TEST_UNIT_ROLE"
 
 func TestMain(m *testing.M) {
-	if os.Getenv(role) == "panel" {
+	switch os.Getenv(role) {
+	case "panel":
 		os.Exit(reachTheChannel())
+	case "once":
+		os.Exit(0)
 	}
 	os.Exit(m.Run())
 }
@@ -146,5 +152,63 @@ channels:
 	f, err := stream.Recv()
 	if err != nil || f.GetOpening().GetVersion() != 1 {
 		t.Errorf("the first frame is %v %v", f, err)
+	}
+}
+
+// std: yoke:attaching.07
+func TestThroughTheCoreAClientAttachesIsToldWhoItIsAndASecondIsRefused(t *testing.T) {
+	run, lines := startCore(t, `units:
+  calibrate-once: { kind: oneshot, exec: %s, env: { %s: once } }
+channels:
+  panel: { transport: local, clients: single }
+`)
+	var said []string
+	var mu sync.Mutex
+	attachedSeen := make(chan struct{})
+	ready := make(chan struct{})
+	go func() {
+		seenReady, seenAttached := false, false
+		for line := range lines {
+			mu.Lock()
+			said = append(said, line)
+			mu.Unlock()
+			if !seenReady && strings.Contains(line, "msg=ready") {
+				seenReady = true
+				close(ready)
+			}
+			if !seenAttached && strings.Contains(line, "type=channel.attached") {
+				seenAttached = true
+				close(attachedSeen)
+			}
+		}
+	}()
+	select {
+	case <-ready:
+	case <-time.After(20 * time.Second):
+		t.Fatal("the Core was not ready within twenty seconds")
+	}
+	address := filepath.Join(run, "interfaces", "panel.sock")
+	a, err := attachTo(t, address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	me, _ := user.LookupId(strconv.Itoa(os.Getuid()))
+	picture := a.next(t).GetOpening().GetPicture()
+	var unitSeen bool
+	for _, r := range picture.GetRecords() {
+		unitSeen = unitSeen || r.GetUnit().GetDeclared().GetIdentity() == "calibrate-once"
+	}
+	if records := channelRecord(picture); !unitSeen || len(records) != 1 || records[0].GetObserved().GetClient() != me.Username {
+		t.Errorf("the picture is %v", picture)
+	}
+	select {
+	case <-attachedSeen:
+	case <-time.After(5 * time.Second):
+		mu.Lock()
+		t.Errorf("the Core recorded no channel.attached:\n%s", strings.Join(said, "\n"))
+		mu.Unlock()
+	}
+	if _, err := attachTo(t, address); refusalIn(err).GetCode() != "channel.in_use" {
+		t.Errorf("the second attachment was answered %v", err)
 	}
 }

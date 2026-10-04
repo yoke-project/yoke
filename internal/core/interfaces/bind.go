@@ -37,11 +37,11 @@ func Bind(root string, mode os.FileMode, channels []gate.Channel) (*Bound, error
 	return BindServing(root, mode, channels, nil)
 }
 
-// BindServing is Bind, each channel carrying the local projection served by the surface given; with
-// none, a local channel answers as the interface service and serves no operation.
-func BindServing(root string, mode os.FileMode, channels []gate.Channel, local interfacev1.InterfaceServer) (*Bound, error) {
-	if local == nil {
-		local = NewSurface(Config{})
+// BindServing is Bind, each channel carrying the local projection served by the surface the function
+// gives for it; with none, a local channel answers as the interface service and serves no operation.
+func BindServing(root string, mode os.FileMode, channels []gate.Channel, surface func(gate.Channel) interfacev1.InterfaceServer) (*Bound, error) {
+	if surface == nil {
+		surface = func(ch gate.Channel) interfacev1.InterfaceServer { return NewSurface(Config{Channel: ch}) }
 	}
 	b := &Bound{addresses: map[string]string{}}
 	ordered := slices.Clone(channels)
@@ -53,7 +53,7 @@ func BindServing(root string, mode os.FileMode, channels []gate.Channel, local i
 			return nil, fmt.Errorf("the channel %s: %w", ch.Name, err)
 		}
 		b.addresses[ch.Name] = address
-		b.closers = append(b.closers, serve(ch, listener, local))
+		b.closers = append(b.closers, serve(ch, listener, surface(ch)))
 	}
 	return b, nil
 }

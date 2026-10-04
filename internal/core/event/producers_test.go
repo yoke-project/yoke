@@ -12,18 +12,21 @@ import (
 
 // makes is the constructor that makes each type.
 var makes = map[string]string{
-	"instance.ready":           "InstanceReady",
-	"instance.stopping":        "InstanceStopping",
-	"unit.state.changed":       "StateChanged",
-	"unit.condition.changed":   "ConditionChanged",
-	"unit.occurrence.reported": "OccurrenceReported",
-	"unit.stream.activated":    "StreamActivated",
-	"unit.stream.stopped":      "StreamStopped",
-	"document.resolved":        "DocumentResolved",
-	"document.rejected":        "DocumentRejected",
-	"connection.opened":        "ConnectionOpened",
-	"connection.closed":        "ConnectionClosed",
-	"plugin.policy.changed":    "PolicyChanged",
+	"instance.ready":             "InstanceReady",
+	"instance.stopping":          "InstanceStopping",
+	"unit.state.changed":         "StateChanged",
+	"unit.condition.changed":     "ConditionChanged",
+	"unit.occurrence.reported":   "OccurrenceReported",
+	"unit.stream.activated":      "StreamActivated",
+	"unit.stream.stopped":        "StreamStopped",
+	"document.resolved":          "DocumentResolved",
+	"document.rejected":          "DocumentRejected",
+	"connection.opened":          "ConnectionOpened",
+	"channel.attached":           "ChannelAttached",
+	"channel.detached":           "ChannelDetached",
+	"channel.subscription.stale": "SubscriptionStale",
+	"connection.closed":          "ConnectionClosed",
+	"plugin.policy.changed":      "PolicyChanged",
 }
 
 // std: yoke:names-and-filtering.02

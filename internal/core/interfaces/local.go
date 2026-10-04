@@ -5,8 +5,15 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	interfacev1 "github.com/yoke-project/yoke/proto/yoke/interface/v1"
+
+	"github.com/yoke-project/yoke/internal/core/bus"
+	"github.com/yoke-project/yoke/internal/core/event"
+	"github.com/yoke-project/yoke/internal/core/supervisor"
+	"github.com/yoke-project/yoke/internal/core/unit"
+	"github.com/yoke-project/yoke/internal/gate"
 )
 
 // Version is the interface contract's version this Core speaks.
@@ -18,12 +25,46 @@ type Operation struct {
 	Stream func(context.Context, *interfacev1.Request, func(*interfacev1.Response) error) *interfacev1.Refusal
 }
 
+// Standing is the call identity of the subscription that stands from the moment a channel attaches.
+const Standing = "standing"
+
+// Units are the units a deployment declares, as the supervisor observes them.
+type Units interface {
+	IDs() []string
+	Kind(id string) unit.Kind
+	Status(id string) supervisor.Status
+}
+
+// Confirmation is what a confirmed subscription is held to: confirmed every interval, stale after the
+// tolerance's worth of intervals missed, on the channels named in an arbitration rule.
+type Confirmation struct {
+	Every     time.Duration
+	Tolerance int
+	Required  map[string]bool
+}
+
 // Config is what a surface serves.
 type Config struct {
 	// Operations are the members of the union served, by the name the contract writes them with.
 	Operations map[string]Operation
-	// Picture is the opening picture. Optional.
+	// Picture is the opening picture, where nothing below computes one. Optional.
 	Picture func() *interfacev1.Snapshot
+
+	// Channel is the channel this surface serves.
+	Channel gate.Channel
+	// Bus is what the standing subscription and the picture's sequence are taken from. Optional.
+	Bus *bus.Bus
+	// Publish is told what the channel concludes about itself. Optional.
+	Publish func(event.Event)
+	// Instance, Units, Granted and Active are what the records are made of. Optional.
+	Instance func() *interfacev1.InstanceRecord
+	Units    Units
+	Granted  func(unit string) (streams, commands, queries []string)
+	Active   func(unit string) []string
+	// Confirm is what a confirmed subscription is held to. Optional.
+	Confirm *Confirmation
+	// Accounts resolves an account's number to its name; the host's database where nil.
+	Accounts func(uid string) (string, error)
 }
 
 // Surface is the local projection's terminator: one bidirectional stream per attachment, many calls on it.
