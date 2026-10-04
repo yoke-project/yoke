@@ -15,9 +15,10 @@ import (
 	"github.com/yoke-project/yoke/internal/gate"
 )
 
-// queued is how many frames a delivery holds for a client that reads slower than the stream flows. Past
-// it frames are dropped, which the client sees as a gap in the sequence.
-const queued = 1024
+// Queued is how many frames a delivery holds for a client that reads slower than the stream flows. Past
+// it the delivery is released and the client told, rather than a frame dropped: a delivery never removes
+// a guarantee the producing path gave.
+const Queued = 1024
 
 // deliveries are the deliveries one attachment holds, by their identity, each with what releases it.
 type deliveries struct {
@@ -95,7 +96,11 @@ func (s *Surface) subscribeStream(r *interfacev1.Request, held *deliveries, send
 		return nil, aboutItem("scope.withheld", stream, stream+" is declared and not granted to that plugin")
 	}
 	n := s.cfg.Transports.NextSubscriber(id, stream)
-	frames := make(chan streams.Frame, queued)
+	size := s.cfg.Queue
+	if size == 0 {
+		size = Queued
+	}
+	frames := make(chan streams.Frame, size)
 	carry := func(f streams.Frame) {
 		// A channel suspended dark keeps its deliveries and they carry nothing.
 		if s.cfg.Arbiter != nil {
@@ -106,6 +111,8 @@ func (s *Surface) subscribeStream(r *interfacev1.Request, held *deliveries, send
 		select {
 		case frames <- f:
 		default:
+			// Behind: released, so the client learns it rather than meeting a gap.
+			go held.drop(n)
 		}
 	}
 	done := make(chan struct{})
@@ -169,6 +176,8 @@ func (s *Surface) subscribeStream(r *interfacev1.Request, held *deliveries, send
 			for {
 				select {
 				case <-done:
+					// A delivery on the connection ends as a call does: completed by the Core.
+					send(&interfacev1.CoreFrame{Call: n, Carries: &interfacev1.CoreFrame_Completion{Completion: &interfacev1.Completion{By: interfacev1.Completion_BY_CORE}}})
 					return
 				case f := <-frames:
 					send(&interfacev1.CoreFrame{Call: n, Carries: &interfacev1.CoreFrame_Delivery{Delivery: &interfacev1.StreamDelivery{
