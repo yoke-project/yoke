@@ -11,6 +11,7 @@ import (
 	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
 
 	"github.com/yoke-project/yoke/internal/core/scope"
+	"github.com/yoke-project/yoke/internal/core/session"
 )
 
 // opened is an open Session, the Core having taken its OPEN.
@@ -264,4 +265,42 @@ func TestWhoeverAskedIsHandedTheFirstAnswer(t *testing.T) {
 	}
 	st.send(t, acknowledge(third, pluginv1.Ack_OUTCOME_DONE))
 	st.quiet(t, 150*time.Millisecond)
+}
+
+// std: yoke:the-families.08
+func TestAnErrorAnsweringTheCoresMessageClosesTheExchange(t *testing.T) {
+	h := newHarness(t)
+	st := opened(t, h)
+	done := make(chan error, 1)
+	started := time.Now()
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		_, err := h.svc.Ask(ctx, "sid-1", &pluginv1.Query_Question{Type: "range"})
+		done <- err
+	}()
+	got, open := st.receive(t, 2*time.Second)
+	if !open {
+		t.Fatal("the stream closed")
+	}
+	fail := func(e *pluginv1.Envelope) {
+		e.CorrelationId = got.MessageId
+		e.Payload = &pluginv1.Envelope_Error{Error: &pluginv1.Error{Code: "instrument.busy", Message: "the lamp is warming"}}
+	}
+	st.send(t, fail)
+	var err error
+	select {
+	case err = <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("the caller was handed nothing")
+	}
+	var failed *session.UnitFailed
+	if !errors.As(err, &failed) || failed.Code != "instrument.busy" || failed.Message != "the lamp is warming" || time.Since(started) > time.Second {
+		t.Errorf("after %v the caller was handed %v", time.Since(started), err)
+	}
+	late := st.send(t, answer(got.MessageId, "late"))
+	refusal, open := st.receive(t, 2*time.Second)
+	if !open || refusal.GetError().GetCode() != "session.correlation.unknown" || refusal.CorrelationId != late {
+		t.Errorf("the answer after the error was answered %v", refusal)
+	}
 }

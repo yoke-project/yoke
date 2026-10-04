@@ -81,7 +81,7 @@
 | **Label** | blocking |
 | **Precondition** | the administrative contract's enumeration of codes |
 | **Action** | read each value's dotted name |
-| **Expected** | the fifteen codes of this surface, each under the grammar, and no other |
+| **Expected** | the seventeen codes of this surface, each under the grammar, and no other |
 
 ## yoke:administrative-contract.07 — a refusal is a code, a message and a typed detail
 

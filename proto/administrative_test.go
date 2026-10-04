@@ -169,6 +169,7 @@ var administrativeCodes = []string{
 	"operation.malformed", "operation.unknown", "compat.unsupported", "subject.unknown", "subject.wrong_kind",
 	"capability.undeclared", "stream.undeclared", "scope.withheld", "unit.not_running", "unit.no_session",
 	"unit.unanswered", "retention.invalid", "instance.stopping", "backend.unavailable", "store.unavailable",
+	"scope.undeclared", "unit.failed",
 }
 
 // std: yoke:administrative-contract.06

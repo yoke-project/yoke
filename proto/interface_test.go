@@ -176,7 +176,7 @@ var interfaceCodes = []string{
 	"operation.malformed", "operation.unknown", "compat.unsupported", "auth.required", "auth.invalid",
 	"channel.in_use", "channel.not_attached", "channel.suspended", "channel.not_local", "subject.unknown",
 	"scope.undeclared", "scope.withheld", "unit.not_running", "unit.no_session", "unit.unanswered",
-	"instance.stopping",
+	"instance.stopping", "unit.failed",
 }
 
 // std: yoke:interface-contract.07

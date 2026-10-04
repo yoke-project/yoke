@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -176,5 +177,25 @@ func TestTheJoinIsExact(t *testing.T) {
 		if held[id] != lastPublished[u] {
 			t.Errorf("the subscriber holds %s for %s, and the last change published was %s", held[id], id, lastPublished[u])
 		}
+	}
+}
+
+// std: yoke:a-subscription.06
+func TestAStreamsStateIsOneLevelPerStream(t *testing.T) {
+	b := bus.New()
+	b.Publish(event.StreamActivated("acquire", 1, "station.spectra"))
+	b.Publish(event.StreamActivated("acquire", 1, "station.preview"))
+	b.Publish(event.StreamStopped("acquire", 1, "station.preview", "asked", true))
+	s, snapshot := b.SubscribeTo(event.Filter{})
+	defer s.Close()
+	var got []string
+	for _, e := range snapshot.Events {
+		var d struct{ Stream string }
+		json.Unmarshal(e.Detail, &d)
+		got = append(got, e.Type+" "+d.Stream)
+	}
+	want := []string{"unit.stream.activated station.spectra", "unit.stream.stopped station.preview"}
+	if !slices.Equal(got, want) {
+		t.Errorf("the snapshot holds %q, want %q", got, want)
 	}
 }
