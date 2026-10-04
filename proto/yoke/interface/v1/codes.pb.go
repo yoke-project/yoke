@@ -62,6 +62,8 @@ const (
 	Code_CODE_UNIT_UNANSWERED Code = 15
 	// An orderly stop is in progress and the operation would act.
 	Code_CODE_INSTANCE_STOPPING Code = 16
+	// The unit answered the Core's message with an error; the detail carries the unit's own code.
+	Code_CODE_UNIT_FAILED Code = 17
 )
 
 // Enum value maps for Code.
@@ -84,6 +86,7 @@ var (
 		14: "CODE_UNIT_NO_SESSION",
 		15: "CODE_UNIT_UNANSWERED",
 		16: "CODE_INSTANCE_STOPPING",
+		17: "CODE_UNIT_FAILED",
 	}
 	Code_value = map[string]int32{
 		"CODE_UNSPECIFIED":          0,
@@ -103,6 +106,7 @@ var (
 		"CODE_UNIT_NO_SESSION":      14,
 		"CODE_UNIT_UNANSWERED":      15,
 		"CODE_INSTANCE_STOPPING":    16,
+		"CODE_UNIT_FAILED":          17,
 	}
 )
 
@@ -237,7 +241,8 @@ type Refusal_Subject struct {
 }
 
 type Refusal_Item struct {
-	// The object withheld or undeclared: a stream, a command type or a query type.
+	// The object withheld or undeclared — a stream, a command type or a query type — or, for
+	// unit.failed, the unit's own code.
 	Item string `protobuf:"bytes,4,opt,name=item,proto3,oneof"`
 }
 
@@ -411,7 +416,7 @@ const file_yoke_interface_v1_codes_proto_rawDesc = "" +
 	"\n" +
 	"Suspension\x12\x14\n" +
 	"\x05grade\x18\x01 \x01(\tR\x05grade\x12\x0e\n" +
-	"\x02by\x18\x02 \x01(\tR\x02by*\xaa\x06\n" +
+	"\x02by\x18\x02 \x01(\tR\x02by*\xd1\x06\n" +
 	"\x04Code\x12\x14\n" +
 	"\x10CODE_UNSPECIFIED\x10\x00\x125\n" +
 	"\x18CODE_OPERATION_MALFORMED\x10\x01\x1a\x17\x92\xb5\x18\x13operation.malformed\x121\n" +
@@ -430,7 +435,8 @@ const file_yoke_interface_v1_codes_proto_rawDesc = "" +
 	"\x15CODE_UNIT_NOT_RUNNING\x10\r\x1a\x14\x92\xb5\x18\x10unit.not_running\x12-\n" +
 	"\x14CODE_UNIT_NO_SESSION\x10\x0e\x1a\x13\x92\xb5\x18\x0funit.no_session\x12-\n" +
 	"\x14CODE_UNIT_UNANSWERED\x10\x0f\x1a\x13\x92\xb5\x18\x0funit.unanswered\x121\n" +
-	"\x16CODE_INSTANCE_STOPPING\x10\x10\x1a\x15\x92\xb5\x18\x11instance.stopping:7\n" +
+	"\x16CODE_INSTANCE_STOPPING\x10\x10\x1a\x15\x92\xb5\x18\x11instance.stopping\x12%\n" +
+	"\x10CODE_UNIT_FAILED\x10\x11\x1a\x0f\x92\xb5\x18\vunit.failed:7\n" +
 	"\x04code\x12!.google.protobuf.EnumValueOptions\x18҆\x03 \x01(\tR\x04codeBBZ@github.com/yoke-project/yoke/proto/yoke/interface/v1;interfacev1b\x06proto3"
 
 var (

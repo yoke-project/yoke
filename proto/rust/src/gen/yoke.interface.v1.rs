@@ -17,7 +17,8 @@ pub mod refusal {
         /// The subject named: for subject.unknown, and for the refusals about a unit.
         #[prost(message, tag = "3")]
         Subject(super::Subject),
-        /// The object withheld or undeclared: a stream, a command type or a query type.
+        /// The object withheld or undeclared — a stream, a command type or a query type — or, for
+        /// unit.failed, the unit's own code.
         #[prost(string, tag = "4")]
         Item(::prost::alloc::string::String),
         /// For channel.suspended: the grade, and the channel that prevails.
@@ -84,6 +85,8 @@ pub enum Code {
     UnitUnanswered = 15,
     /// An orderly stop is in progress and the operation would act.
     InstanceStopping = 16,
+    /// The unit answered the Core's message with an error; the detail carries the unit's own code.
+    UnitFailed = 17,
 }
 impl Code {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -109,6 +112,7 @@ impl Code {
             Self::UnitNoSession => "CODE_UNIT_NO_SESSION",
             Self::UnitUnanswered => "CODE_UNIT_UNANSWERED",
             Self::InstanceStopping => "CODE_INSTANCE_STOPPING",
+            Self::UnitFailed => "CODE_UNIT_FAILED",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -131,6 +135,7 @@ impl Code {
             "CODE_UNIT_NO_SESSION" => Some(Self::UnitNoSession),
             "CODE_UNIT_UNANSWERED" => Some(Self::UnitUnanswered),
             "CODE_INSTANCE_STOPPING" => Some(Self::InstanceStopping),
+            "CODE_UNIT_FAILED" => Some(Self::UnitFailed),
             _ => None,
         }
     }
