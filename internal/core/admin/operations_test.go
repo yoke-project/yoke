@@ -136,6 +136,15 @@ type fakeSessions struct {
 	mu      sync.Mutex
 	open    map[string]string // unit → how it answers
 	revoked map[string]pluginv1.SessionMessage_Revoked_Cause
+	// instructed is every control instruction a unit was handed, and present whether the stream's socket
+	// existed when it was.
+	instructed []instruction
+}
+
+type instruction struct {
+	unit    string
+	control *pluginv1.Control
+	present bool
 }
 
 func (f *fakeSessions) Open(id string) bool {
