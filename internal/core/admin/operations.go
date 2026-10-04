@@ -81,6 +81,8 @@ type Core struct {
 	Documents func() []*administrativev1.DocumentRecord
 	// Composed says whether the composition in force runs a plugin.
 	Composed func(plugin string) bool
+	// Channels are the declared channels, each as it stands.
+	Channels func() []*administrativev1.ChannelRecord
 	// Connections are the administrative connections open now.
 	Connections func() []Connection
 	// Bus is the instance's bus, which a subscription projects outwards.
