@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	administrativev1 "github.com/yoke-project/yoke/proto/yoke/administrative/v1"
 	interfacev1 "github.com/yoke-project/yoke/proto/yoke/interface/v1"
 )
 
@@ -210,5 +211,63 @@ channels:
 	}
 	if _, err := attachTo(t, address); refusalIn(err).GetCode() != "channel.in_use" {
 		t.Errorf("the second attachment was answered %v", err)
+	}
+}
+
+// std: yoke:what-a-channel-sees.05
+func TestThroughTheCoreAClientReadsItsChannelAndAnOperatorReadsEvery(t *testing.T) {
+	run, lines := startCore(t, `units:
+  calibrate-once: { kind: oneshot, exec: %s, env: { %s: once } }
+channels:
+  panel: { transport: local, clients: single }
+  remote: { transport: local, clients: single }
+`)
+	ready := make(chan struct{})
+	go func() {
+		seen := false
+		for line := range lines {
+			if !seen && strings.Contains(line, "msg=ready") {
+				seen = true
+				close(ready)
+			}
+		}
+	}()
+	select {
+	case <-ready:
+	case <-time.After(20 * time.Second):
+		t.Fatal("the Core was not ready within twenty seconds")
+	}
+	a, err := attachTo(t, filepath.Join(run, "interfaces", "panel.sock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.next(t)
+	me, _ := user.LookupId(strconv.Itoa(os.Getuid()))
+	own := a.answerTo(t, "own", readOf("channel", "panel")).GetAnswer().GetRead().GetRecords()
+	if len(own) != 1 || own[0].GetChannel().GetObserved().GetClient() != me.Username {
+		t.Errorf("the client read its channel as %v", own)
+	}
+	if f := a.answerTo(t, "other", readOf("channel", "remote")); f.GetRefusal().GetCode() != "subject.unknown" {
+		t.Errorf("the client read the other channel as %v", f)
+	}
+	conn, err := grpc.NewClient("unix://"+filepath.Join(run, "operator.sock"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	resp, err := administrativev1.NewOperatorClient(conn).Call(ctx, &administrativev1.Request{Version: 1,
+		Operation: &administrativev1.Request_Read{Read: &administrativev1.Read{Kind: "channel"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, r := range resp.GetRead().GetRecords() {
+		c := r.GetChannel()
+		got[c.GetDeclared().GetName()] = c.GetObserved().GetClient()
+	}
+	if len(got) != 2 || got["panel"] != me.Username || got["remote"] != "" {
+		t.Errorf("the operator read the channels as %v", got)
 	}
 }
