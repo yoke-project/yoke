@@ -118,6 +118,8 @@ type Surface struct {
 	interfacev1.UnimplementedInterfaceServer
 	cfg Config
 
+	web *web
+
 	mu      sync.Mutex
 	clients []string // the clients attached now, in the order they attached
 	current int      // the attachments whose picture is current: what makes the channel hold
@@ -137,7 +139,7 @@ func (s *Surface) hold(delta int) {
 
 // NewSurface is a terminator serving the operations given.
 func NewSurface(cfg Config) *Surface {
-	s := &Surface{cfg: cfg}
+	s := &Surface{cfg: cfg, web: &web{attachments: map[string]*attachment{}, deliveries: map[string]*webDelivery{}}}
 	ops := map[string]Operation{}
 	if cfg.Bus != nil {
 		ops["read"] = Operation{Answer: s.read}

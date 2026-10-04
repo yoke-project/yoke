@@ -75,17 +75,30 @@ func HostAccounts(uid string) (string, error) {
 	return u.Username, nil
 }
 
+type connKey struct{}
+
+// ConnContext keeps, for an HTTP server, the peer credential of a connection accepted on a local socket,
+// where Account finds it.
+func ConnContext(ctx context.Context, c net.Conn) context.Context {
+	if _, info, err := (Credentials{}).ServerHandshake(c); err == nil && info != nil {
+		return context.WithValue(ctx, connKey{}, info)
+	}
+	return ctx
+}
+
 // Account is the account the connection of ctx came from: its name, or its number marked `uid:` where
 // no name resolves; false where the connection carries no credential. An account name cannot hold a
 // colon, so the mark cannot be a name.
 func Account(ctx context.Context, accounts func(uid string) (string, error)) (string, bool) {
-	p, ok := grpcpeer.FromContext(ctx)
+	cred, ok := ctx.Value(connKey{}).(Info)
 	if !ok {
-		return "", false
-	}
-	cred, ok := p.AuthInfo.(Info)
-	if !ok {
-		return "", false
+		p, found := grpcpeer.FromContext(ctx)
+		if !found {
+			return "", false
+		}
+		if cred, ok = p.AuthInfo.(Info); !ok {
+			return "", false
+		}
 	}
 	if accounts == nil {
 		accounts = HostAccounts

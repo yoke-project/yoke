@@ -105,7 +105,11 @@ func listen(root string, mode os.FileMode, ch gate.Channel) (net.Listener, strin
 // serve starts the channel's terminator in the projection it declares, and returns what stops it.
 func serve(ch gate.Channel, listener net.Listener, local interfacev1.InterfaceServer) func() {
 	if ch.Transport == "http+ws" {
-		server := &http.Server{Handler: http.HandlerFunc(http.NotFound)}
+		var handler http.Handler = http.HandlerFunc(http.NotFound)
+		if h, ok := local.(http.Handler); ok {
+			handler = h
+		}
+		server := &http.Server{Handler: handler, ConnContext: peer.ConnContext}
 		go server.Serve(listener)
 		return func() { server.Close() }
 	}

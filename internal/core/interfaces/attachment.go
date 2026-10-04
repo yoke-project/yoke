@@ -210,7 +210,7 @@ func (a *attachment) handle(call string, r *interfacev1.Request, reply func(*int
 	switch name {
 	case "stream.subscribe":
 		// A delivery is the attachment's, and ends with it.
-		resp, ref := s.subscribeStream(r, a.held, a.live)
+		resp, ref := s.subscribeStream(r, a)
 		if ref != nil {
 			refuse(ref)
 			return
