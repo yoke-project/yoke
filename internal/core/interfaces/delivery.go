@@ -73,7 +73,8 @@ func frameOf(f streams.Frame) []byte {
 // arrives: a socket in the instance's tree the client connects to, on a channel bound as a local socket;
 // the attachment's own connection on one bound on an address. Subscribing to a stream not flowing is
 // legal and carries nothing until it flows.
-func (s *Surface) subscribeStream(r *interfacev1.Request, held *deliveries, send func(*interfacev1.CoreFrame) error) (*interfacev1.Response, *interfacev1.Refusal) {
+func (s *Surface) subscribeStream(r *interfacev1.Request, a *attachment) (*interfacev1.Response, *interfacev1.Refusal) {
+	held, send := a.held, a.live
 	id, stream := r.GetStreamSubscribe().GetUnit(), r.GetStreamSubscribe().GetStream()
 	if s.cfg.Units == nil || s.cfg.Declared == nil || s.cfg.Transports == nil {
 		return nil, refusal("operation.unknown", "this Core does not serve stream.subscribe")
@@ -127,7 +128,19 @@ func (s *Surface) subscribeStream(r *interfacev1.Request, held *deliveries, send
 		})
 	}
 	answer := &interfacev1.Delivering{Delivery: n, Flowing: slices.Contains(s.cfg.Transports.Active(id), stream)}
-	if s.cfg.Channel.Address == nil || s.cfg.Channel.Address.Class == "local" {
+	if s.cfg.Channel.Transport == "http+ws" {
+		// The browser projection's delivery is one binary WebSocket, at the path the answer names.
+		path := "/v1/streams/" + id + "/" + stream + "/" + n
+		s.web.mu.Lock()
+		s.web.deliveries[path] = &webDelivery{frames: frames, done: done, owner: a}
+		s.web.mu.Unlock()
+		closer = func() {
+			s.web.mu.Lock()
+			delete(s.web.deliveries, path)
+			s.web.mu.Unlock()
+		}
+		answer.Arrives = &interfacev1.Delivering_Path{Path: path}
+	} else if s.cfg.Channel.Address == nil || s.cfg.Channel.Address.Class == "local" {
 		path := filepath.Join(s.cfg.Root, "plugins", id, "subscribers", stream, n+".sock")
 		if len(path) > ceiling {
 			return nil, refusal("operation.malformed", "the subscriber's socket path "+path+" is beyond what a socket path may have")
