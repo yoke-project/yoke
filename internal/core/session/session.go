@@ -510,6 +510,20 @@ func (s *Service) Of(unitID string) (string, bool) {
 	return "", false
 }
 
+// Granted are the streams, commands and queries a unit's open Session was granted at its admission:
+// what a channel may address on it. A unit with no Session is granted nothing.
+func (s *Service) Granted(unitID string) (streams, commands, queries []string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, l := range s.open {
+		if l.terms.Unit == unitID && !l.ended {
+			sc := l.terms.Scope
+			return sc.Granted(scope.Stream), sc.Granted(scope.Command), sc.Granted(scope.Query)
+		}
+	}
+	return nil, nil, nil
+}
+
 // Forget ends a unit's Session because its incarnation ended: the machine has already concluded, and
 // nothing is told to it.
 func (s *Service) Forget(unitID string) {

@@ -28,6 +28,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	administrativev1 "github.com/yoke-project/yoke/proto/yoke/administrative/v1"
+	interfacev1 "github.com/yoke-project/yoke/proto/yoke/interface/v1"
 	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
 
 	"github.com/yoke-project/yoke/internal/core/admin"
@@ -431,7 +432,31 @@ func interfaceChannels(st *State) error {
 	for _, ch := range st.Deployment.Channels {
 		declared = append(declared, ch)
 	}
-	bound, err := interfaces.Bind(st.Paths.Root, st.Form.SocketMode(), declared)
+	// A channel named in an arbitration rule must confirm its subscription.
+	required := map[string]bool{}
+	for _, rule := range st.Deployment.Arbitration {
+		for _, name := range append([]string{rule.Prevails}, rule.Over...) {
+			required[name] = true
+		}
+	}
+	confirm := &interfaces.Confirmation{Every: interfaces.ConfirmEvery, Tolerance: interfaces.ConfirmTolerance, Required: required}
+	transports := st.transports()
+	surface := func(ch gate.Channel) interfacev1.InterfaceServer {
+		return interfaces.NewSurface(interfaces.Config{
+			Channel: ch, Bus: st.Bus, Publish: st.publish, Confirm: confirm, Units: supervised{st}, Active: transports.Active,
+			Instance: func() *interfacev1.InstanceRecord {
+				r := st.instanceRecord()
+				return &interfacev1.InstanceRecord{Ready: r.GetReady(), Stopping: r.GetStopping(), Since: r.GetSince()}
+			},
+			Granted: func(id string) ([]string, []string, []string) {
+				if st.Session == nil {
+					return nil, nil, nil
+				}
+				return st.Session.Granted(id)
+			},
+		})
+	}
+	bound, err := interfaces.BindServing(st.Paths.Root, st.Form.SocketMode(), declared, surface)
 	if err != nil {
 		return err
 	}
