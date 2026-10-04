@@ -290,6 +290,10 @@ func (s *Service) receive(l *live, e *pluginv1.Envelope) {
 		changed := !l.reported || l.grade != grade || l.line != line
 		l.reported, l.grade, l.line = true, grade, line
 		s.mu.Unlock()
+		if changed {
+			// The machine holds the condition the unit's record carries, and is told outside the lock.
+			s.observe(l.terms.Unit, unit.Reported{Grade: grade, Line: line})
+		}
 		if changed && s.cfg.Publish != nil {
 			s.cfg.Publish(event.ConditionChanged(l.terms.Unit, l.terms.Incarnation, from, grade, line))
 		}

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -132,6 +133,12 @@ func (h *harness) toldOf(unitID string) []string {
 	return append([]string(nil), h.told[unitID]...)
 }
 
+// sessionOf is what the machine was told of the unit's Session, leaving out the condition its reports
+// carry, which is an axis of its own.
+func (h *harness) sessionOf(unitID string) []string {
+	return slices.DeleteFunc(h.toldOf(unitID), func(in string) bool { return strings.HasPrefix(in, "unit.Reported") })
+}
+
 // stream is a unit's side of one stream: what it sends, and what arrives, until the stream closes.
 type stream struct {
 	s       pluginv1.Session_OpenClient
@@ -246,7 +253,7 @@ func TestTheFirstEnvelopeIsAnOpenCarryingTheIssuedIdentity(t *testing.T) {
 	st.send(t, open)
 	st.send(t, heartbeat)
 	st.quiet(t, 200*time.Millisecond)
-	if got := h.toldOf("acquire"); !slices.Equal(got, []string{"unit.SessionOpened{}"}) {
+	if got := h.sessionOf("acquire"); !slices.Equal(got, []string{"unit.SessionOpened{}"}) {
 		t.Errorf("the machine was told %v", got)
 	}
 }
@@ -379,7 +386,7 @@ func TestHeartbeatsKeepItValidAndMissesRevokeIt(t *testing.T) {
 		t.Fatalf("after the heartbeats stopped %v arrived (open %v), want REVOKED for lost liveness", e, open)
 	}
 	st.closedWithNothing(t)
-	if got := h.toldOf("acquire"); !slices.Equal(got, []string{"unit.SessionOpened{}", "unit.SessionEnded{Withdrawn:false}"}) {
+	if got := h.sessionOf("acquire"); !slices.Equal(got, []string{"unit.SessionOpened{}", "unit.SessionEnded{Withdrawn:false}"}) {
 		t.Errorf("the machine was told %v", got)
 	}
 }
@@ -394,12 +401,12 @@ func TestLosingTheStreamIsNotClosingIt(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 	st.cancel()
 	time.Sleep(100 * time.Millisecond)
-	if got := h.toldOf("acquire"); !slices.Equal(got, []string{"unit.SessionOpened{}"}) {
+	if got := h.sessionOf("acquire"); !slices.Equal(got, []string{"unit.SessionOpened{}"}) {
 		t.Fatalf("losing the stream concluded %v at once", got)
 	}
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
-		if got := h.toldOf("acquire"); len(got) == 2 {
+		if got := h.sessionOf("acquire"); len(got) == 2 {
 			if got[1] != "unit.SessionEnded{Withdrawn:false}" {
 				t.Fatalf("the machine was told %v", got)
 			}
@@ -407,7 +414,7 @@ func TestLosingTheStreamIsNotClosingIt(t *testing.T) {
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	t.Fatalf("once the window passed the machine was told %v", h.toldOf("acquire"))
+	t.Fatalf("once the window passed the machine was told %v", h.sessionOf("acquire"))
 }
 
 // std: yoke:the-session.09
