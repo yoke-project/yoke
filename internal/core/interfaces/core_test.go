@@ -6,6 +6,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+	"net/http"
+	"net/http/cookiejar"
 	"os"
 	"os/exec"
 	"os/user"
@@ -16,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
@@ -569,5 +572,45 @@ channels:
 		if len(p) < 16 || binary.LittleEndian.Uint64(p[0:8]) != i || string(p[16:]) != fmt.Sprint("sample ", i) {
 			t.Errorf("message %d read as %x", i, p)
 		}
+	}
+}
+
+// std: yoke:the-browser-projection.06
+func TestThroughTheCoreABrowsersTwoShapesReachALoopbackChannel(t *testing.T) {
+	port := freePort(t)
+	_, lines := startCore(t, `units:
+  calibrate-once: { kind: oneshot, exec: %s, env: { %s: once } }
+channels:
+  remote: { transport: http+ws, clients: multiple, address: { class: loopback, port: "`+port+`" } }
+`)
+	ready := make(chan struct{})
+	go func() {
+		seen := false
+		for line := range lines {
+			if !seen && strings.Contains(line, "msg=ready") {
+				seen = true
+				close(ready)
+			}
+		}
+	}()
+	select {
+	case <-ready:
+	case <-time.After(20 * time.Second):
+		t.Fatal("the Core was not ready within twenty seconds")
+	}
+	jar, _ := cookiejar.New(nil)
+	dialer := websocket.Dialer{Jar: jar}
+	conn, _, err := dialer.Dial("ws://127.0.0.1:"+port+"/v1/events", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	if f := frameFrom(t, conn); f.GetOpening().GetVersion() != 1 {
+		t.Errorf("the first message is %v", f)
+	}
+	b := &browser{base: "http://127.0.0.1:" + port, jar: jar, http: &http.Client{Jar: jar}}
+	status, resp, ref := b.post(t, "read", readOf("unit", ""))
+	if status != http.StatusOK || len(resp.GetRead().GetRecords()) != 1 || resp.GetRead().GetRecords()[0].GetUnit().GetDeclared().GetIdentity() != "calibrate-once" {
+		t.Errorf("the read was answered %d %v %v", status, resp, ref)
 	}
 }
