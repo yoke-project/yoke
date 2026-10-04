@@ -187,7 +187,7 @@ func (s *Surface) Attach(stream interfacev1.Interface_AttachServer) error {
 	}
 	reason := "lost"
 	defer func() { a.finish(reason) }()
-	if err := a.live(&interfacev1.CoreFrame{Carries: &interfacev1.CoreFrame_Opening{Opening: a.opening}}); err != nil {
+	if err := a.start(); err != nil {
 		return err
 	}
 	for {
