@@ -2,7 +2,6 @@ package interfaces
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"strings"
 	"sync"
@@ -170,123 +169,25 @@ func refusal(code, message string) *interfacev1.Refusal {
 	return &interfacev1.Refusal{Code: code, Message: message}
 }
 
-// Attach serves one attachment. The client is established by the class of the channel's address; a
-// single channel already held refuses it. The Core's first frame is the opening: the picture, the
-// standing subscription and the version. Then every call is answered in frames carrying its identity, and
-// completes with its one answer, its refusal, or a completion saying who ended it; a refusal belongs to
-// its call and ends nothing else. When the attachment ends, nothing about it remains.
+// Attach serves one attachment on the typed projection. The client is established by the class of the
+// channel's address; a single channel already held refuses it. The Core's first frame is the opening: the
+// picture, the standing subscription and the version. Then every call is answered in frames carrying its
+// identity, and completes with its one answer, its refusal, or a completion saying who ended it; a
+// refusal belongs to its call and ends nothing else. When the attachment ends, nothing about it remains.
 func (s *Surface) Attach(stream interfacev1.Interface_AttachServer) error {
 	client, established := peer.Account(stream.Context(), s.cfg.Accounts)
 	if !established {
 		client = "unestablished"
 	}
-	if !s.attach(client) {
-		return refusedStatus(refusal("channel.in_use", "the channel "+s.cfg.Channel.Name+" takes one client, and one is attached"))
+	a, ref := s.begin(stream.Context(), client, stream.Send)
+	if ref != nil {
+		return refusedStatus(ref)
 	}
-	s.publish(event.ChannelAttached(s.cfg.Channel.Name, client))
-	var confirmed sync.Mutex
-	last, stale := time.Now(), false
-	s.hold(1)
 	reason := "lost"
-	held := &deliveries{}
-	defer func() {
-		held.all()
-		s.detach(client)
-		confirmed.Lock()
-		current := !stale
-		stale = true
-		confirmed.Unlock()
-		if current {
-			s.hold(-1)
-		}
-		s.publish(event.ChannelDetached(s.cfg.Channel.Name, client, reason))
-	}()
-
-	ctx, end := context.WithCancel(stream.Context())
-	var (
-		sending  sync.Mutex
-		mu       sync.Mutex
-		inFlight = map[string]context.CancelFunc{}
-		calls    sync.WaitGroup
-	)
-	defer func() {
-		end()
-		calls.Wait()
-	}()
-	send := func(f *interfacev1.CoreFrame) error {
-		sending.Lock()
-		defer sending.Unlock()
-		return stream.Send(f)
-	}
-	refuse := func(call string, r *interfacev1.Refusal) {
-		send(&interfacev1.CoreFrame{Call: call, Carries: &interfacev1.CoreFrame_Refusal{Refusal: r}})
-	}
-
-	// The subscription opens before the records are assembled, so nothing concluded meanwhile is missed.
-	opening := &interfacev1.Opening{Picture: &interfacev1.Snapshot{}, Version: Version}
-	var sub *bus.Subscription
-	if s.cfg.Bus != nil {
-		var snap bus.Snapshot
-		sub, snap = s.cfg.Bus.SubscribeTo(event.Filter{})
-		defer sub.Close()
-		opening.Picture = &interfacev1.Snapshot{At: snap.At, Records: s.records()}
-		opening.Subscription = Standing
-	} else if s.cfg.Picture != nil {
-		opening.Picture = s.cfg.Picture()
-	}
-	if err := send(&interfacev1.CoreFrame{Carries: &interfacev1.CoreFrame_Opening{Opening: opening}}); err != nil {
+	defer func() { a.finish(reason) }()
+	if err := a.live(&interfacev1.CoreFrame{Carries: &interfacev1.CoreFrame_Opening{Opening: a.opening}}); err != nil {
 		return err
 	}
-	if sub != nil {
-		calls.Add(1)
-		go func() {
-			defer calls.Done()
-			for {
-				d, err := sub.Next(ctx)
-				if err != nil {
-					return
-				}
-				if d.Overflow {
-					send(&interfacev1.CoreFrame{Call: Standing, Carries: &interfacev1.CoreFrame_Answer{Answer: &interfacev1.Response{Answer: &interfacev1.Response_Subscribe{
-						Subscribe: &interfacev1.Subscribed{Carries: &interfacev1.Subscribed_Overflow{Overflow: &interfacev1.Snapshot{At: d.Snapshot.At, Records: s.records()}}}}}}})
-					continue
-				}
-				if s.observes(d.Event) {
-					send(&interfacev1.CoreFrame{Call: Standing, Carries: &interfacev1.CoreFrame_Event{Event: eventOf(d.Event)}})
-				}
-			}
-		}()
-	}
-
-	// On a channel named in an arbitration rule the subscription must be confirmed, and goes stale when
-	// it is not: a connection that looks open proves nothing, and a stale channel stops holding.
-	if c := s.cfg.Confirm; c != nil && c.Required[s.cfg.Channel.Name] {
-		calls.Add(1)
-		go func() {
-			defer calls.Done()
-			ticker := time.NewTicker(c.Every)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-ticker.C:
-				}
-				confirmed.Lock()
-				due := !stale && time.Since(last) > c.Every*time.Duration(c.Tolerance)
-				since := last
-				if due {
-					stale = true
-				}
-				confirmed.Unlock()
-				if due {
-					s.publish(event.SubscriptionStale(s.cfg.Channel.Name, since))
-					s.hold(-1)
-				}
-			}
-		}()
-	}
-
 	for {
 		f, err := stream.Recv()
 		if err == io.EOF {
@@ -296,138 +197,11 @@ func (s *Surface) Attach(stream interfacev1.Interface_AttachServer) error {
 		if err != nil {
 			return nil
 		}
-		call := f.GetCall()
 		if f.GetCancel() != nil {
-			mu.Lock()
-			if stop, busy := inFlight[call]; busy {
-				stop()
-			}
-			mu.Unlock()
+			a.cancel(f.GetCall())
 			continue
 		}
-		r := f.GetRequest()
-		if r.GetVersion() != Version {
-			refuse(call, refusal("compat.unsupported", fmt.Sprintf("this Core speaks the contract's version %d, and the request states %d", Version, r.GetVersion())))
-			continue
-		}
-		name := Name(r)
-		if name == "" {
-			refuse(call, refusal("operation.malformed", "the request names no operation"))
-			continue
-		}
-		mu.Lock()
-		_, busy := inFlight[call]
-		mu.Unlock()
-		if busy {
-			refuse(call, refusal("operation.malformed", "the call "+call+" is already in flight on this attachment"))
-			continue
-		}
-		if name == "authenticate" {
-			// On a channel whose class establishes the caller, the answer is who it established; a routable
-			// channel, which would take a credential here, is not bound by this Core.
-			send(&interfacev1.CoreFrame{Call: call, Carries: &interfacev1.CoreFrame_Answer{Answer: &interfacev1.Response{
-				Answer: &interfacev1.Response_Authenticate{Authenticate: &interfacev1.Authenticated{Account: client}}}}})
-			continue
-		}
-		if name == "confirm" {
-			// The position is the attachment's own, so confirming is answered here.
-			confirmed.Lock()
-			wasStale := stale
-			last, stale = time.Now(), false
-			confirmed.Unlock()
-			if wasStale {
-				s.hold(1)
-			}
-			send(&interfacev1.CoreFrame{Call: call, Carries: &interfacev1.CoreFrame_Answer{Answer: &interfacev1.Response{Answer: &interfacev1.Response_Confirm{Confirm: &interfacev1.Confirmed{}}}}})
-			continue
-		}
-		if name == "reclaim" {
-			// Never withdrawn by any grade: it is the floor that ends a suspension a person at the machine
-			// cannot otherwise end.
-			if s.cfg.Channel.Address != nil && s.cfg.Channel.Address.Class != "local" {
-				refuse(call, refusal("channel.not_local", "the channel "+s.cfg.Channel.Name+" is not bound as a local socket, and may not reclaim"))
-				continue
-			}
-			changed := s.cfg.Arbiter != nil && s.cfg.Arbiter.Reclaim(s.cfg.Channel.Name)
-			send(&interfacev1.CoreFrame{Call: call, Carries: &interfacev1.CoreFrame_Answer{Answer: &interfacev1.Response{
-				Answer: &interfacev1.Response_Reclaim{Reclaim: &interfacev1.Reclaimed{Channel: s.channelRecord(), Changed: changed}}}}})
-			continue
-		}
-		if withdrawn("", name) || withdrawn("dark", name) {
-			if s.cfg.Stopping != nil && s.cfg.Stopping() {
-				refuse(call, refusal("instance.stopping", "the instance is stopping, and "+name+" would act"))
-				continue
-			}
-			if s.cfg.Arbiter != nil {
-				if suspended, grade, by, _ := s.cfg.Arbiter.State(s.cfg.Channel.Name); suspended && withdrawn(grade, name) {
-					refuse(call, &interfacev1.Refusal{Code: "channel.suspended", Message: "the channel " + s.cfg.Channel.Name + " is suspended " + grade + " in favour of " + by,
-						Detail: &interfacev1.Refusal_Suspension{Suspension: &interfacev1.Suspension{Grade: grade, By: by}}})
-					continue
-				}
-			}
-		}
-		if name == "stream.subscribe" || name == "stream.unsubscribe" {
-			// A delivery is the attachment's, and ends with it.
-			if name == "stream.subscribe" {
-				resp, ref := s.subscribeStream(r, held, send)
-				if ref != nil {
-					refuse(call, ref)
-					continue
-				}
-				send(&interfacev1.CoreFrame{Call: call, Carries: &interfacev1.CoreFrame_Answer{Answer: resp}})
-				continue
-			}
-			if !held.drop(r.GetStreamUnsubscribe().GetDelivery()) {
-				refuse(call, refusal("operation.malformed", "this attachment holds no delivery "+r.GetStreamUnsubscribe().GetDelivery()))
-				continue
-			}
-			send(&interfacev1.CoreFrame{Call: call, Carries: &interfacev1.CoreFrame_Answer{Answer: &interfacev1.Response{
-				Answer: &interfacev1.Response_StreamUnsubscribe{StreamUnsubscribe: &interfacev1.Released{}}}}})
-			continue
-		}
-		op, served := s.cfg.Operations[name]
-		if !served || (op.Answer == nil && op.Stream == nil) {
-			refuse(call, refusal("operation.unknown", "this Core does not serve "+name))
-			continue
-		}
-		callCtx, stop := context.WithCancel(ctx)
-		mu.Lock()
-		inFlight[call] = stop
-		mu.Unlock()
-		calls.Add(1)
-		go func() {
-			defer calls.Done()
-			defer func() {
-				mu.Lock()
-				delete(inFlight, call)
-				mu.Unlock()
-				stop()
-			}()
-			if op.Answer != nil {
-				resp, ref := op.Answer(callCtx, r)
-				if ref != nil {
-					refuse(call, ref)
-					return
-				}
-				send(&interfacev1.CoreFrame{Call: call, Carries: &interfacev1.CoreFrame_Answer{Answer: resp}})
-				return
-			}
-			ref := op.Stream(callCtx, r, func(resp *interfacev1.Response) error {
-				if callCtx.Err() != nil {
-					return callCtx.Err()
-				}
-				return send(&interfacev1.CoreFrame{Call: call, Carries: &interfacev1.CoreFrame_Answer{Answer: resp}})
-			})
-			if ref != nil {
-				refuse(call, ref)
-				return
-			}
-			by := interfacev1.Completion_BY_CORE
-			if callCtx.Err() != nil && ctx.Err() == nil {
-				by = interfacev1.Completion_BY_CALLER
-			}
-			send(&interfacev1.CoreFrame{Call: call, Carries: &interfacev1.CoreFrame_Completion{Completion: &interfacev1.Completion{By: by}}})
-		}()
+		a.handle(f.GetCall(), f.GetRequest(), a.live)
 	}
 }
 
