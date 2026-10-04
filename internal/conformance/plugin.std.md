@@ -108,7 +108,7 @@
 | **Label** | blocking |
 | **Precondition** | the harness of case 7 |
 | **Action** | every capability the Manifest declares granted and the unit restarted, on the administrative surface; then `start` in the life that follows |
-| **Expected** | each grant effective at the next admission; the next life accepted without restriction, granted every capability, stream, command and query declared |
+| **Expected** | each grant effective at the next admission; the next life accepted without restriction, granted every capability, stream, command and query declared; and the Core seeing that life running, on a subscription to `unit.state.changed` |
 
 ## yoke:plugin.09 — the Core's question reaches the unit, and its answer comes back, opaque
 
