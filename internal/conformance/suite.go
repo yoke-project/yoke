@@ -339,6 +339,7 @@ type Run struct {
 	admin     *Harness
 	adminErr  error
 	operator  administrativev1.OperatorClient
+	opening   *Result // the harness's attachment, once an interface case has made it
 }
 
 // Described is the Manifest the harness described at the start of the run.
@@ -368,6 +369,12 @@ func (r *Run) Administrator() (*Harness, error) {
 	}
 	return r.admin, nil
 }
+
+// Client is the harness the suite launched against the instance for the interface contract.
+func (r *Run) Client() (*Harness, error) { return nil, errors.New("not yet") }
+
+// Hold attaches the suite itself to a channel of the instance, for as long as the run lasts.
+func (r *Run) Hold(channel string) error { return errors.New("not yet") }
 
 // Tree is the run's temporary tree.
 func (r *Run) Tree() string { return r.tree }

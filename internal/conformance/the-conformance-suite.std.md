@@ -121,3 +121,16 @@
 | **Precondition** | an administrative harness whose subscription's event for a change reaches the suite before the change's result |
 | **Action** | run the administrative case that subscribes and then changes |
 | **Expected** | the case finds the event, and passes |
+
+## yoke:the-conformance-suite.10 — an interface harness is launched against an instance that binds two channels, and the suite can hold the one that prevails
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/90-sdks/03 §The shape of a run · arch/70-interface-surface/01 §Where a channel is bound · arch/70-interface-surface/06 §What the declaration says, and what holding means |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a harness that says it implements the interface contract, and an interface case and a plugin case |
+| **Action** | run the suite with both cases; in the interface case, hold the channel `bench` |
+| **Expected** | the Core is started with the fixture plugin declared, no unit, the channels `panel` and `bench` bound as local sockets and `bench` prevailing over `panel`; the harness is launched by the suite once the Core is ready, with the instance's root in `CONFORMANCE_INSTANCE`; the suite attaches to `bench` itself; the interface case runs and passes, and the plugin case is not in the table |

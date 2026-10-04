@@ -384,3 +384,45 @@ func TestTheSubscriptionCaseFindsAnEventThatCameBeforeTheResult(t *testing.T) {
 		t.Errorf("the case was %+v", report.Rows)
 	}
 }
+
+// std: yoke:the-conformance-suite.10
+func TestAnInterfaceHarnessIsLaunchedAgainstAnInstanceThatBindsTwoChannels(t *testing.T) {
+	var hello conformance.Hello
+	var instance, told string
+	var sockets bool
+	var held error
+	iface := conformance.Case{ID: "yoke:toy.05", Title: "the interface client", Contract: "interface", Issues: "`where`", Requires: "the instance",
+		Run: func(r *conformance.Run) conformance.Outcome {
+			h, err := r.Client()
+			if err != nil {
+				return conformance.Fail("", "a harness launched against the instance", err.Error())
+			}
+			hello, instance = h.Hello(), r.Instance()
+			_, panel := os.Stat(filepath.Join(instance, "interfaces", conformance.Panel+".sock"))
+			_, bench := os.Stat(filepath.Join(instance, "interfaces", conformance.Bench+".sock"))
+			sockets = panel == nil && bench == nil
+			held = r.Hold(conformance.Bench)
+			told, _ = h.Do("where", nil).Value["instance"].(string)
+			return conformance.Pass()
+		}}
+	plugin := conformance.Case{ID: "yoke:toy.04", Title: "a plugin case", Contract: "plugin", Issues: "nothing", Requires: "nothing",
+		Run: func(*conformance.Run) conformance.Outcome { return conformance.Pass() }}
+	cfg, _ := config(t, iface, plugin)
+	cfg.HarnessEnv["TEST_CONTRACT"] = "interface"
+	report, err := conformance.Execute(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Rows) != 1 || report.Rows[0].Case != "yoke:toy.05" || report.Rows[0].Result != "pass" {
+		t.Fatalf("the table is %+v, want the interface case alone, passing", report.Rows)
+	}
+	if hello.Contract != "interface" || hello.Unit != "" {
+		t.Errorf("the harness said %+v, want the interface contract and no unit", hello)
+	}
+	if instance == "" || told != instance || !sockets {
+		t.Errorf("the instance is %q with its channels' sockets %v, and the harness was told %q", instance, sockets, told)
+	}
+	if held != nil {
+		t.Errorf("the suite could not hold bench: %v", held)
+	}
+}
