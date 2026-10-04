@@ -29,7 +29,7 @@ func FamilyCases() []Case {
 			Cites:        []string{"specs/50.30", "specs/50.32", "specs/60.33", "arch/50-plugin-surface/03 §The grant is an intersection, computed once"},
 			Precondition: "the harness of case 7",
 			Issues:       "every capability the Manifest declares granted and the unit restarted, on the administrative surface; then `start` in the life that follows",
-			Requires:     "each grant effective at the next admission; the next life accepted without restriction, granted every capability, stream, command and query declared",
+			Requires:     "each grant effective at the next admission; the next life accepted without restriction, granted every capability, stream, command and query declared; and the Core seeing that life running, on a subscription to `unit.state.changed`",
 			Run:          grantedAtNextLife},
 		{Contract: "plugin", ID: "yoke:plugin.09", Title: "the Core's question reaches the unit, and its answer comes back, opaque",
 			Cites:        []string{"specs/50.61", "specs/50.69", "specs/60.46", "arch/50-plugin-surface/05 §The eight", "arch/60-administrative-surface/04 §The one operation whose content the Core does not read"},
