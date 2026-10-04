@@ -37,6 +37,7 @@ import (
 	"github.com/yoke-project/yoke/internal/core/discovery"
 	"github.com/yoke-project/yoke/internal/core/event"
 	"github.com/yoke-project/yoke/internal/core/instance"
+	"github.com/yoke-project/yoke/internal/core/interfaces"
 	"github.com/yoke-project/yoke/internal/core/logstore"
 	"github.com/yoke-project/yoke/internal/core/registry"
 	"github.com/yoke-project/yoke/internal/core/session"
@@ -415,6 +416,36 @@ func channels(st *State) error {
 		}
 		st.OnStop(listener.Close)
 		go ch.Serve(listener)
+	}
+	return interfaceChannels(st)
+}
+
+// interfaceChannels binds the channels the deployment declares, by the class of their address, and
+// tells each managed interface where its channel is. Binding is fatal: a channel that failed to bind
+// would change which channel prevails.
+func interfaceChannels(st *State) error {
+	if st.Deployment == nil || len(st.Deployment.Channels) == 0 {
+		return nil
+	}
+	var declared []gate.Channel
+	for _, ch := range st.Deployment.Channels {
+		declared = append(declared, ch)
+	}
+	bound, err := interfaces.Bind(st.Paths.Root, st.Form.SocketMode(), declared)
+	if err != nil {
+		return err
+	}
+	st.OnStop(bound.Close)
+	for _, ch := range declared {
+		st.Log.Info("channel", "name", ch.Name, "transport", ch.Transport, "address", bound.Address(ch.Name))
+		if ch.Unit == "" {
+			continue
+		}
+		for i := range st.Units {
+			if st.Units[i].ID == ch.Unit {
+				st.Units[i].Channel = bound.Address(ch.Name)
+			}
+		}
 	}
 	return nil
 }
