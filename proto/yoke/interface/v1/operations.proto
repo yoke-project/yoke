@@ -1,0 +1,163 @@
+// The one operation union: an operation is a member of Request and never of a projection, so it is on
+// both projections or on neither. Response has one answer per operation, in the same order. Nothing here
+// names a plugin, an incarnation or a client: what a client may do is decided by the channel it reached.
+syntax = "proto3";
+
+package yoke.interface.v1;
+
+import "google/protobuf/timestamp.proto";
+import "yoke/interface/v1/events.proto";
+import "yoke/interface/v1/records.proto";
+
+option go_package = "github.com/yoke-project/yoke/proto/yoke/interface/v1;interfacev1";
+
+message Request {
+  // The contract's version, checked on every request.
+  uint32 version = 1;
+  oneof operation {
+    Authenticate authenticate = 2;
+    Read read = 3;
+    Subscribe subscribe = 4;
+    Confirm confirm = 5;
+    Command command = 6;
+    Question query = 7;
+    UnitStream stream_start = 8;
+    UnitStream stream_stop = 9;
+    UnitStream stream_subscribe = 10;
+    StreamRelease stream_unsubscribe = 11;
+    Reclaim reclaim = 12;
+  }
+}
+
+// What establishes the caller on a channel whose class requires it: an account and its secret, asked of
+// the host, or a session token already issued on this channel.
+message Authenticate {
+  message Password {
+    string account = 1;
+    string secret = 2;
+  }
+  oneof credential {
+    Password password = 1;
+    string token = 2;
+  }
+}
+
+// A subject kind, and an identity where one is named: with none, every subject of that kind this
+// channel observes.
+message Read {
+  string kind = 1;
+  string identity = 2;
+}
+
+message Subscribe {
+  Filter filter = 1;
+}
+
+// I am current as of this sequence, on this subscription.
+message Confirm {
+  // The call identity of the subscription confirmed.
+  string subscription = 1;
+  uint64 sequence = 2;
+}
+
+// An instruction for a unit, opaque to the Core and bounded at 1 MiB.
+message Command {
+  string unit = 1;
+  string type = 2;
+  bytes payload = 3;
+}
+
+// A question for a unit, opaque to the Core and bounded at 1 MiB.
+message Question {
+  string unit = 1;
+  string type = 2;
+  bytes payload = 3;
+}
+
+message UnitStream {
+  string unit = 1;
+  string stream = 2;
+}
+
+message StreamRelease {
+  // The delivery stream.subscribe answered with.
+  string delivery = 1;
+}
+
+// Take control back, on a channel bound as a local socket.
+message Reclaim {}
+
+message Response {
+  oneof answer {
+    Authenticated authenticate = 1;
+    Records read = 2;
+    Subscribed subscribe = 3;
+    Confirmed confirm = 4;
+    Acknowledged command = 5;
+    Answered query = 6;
+    Acknowledged stream_start = 7;
+    Acknowledged stream_stop = 8;
+    Delivering stream_subscribe = 9;
+    Released stream_unsubscribe = 10;
+    Reclaimed reclaim = 11;
+  }
+}
+
+// The caller established: the account, and the session token that carries the answer through a session.
+message Authenticated {
+  string account = 1;
+  string token = 2;
+  google.protobuf.Timestamp expires = 3;
+}
+
+// What a subscription carries: the snapshot it opens with, an event, or an overflow and the fresh
+// snapshot that follows it.
+message Subscribed {
+  oneof carries {
+    Snapshot snapshot = 1;
+    Event event = 2;
+    Snapshot overflow = 3;
+  }
+}
+
+message Confirmed {}
+
+// A unit's acknowledgement, correlated to what it answers.
+message Acknowledged {
+  enum Outcome {
+    OUTCOME_UNSPECIFIED = 0;
+    OUTCOME_ACCEPTED = 1;
+    OUTCOME_DONE = 2;
+    OUTCOME_FAILED = 3;
+  }
+  Outcome outcome = 1;
+  string line = 2;
+}
+
+// A unit's answer, opaque to the Core and bounded at 1 MiB.
+message Answered {
+  bytes payload = 1;
+}
+
+// Where a stream's data will arrive, which a client never derives, and whether the stream is flowing.
+message Delivering {
+  // The delivery: the subscriber's counter, zero-padded to eight digits.
+  string delivery = 1;
+  oneof arrives {
+    // A per-subscriber socket in the instance's tree, which the client connects to.
+    string socket = 2;
+    // On this connection, as stream deliveries carrying the delivery.
+    bool connection = 3;
+    // The browser projection's path, upgraded to a binary WebSocket.
+    string path = 4;
+  }
+  bool flowing = 5;
+}
+
+message Released {}
+
+// The channel's state after the recomputation; a reclaim that changed nothing says so.
+message Reclaimed {
+  ChannelRecord channel = 1;
+  bool changed = 2;
+}

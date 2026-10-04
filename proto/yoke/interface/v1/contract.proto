@@ -1,0 +1,15 @@
+// The interface contract's version, stated inside the contract. It is the integer every request
+// carries, and it is the `v1` of this path: a contract whose two differ is rejected where the definitions
+// are built.
+syntax = "proto3";
+
+// The interface contract, v1: one union of operations, carried by one service on the typed projection
+// and by the same messages in JSON on the browser projection.
+package yoke.interface.v1;
+
+option go_package = "github.com/yoke-project/yoke/proto/yoke/interface/v1;interfacev1";
+
+enum Contract {
+  CONTRACT_UNSPECIFIED = 0;
+  CONTRACT_VERSION = 1;
+}

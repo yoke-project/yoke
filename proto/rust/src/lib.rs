@@ -15,3 +15,11 @@ pub mod administrative {
         include!("gen/yoke.administrative.v1.rs");
     }
 }
+
+/// The interface contract.
+pub mod interface {
+    /// Version 1 of the interface contract.
+    pub mod v1 {
+        include!("gen/yoke.interface.v1.rs");
+    }
+}
