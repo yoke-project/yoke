@@ -478,3 +478,24 @@ func TestTheMachineIsToldBeforeTheStreamCloses(t *testing.T) {
 		t.Errorf("when the revoked stream ended the machine had been told %v", got)
 	}
 }
+
+// std: yoke:the-session.12
+func TestTheMachineIsToldOfAConditionThatChanges(t *testing.T) {
+	h := newHarness(t)
+	st := opened(t, h)
+	for _, r := range []struct {
+		grade uint32
+		line  string
+	}{{90, "warm"}, {90, "warm"}, {40, "the lamp is ageing"}} {
+		st.send(t, func(e *pluginv1.Envelope) {
+			e.Payload = &pluginv1.Envelope_Health{Health: &pluginv1.Health{Grade: r.grade, Line: r.line}}
+		})
+	}
+	st.quiet(t, 150*time.Millisecond)
+	want := []string{"unit.SessionOpened{}",
+		fmt.Sprintf("%T%+v", unit.Reported{}, unit.Reported{Grade: 90, Line: "warm"}),
+		fmt.Sprintf("%T%+v", unit.Reported{}, unit.Reported{Grade: 40, Line: "the lamp is ageing"})}
+	if got := h.toldOf("acquire"); !slices.Equal(got, want) {
+		t.Errorf("the machine was told %v, want %v", got, want)
+	}
+}

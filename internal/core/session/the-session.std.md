@@ -147,3 +147,16 @@
 | **Precondition** | an open Session, whose unit's machine takes a moment to be told anything |
 | **Action** | the unit closes it; on a second Session, the Core revokes it |
 | **Expected** | when each stream closes, the machine has already been told that its Session ended |
+
+## yoke:the-session.12 — the machine is told of a condition that changes, and not of a report that repeats it
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/50.66 · arch/50-plugin-surface/05 §What a health report carries · arch/35-units/03 |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an open Session of a unit that has never reported its health |
+| **Action** | the unit reports 90 with a line; 90 with the same line; 40 with another |
+| **Expected** | after the Session opened, the machine is told of exactly two reports, 90 with its line then 40 with its line, so the unit's record carries the condition the unit last stated |
