@@ -27,6 +27,7 @@ const ceiling = 107
 type Bound struct {
 	addresses map[string]string
 	closers   []func()
+	surfaces  []*Surface
 }
 
 // Bind binds every channel declared, in the order of their names: a local socket at
@@ -54,7 +55,11 @@ func BindServing(root string, mode os.FileMode, channels []gate.Channel, surface
 			return nil, fmt.Errorf("the channel %s: %w", ch.Name, err)
 		}
 		b.addresses[ch.Name] = address
-		b.closers = append(b.closers, serve(ch, listener, surface(ch)))
+		served := surface(ch)
+		if s, ok := served.(*Surface); ok {
+			b.surfaces = append(b.surfaces, s)
+		}
+		b.closers = append(b.closers, serve(ch, listener, served))
 	}
 	return b, nil
 }
@@ -70,10 +75,13 @@ func listen(root string, mode os.FileMode, ch gate.Channel) (net.Listener, strin
 			return nil, "", err
 		}
 		os.Remove(path)
-		listener, err := net.Listen("unix", path)
+		listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
 		if err != nil {
 			return nil, "", err
 		}
+		// The socket is removed when the channel is unbound, and never by a listener closing late, which
+		// would remove a socket bound since at the same path.
+		listener.SetUnlinkOnClose(false)
 		if err := os.Chmod(path, mode); err != nil {
 			listener.Close()
 			return nil, "", err
@@ -115,6 +123,15 @@ func serve(ch gate.Channel, listener net.Listener, local interfacev1.InterfaceSe
 // Address is where a channel is bound: its socket's path, or its host and port; empty for a channel not
 // bound.
 func (b *Bound) Address(name string) string { return b.addresses[name] }
+
+// Channels are the records of the channels bound, each as it stands, in the order of their names.
+func (b *Bound) Channels() []*interfacev1.ChannelRecord {
+	var out []*interfacev1.ChannelRecord
+	for _, s := range b.surfaces {
+		out = append(out, s.channelRecord())
+	}
+	return out
+}
 
 // Close unbinds every channel.
 func (b *Bound) Close() error {

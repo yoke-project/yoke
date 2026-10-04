@@ -73,7 +73,11 @@ func (c *Core) Records(kind, identity string) ([]*administrativev1.Record, *admi
 			}
 		}
 	case "channel":
-		// No channel exists before the interface surface does.
+		if c.Channels != nil {
+			for _, ch := range c.Channels() {
+				all, ids = append(all, &administrativev1.Record{Subject: &administrativev1.Record_Channel{Channel: ch}}), append(ids, ch.GetDeclared().GetName())
+			}
+		}
 	}
 	if identity == "" {
 		return all, nil
