@@ -187,6 +187,7 @@ func getenv(f func(string) string) func(string) string {
 // CARGO_REGISTRY_TOKEN holds — the one the release run's identity is exchanged for, or the maintainer's.
 type Crates struct {
 	API, Static string // https://crates.io, https://static.crates.io
+	Name        string // the crate, yoke-proto when empty
 	Root        string // the checkout the crate is published from
 	Getenv      func(string) string
 	Client      *http.Client
@@ -224,6 +225,7 @@ func (c Crates) Publish(version, _ string) error {
 // PyPI is the Python package index. A wheel is uploaded under the credential PYPI_TOKEN holds, or else
 // one the index mints for the release run's identity, which lives as long as the run.
 type PyPI struct {
+	Name   string // the project, yoke-proto when empty
 	Index  string // https://pypi.org
 	Upload string // https://upload.pypi.org/legacy/
 	Getenv func(string) string
@@ -378,4 +380,9 @@ func wheelMetadata(path, version string) ([][2]string, error) {
 		}
 	}
 	return fields, nil
+}
+
+// Scripted packages a family's one package by its script, ci/package.sh.
+func Scripted(root string, lang packages.Language, name string) func(version, dir string) (crate, wheel string, err error) {
+	return func(version, dir string) (string, string, error) { return "", "", errors.New("not yet") }
 }

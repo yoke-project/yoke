@@ -57,6 +57,9 @@ type Config struct {
 	Settle       int
 	Pause        time.Duration
 	PackagesOnly bool
+	// Family is a family publishing its package: its `vX.Y.Z` tags publish the packages, and nothing
+	// else is published.
+	Family bool
 }
 
 // Artifact is one archive of programs, built from the packages named.
