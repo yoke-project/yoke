@@ -464,6 +464,14 @@ func interfaceChannels(st *State) error {
 	surface := func(ch gate.Channel) interfacev1.InterfaceServer {
 		return interfaces.NewSurface(interfaces.Config{
 			Channel: ch, Bus: st.Bus, Publish: st.publish, Confirm: confirm, Units: supervised{st}, Active: transports.Active,
+			Sessions: held{st}, Transports: transports, Stopping: st.stopping.Load,
+			Declared: func(id string) (*gate.Manifest, bool) {
+				u, ok := st.Deployment.Units[id]
+				if !ok || u.Plugin == "" || st.Discovery == nil {
+					return nil, false
+				}
+				return st.Discovery.Manifest(u.Plugin)
+			},
 			Instance: func() *interfacev1.InstanceRecord {
 				r := st.instanceRecord()
 				return &interfacev1.InstanceRecord{Ready: r.GetReady(), Stopping: r.GetStopping(), Since: r.GetSince()}

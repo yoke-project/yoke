@@ -123,6 +123,9 @@ func NewSurface(cfg Config) *Surface {
 		ops["read"] = Operation{Answer: s.read}
 		ops["subscribe"] = Operation{Stream: s.subscribe}
 	}
+	for name, op := range s.acting() {
+		ops[name] = op
+	}
 	for name, op := range cfg.Operations {
 		ops[name] = op
 	}
@@ -285,6 +288,13 @@ func (s *Surface) Attach(stream interfacev1.Interface_AttachServer) error {
 		mu.Unlock()
 		if busy {
 			refuse(call, refusal("operation.malformed", "the call "+call+" is already in flight on this attachment"))
+			continue
+		}
+		if name == "authenticate" {
+			// On a channel whose class establishes the caller, the answer is who it established; a routable
+			// channel, which would take a credential here, is not bound by this Core.
+			send(&interfacev1.CoreFrame{Call: call, Carries: &interfacev1.CoreFrame_Answer{Answer: &interfacev1.Response{
+				Answer: &interfacev1.Response_Authenticate{Authenticate: &interfacev1.Authenticated{Account: client}}}}})
 			continue
 		}
 		if name == "confirm" {

@@ -69,3 +69,16 @@
 | **Precondition** | an attachment to a channel on a local socket |
 | **Action** | `authenticate`, presenting nothing |
 | **Expected** | the answer names the account the channel established, and carries no token |
+
+## yoke:channel-operations.06 — through the Core, a command issued on a channel reaches the unit and its acknowledgement comes back
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/70.4 · arch/70-interface-surface/04 §The eleven |
+| **Level** | L3 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | `yoke-core` built, with a composition declaring a local channel and a Plugin unit of a program that registers, opens its Session, reports its health and acknowledges a command as done with a line |
+| **Action** | on the operator projection, grant the plugin its command's capability and restart the unit; then attach to the channel and command the unit |
+| **Expected** | the command is answered with the unit's acknowledgement, done, carrying its line |
