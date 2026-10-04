@@ -5,7 +5,11 @@
 // membership: no prefix, no case folding and no hierarchy is evaluated when a message is checked.
 package scope
 
-import pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
+import (
+	"slices"
+
+	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
+)
 
 // Kind is a kind of object a capability governs.
 type Kind string
@@ -38,6 +42,19 @@ func add(m map[Kind]map[string]bool, k Kind, id string) map[Kind]map[string]bool
 	}
 	m[k][id] = true
 	return m
+}
+
+// Granted are the objects of a kind the grant allows, in the order of their identities.
+func (s *Scope) Granted(k Kind) []string {
+	if s == nil {
+		return nil
+	}
+	var out []string
+	for id := range s.granted[k] {
+		out = append(out, id)
+	}
+	slices.Sort(out)
+	return out
 }
 
 // Check is CODE_UNSPECIFIED for an object granted, scope.withheld for one declared and not granted, and

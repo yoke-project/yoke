@@ -3,14 +3,19 @@ package interfaces
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"sync"
 	"time"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	interfacev1 "github.com/yoke-project/yoke/proto/yoke/interface/v1"
 
 	"github.com/yoke-project/yoke/internal/core/bus"
 	"github.com/yoke-project/yoke/internal/core/event"
+	"github.com/yoke-project/yoke/internal/core/peer"
 	"github.com/yoke-project/yoke/internal/core/supervisor"
 	"github.com/yoke-project/yoke/internal/core/unit"
 	"github.com/yoke-project/yoke/internal/gate"
@@ -27,6 +32,13 @@ type Operation struct {
 
 // Standing is the call identity of the subscription that stands from the moment a channel attaches.
 const Standing = "standing"
+
+// The confirmed subscription's figures: confirmed every 10 s, stale after 3 intervals missed. Neither is
+// declarable.
+const (
+	ConfirmEvery     = 10 * time.Second
+	ConfirmTolerance = 3
+)
 
 // Units are the units a deployment declares, as the supervisor observes them.
 type Units interface {
@@ -71,6 +83,9 @@ type Config struct {
 type Surface struct {
 	interfacev1.UnimplementedInterfaceServer
 	cfg Config
+
+	mu      sync.Mutex
+	clients []string // the clients attached now, in the order they attached
 }
 
 // NewSurface is a terminator serving the operations given.
@@ -92,10 +107,26 @@ func refusal(code, message string) *interfacev1.Refusal {
 	return &interfacev1.Refusal{Code: code, Message: message}
 }
 
-// Attach serves one attachment. The Core's first frame is the opening; then every call is answered in
-// frames carrying its identity, and completes with its one answer, its refusal, or a completion saying
-// who ended it. A refusal belongs to its call and ends nothing else.
+// Attach serves one attachment. The client is established by the class of the channel's address; a
+// single channel already held refuses it. The Core's first frame is the opening: the picture, the
+// standing subscription and the version. Then every call is answered in frames carrying its identity, and
+// completes with its one answer, its refusal, or a completion saying who ended it; a refusal belongs to
+// its call and ends nothing else. When the attachment ends, nothing about it remains.
 func (s *Surface) Attach(stream interfacev1.Interface_AttachServer) error {
+	client, established := peer.Account(stream.Context(), s.cfg.Accounts)
+	if !established {
+		client = "unestablished"
+	}
+	if !s.attach(client) {
+		return refusedStatus(refusal("channel.in_use", "the channel "+s.cfg.Channel.Name+" takes one client, and one is attached"))
+	}
+	s.publish(event.ChannelAttached(s.cfg.Channel.Name, client))
+	reason := "lost"
+	defer func() {
+		s.detach(client)
+		s.publish(event.ChannelDetached(s.cfg.Channel.Name, client, reason))
+	}()
+
 	ctx, end := context.WithCancel(stream.Context())
 	var (
 		sending  sync.Mutex
@@ -115,15 +146,79 @@ func (s *Surface) Attach(stream interfacev1.Interface_AttachServer) error {
 	refuse := func(call string, r *interfacev1.Refusal) {
 		send(&interfacev1.CoreFrame{Call: call, Carries: &interfacev1.CoreFrame_Refusal{Refusal: r}})
 	}
-	picture := &interfacev1.Snapshot{}
-	if s.cfg.Picture != nil {
-		picture = s.cfg.Picture()
+
+	// The subscription opens before the records are assembled, so nothing concluded meanwhile is missed.
+	opening := &interfacev1.Opening{Picture: &interfacev1.Snapshot{}, Version: Version}
+	var sub *bus.Subscription
+	if s.cfg.Bus != nil {
+		var snap bus.Snapshot
+		sub, snap = s.cfg.Bus.SubscribeTo(event.Filter{})
+		defer sub.Close()
+		opening.Picture = &interfacev1.Snapshot{At: snap.At, Records: s.records()}
+		opening.Subscription = Standing
+	} else if s.cfg.Picture != nil {
+		opening.Picture = s.cfg.Picture()
 	}
-	if err := send(&interfacev1.CoreFrame{Carries: &interfacev1.CoreFrame_Opening{Opening: &interfacev1.Opening{Picture: picture, Version: Version}}}); err != nil {
+	if err := send(&interfacev1.CoreFrame{Carries: &interfacev1.CoreFrame_Opening{Opening: opening}}); err != nil {
 		return err
 	}
+	if sub != nil {
+		calls.Add(1)
+		go func() {
+			defer calls.Done()
+			for {
+				d, err := sub.Next(ctx)
+				if err != nil {
+					return
+				}
+				if d.Overflow {
+					send(&interfacev1.CoreFrame{Call: Standing, Carries: &interfacev1.CoreFrame_Answer{Answer: &interfacev1.Response{Answer: &interfacev1.Response_Subscribe{
+						Subscribe: &interfacev1.Subscribed{Carries: &interfacev1.Subscribed_Overflow{Overflow: &interfacev1.Snapshot{At: d.Snapshot.At, Records: s.records()}}}}}}})
+					continue
+				}
+				if s.observes(d.Event) {
+					send(&interfacev1.CoreFrame{Call: Standing, Carries: &interfacev1.CoreFrame_Event{Event: eventOf(d.Event)}})
+				}
+			}
+		}()
+	}
+
+	// On a channel named in an arbitration rule the subscription must be confirmed, and goes stale when
+	// it is not: a connection that looks open proves nothing.
+	var confirmed sync.Mutex
+	last, stale := time.Now(), false
+	if c := s.cfg.Confirm; c != nil && c.Required[s.cfg.Channel.Name] {
+		calls.Add(1)
+		go func() {
+			defer calls.Done()
+			ticker := time.NewTicker(c.Every)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+				}
+				confirmed.Lock()
+				due := !stale && time.Since(last) > c.Every*time.Duration(c.Tolerance)
+				since := last
+				if due {
+					stale = true
+				}
+				confirmed.Unlock()
+				if due {
+					s.publish(event.SubscriptionStale(s.cfg.Channel.Name, since))
+				}
+			}
+		}()
+	}
+
 	for {
 		f, err := stream.Recv()
+		if err == io.EOF {
+			reason = "closed"
+			return nil
+		}
 		if err != nil {
 			return nil
 		}
@@ -151,6 +246,14 @@ func (s *Surface) Attach(stream interfacev1.Interface_AttachServer) error {
 		mu.Unlock()
 		if busy {
 			refuse(call, refusal("operation.malformed", "the call "+call+" is already in flight on this attachment"))
+			continue
+		}
+		if name == "confirm" {
+			// The position is the attachment's own, so confirming is answered here.
+			confirmed.Lock()
+			last, stale = time.Now(), false
+			confirmed.Unlock()
+			send(&interfacev1.CoreFrame{Call: call, Carries: &interfacev1.CoreFrame_Answer{Answer: &interfacev1.Response{Answer: &interfacev1.Response_Confirm{Confirm: &interfacev1.Confirmed{}}}}})
 			continue
 		}
 		op, served := s.cfg.Operations[name]
@@ -197,4 +300,19 @@ func (s *Surface) Attach(stream interfacev1.Interface_AttachServer) error {
 			send(&interfacev1.CoreFrame{Call: call, Carries: &interfacev1.CoreFrame_Completion{Completion: &interfacev1.Completion{By: by}}})
 		}()
 	}
+}
+
+func (s *Surface) publish(e event.Event) {
+	if s.cfg.Publish != nil {
+		s.cfg.Publish(e)
+	}
+}
+
+// refusedStatus is a refusal that ends the attachment before it began, carried in the transport's status.
+func refusedStatus(r *interfacev1.Refusal) error {
+	st, err := status.New(codes.FailedPrecondition, r.GetMessage()).WithDetails(r)
+	if err != nil {
+		return status.Error(codes.FailedPrecondition, r.GetCode())
+	}
+	return st.Err()
 }

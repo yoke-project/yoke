@@ -23,6 +23,7 @@ import (
 	administrativev1 "github.com/yoke-project/yoke/proto/yoke/administrative/v1"
 
 	"github.com/yoke-project/yoke/internal/core/event"
+	"github.com/yoke-project/yoke/internal/core/peer"
 )
 
 // Version is the contract's version this Core speaks.
@@ -117,7 +118,7 @@ func Liveness() keepalive.ServerParameters {
 }
 
 func (s *Surface) server() *grpc.Server {
-	return grpc.NewServer(grpc.Creds(peerCredentials{}), grpc.KeepaliveParams(Liveness()),
+	return grpc.NewServer(grpc.Creds(peer.Credentials{}), grpc.KeepaliveParams(Liveness()),
 		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{MinTime: Probe / 2, PermitWithoutStream: true}))
 }
 

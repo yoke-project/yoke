@@ -16,6 +16,7 @@ import (
 
 	interfacev1 "github.com/yoke-project/yoke/proto/yoke/interface/v1"
 
+	"github.com/yoke-project/yoke/internal/core/peer"
 	"github.com/yoke-project/yoke/internal/gate"
 )
 
@@ -100,7 +101,7 @@ func serve(ch gate.Channel, listener net.Listener, local interfacev1.InterfaceSe
 		go server.Serve(listener)
 		return func() { server.Close() }
 	}
-	server := grpc.NewServer()
+	server := grpc.NewServer(grpc.Creds(peer.Credentials{Unestablished: true}))
 	interfacev1.RegisterInterfaceServer(server, local)
 	go server.Serve(listener)
 	return func() {
