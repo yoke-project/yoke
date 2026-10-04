@@ -72,9 +72,18 @@ type Config struct {
 
 // Service holds every stream's transport.
 type Service struct {
-	cfg  Config
-	mu   sync.Mutex
-	open map[key]*flow
+	cfg      Config
+	mu       sync.Mutex
+	open     map[key]*flow
+	feeds    map[*feed]bool
+	counters map[key]uint64
+}
+
+// feed is one consumer of a unit's stream, across its stops and starts, until its Session ends.
+type feed struct {
+	key
+	to       func(Frame)
+	released func()
 }
 
 type key struct{ unit, stream string }
@@ -95,7 +104,7 @@ func New(cfg Config) *Service {
 	if cfg.Log == nil {
 		cfg.Log = slog.New(slog.DiscardHandler)
 	}
-	return &Service{cfg: cfg, open: map[key]*flow{}}
+	return &Service{cfg: cfg, open: map[key]*flow{}, feeds: map[*feed]bool{}, counters: map[key]uint64{}}
 }
 
 // Path is where a unit's stream's transport lives.
@@ -217,8 +226,20 @@ func (s *Service) readFrames(f *flow, conn *net.UnixConn) {
 
 func (s *Service) deliver(f *flow, sequence, sentAt uint64, payload []byte) {
 	f.read.Add(1)
+	frame := Frame{Unit: f.unit, Stream: f.stream, Sequence: sequence, SentAt: sentAt, Payload: payload}
 	if s.cfg.Deliver != nil {
-		s.cfg.Deliver(Frame{Unit: f.unit, Stream: f.stream, Sequence: sequence, SentAt: sentAt, Payload: payload})
+		s.cfg.Deliver(frame)
+	}
+	s.mu.Lock()
+	var to []func(Frame)
+	for fd := range s.feeds {
+		if fd.key == f.key {
+			to = append(to, fd.to)
+		}
+	}
+	s.mu.Unlock()
+	for _, send := range to {
+		send(frame)
 	}
 }
 
@@ -259,10 +280,26 @@ func (s *Service) CloseAll(unitID, reason string) {
 			delete(s.open, k)
 		}
 	}
+	// A Session that ends, or a life, takes every delivery of the unit's streams with it; a stream stopped
+	// when asked keeps them, carrying nothing.
+	var released []*feed
+	if reason != Asked {
+		for fd := range s.feeds {
+			if fd.unit == unitID {
+				released = append(released, fd)
+				delete(s.feeds, fd)
+			}
+		}
+	}
 	s.mu.Unlock()
 	slices.SortFunc(closing, func(a, b *flow) int { return cmp.Compare(a.stream, b.stream) })
 	for _, f := range closing {
 		s.remove(f, reason)
+	}
+	for _, fd := range released {
+		if fd.released != nil {
+			fd.released()
+		}
 	}
 }
 
@@ -296,11 +333,25 @@ func (s *Service) Active(unitID string) []string {
 // stream stopping and starting again, until the stop it returns is called; released is told when the
 // unit's Session ends or the unit exits, which ends the feed.
 func (s *Service) Feed(unitID, stream string, to func(Frame), released func()) (stop func()) {
-	return func() {}
+	fd := &feed{key: key{unitID, stream}, to: to, released: released}
+	s.mu.Lock()
+	s.feeds[fd] = true
+	s.mu.Unlock()
+	return func() {
+		s.mu.Lock()
+		delete(s.feeds, fd)
+		s.mu.Unlock()
+	}
 }
 
-// NextSubscriber is the next subscriber's identity for a unit's stream.
-func (s *Service) NextSubscriber(unitID, stream string) string { return "" }
+// NextSubscriber is the next subscriber's identity for a unit's stream: a counter, decimal and
+// zero-padded to eight digits, never reused within the life of the instance.
+func (s *Service) NextSubscriber(unitID, stream string) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.counters[key{unitID, stream}]++
+	return fmt.Sprintf("%08d", s.counters[key{unitID, stream}])
+}
 
 // Address is where an open stream's transport is, and empty for a stream not open.
 func (s *Service) Address(unitID, stream string) string {
