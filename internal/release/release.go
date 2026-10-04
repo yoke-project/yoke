@@ -115,6 +115,9 @@ func Run(cfg Config) int {
 	for _, tag := range strings.Fields(listed) {
 		version, subdir := tag, ""
 		if rest, isDefinitions := strings.CutPrefix(tag, "proto/"); isDefinitions {
+			if cfg.Family {
+				continue
+			}
 			version, subdir = rest, "proto"
 		}
 		if semver.IsValid(version) && semver.Canonical(version) == version {
@@ -135,7 +138,7 @@ func Run(cfg Config) int {
 
 	var lines []Line
 	for _, m := range modules {
-		if cfg.PackagesOnly {
+		if cfg.PackagesOnly || cfg.Family {
 			continue
 		}
 		path, err := modulePath(filepath.Join(cfg.Root, m.subdir, "go.mod"))
@@ -158,21 +161,26 @@ func Run(cfg Config) int {
 			Notices: notices, Day: cfg.Today().UTC().Format(time.DateOnly)})
 	}
 
-	// A definitions tag also publishes the definitions packages, each to its registry.
+	// A definitions tag also publishes the definitions packages, each to its registry; in a family, its
+	// release tag publishes its package.
+	packagesAt, what := "proto", "the definitions packages"
+	if cfg.Family {
+		packagesAt, what = "", "the family's packages"
+	}
 	for _, m := range modules {
-		if m.subdir != "proto" || len(cfg.Registries) == 0 {
+		if m.subdir != packagesAt || len(cfg.Registries) == 0 {
 			continue
 		}
 		published, err := cfg.publishPackages(m.version, commit, notices)
 		if err != nil {
-			return fail("the definitions packages at %s were not all published:\n%v", m.version, err)
+			return fail("%s at %s were not all published:\n%v", what, m.version, err)
 		}
 		lines = append(lines, published...)
 	}
 
 	// A programs tag also hands over files: the artifacts and the source archive, uploaded to its release.
 	for _, m := range modules {
-		if cfg.PackagesOnly || m.subdir != "" || (len(cfg.Artifacts) == 0 && cfg.Source == "") {
+		if cfg.PackagesOnly || cfg.Family || m.subdir != "" || (len(cfg.Artifacts) == 0 && cfg.Source == "") {
 			continue
 		}
 		handed, err := handOver(cfg, m.tag, strings.TrimPrefix(m.version, "v"), notices)
