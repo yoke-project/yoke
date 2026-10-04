@@ -97,7 +97,7 @@ func TestEveryFamilyAUnitMayOriginateIsReceived(t *testing.T) {
 	st.quiet(t, 200*time.Millisecond)
 	st.send(t, closing)
 	st.closedWithNothing(t)
-	if got := h.toldOf("acquire"); !slices.Equal(got, []string{"unit.SessionOpened{}", "unit.SessionEnded{Withdrawn:false}"}) {
+	if got := h.sessionOf("acquire"); !slices.Equal(got, []string{"unit.SessionOpened{}", "unit.SessionEnded{Withdrawn:false}"}) {
 		t.Errorf("the machine was told %v", got)
 	}
 }
