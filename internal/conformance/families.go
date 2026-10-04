@@ -44,11 +44,11 @@ func FamilyCases() []Case {
 			Issues:       "`report` of the occurrence its Manifest declares, at 70, with a line",
 			Requires:     "an event about the unit carrying the occurrence, severity 70 and the unit as its actor",
 			Run:          occurrenceCarried},
-		{Contract: "plugin", ID: "yoke:plugin.11", Title: "a health report is carried as the unit graded it",
-			Cites:        []string{"specs/50.65", "specs/50.66", "specs/90.34", "arch/50-plugin-surface/05 §What a health report carries"},
-			Precondition: "the harness of case 8, and a subscription to `unit.condition.changed` on the administrative surface",
-			Issues:       "`report-health` at 80, with a line",
-			Requires:     "an event about the unit at severity 80, with the unit as its actor",
+		{Contract: "plugin", ID: "yoke:plugin.11", Title: "a health report is carried as the unit graded it, and nobody else states a grade",
+			Cites:        []string{"specs/50.65", "specs/50.66", "specs/90.34", "arch/50-plugin-surface/05 §What a health report carries", "arch/90-sdks/06 §It may not choose a severity on an author's behalf"},
+			Precondition: "the harness of case 8, which has not reported its health, on a beat of one second; a subscription to `unit.condition.changed` on the administrative surface",
+			Issues:       "nothing for three beats; then `report-health` at 80, with a line; then nothing for three beats",
+			Requires:     "no condition before the report, neither on the subscription nor on the unit's record; then one event about the unit at severity 80, with the unit as its actor, and no other across the three beats that follow; the unit's record carrying the condition at 80, with its line",
 			Run:          healthCarried},
 		{Contract: "plugin", ID: "yoke:plugin.12", Title: "disabling the plugin revokes the Session, and the process ends",
 			Cites:        []string{"specs/50.49", "specs/50.51", "specs/60.29", "specs/90.29", "arch/50-plugin-surface/04 §Revocation"},
@@ -352,22 +352,79 @@ func healthCarried(r *Run) Outcome {
 	if err != nil {
 		return Fail("`report-health`", "the harness of case 8", err.Error())
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	op, err := r.Operator()
+	if err != nil {
+		return Fail("`report-health`", "the operator projection", err.Error())
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	stream, err := r.subscribed(ctx, "unit.condition.changed")
 	if err != nil {
 		return Fail("`report-health`", "a subscription on the administrative surface", err.Error())
+	}
+	unit := h.Hello().Unit
+	changes := eventsAbout(stream, unit)
+	if e, ok := within(changes, 3*Beat); ok {
+		return Fail("nothing, for three beats", "no condition before the unit reports one", fmt.Sprintf("%v", e))
+	}
+	if c, err := conditionOf(ctx, op, unit); err != nil || c != nil {
+		return Fail("nothing, for three beats", "a record carrying no condition", fmt.Sprintf("%v %v", c, err))
 	}
 	if res := h.Do("report-health", map[string]any{"grade": 80, "line": "warm"}); res.Unrecognised {
 		return Absent("report-health")
 	} else if res.Refusal != "" {
 		return Fail("`report-health` at 80", "the report accepted", res.Refusal)
 	}
-	e, err := eventAbout(stream, h.Hello().Unit)
-	if err != nil || e.GetSeverity() != 80 || e.GetActor().GetClass() != "unit" {
-		return Fail("`report-health` at 80", "an event at 80, with the unit as its actor", fmt.Sprintf("%v %v", e, err))
+	e, ok := within(changes, 10*time.Second)
+	if !ok || e.GetSeverity() != 80 || e.GetActor().GetClass() != "unit" {
+		return Fail("`report-health` at 80", "an event at 80, with the unit as its actor", fmt.Sprintf("%v", e))
+	}
+	if e, ok := within(changes, 3*Beat); ok {
+		return Fail("nothing, for three beats after the report", "no other change of condition", fmt.Sprintf("%v", e))
+	}
+	if c, err := conditionOf(ctx, op, unit); err != nil || c.GetGrade() != 80 || c.GetLine() != "warm" {
+		return Fail("`report-health` at 80", "a record carrying the condition at 80, with its line", fmt.Sprintf("%v %v", c, err))
 	}
 	return Pass()
+}
+
+// eventsAbout delivers, until the stream ends, every event about the unit the stream brings.
+func eventsAbout(stream administrativev1.Operator_WatchClient, unit string) <-chan *administrativev1.Event {
+	out := make(chan *administrativev1.Event, 16)
+	go func() {
+		defer close(out)
+		for {
+			e, err := eventAbout(stream, unit)
+			if err != nil {
+				return
+			}
+			out <- e
+		}
+	}()
+	return out
+}
+
+// within is the next event delivered within a span, if one is.
+func within(events <-chan *administrativev1.Event, span time.Duration) (*administrativev1.Event, bool) {
+	select {
+	case e, ok := <-events:
+		return e, ok
+	case <-time.After(span):
+		return nil, false
+	}
+}
+
+// conditionOf is the condition a unit's record carries, read on the administrative surface.
+func conditionOf(ctx context.Context, op administrativev1.OperatorClient, unit string) (*administrativev1.Condition, error) {
+	res, err := op.Call(ctx, request(&administrativev1.Request{Operation: &administrativev1.Request_Read{Read: &administrativev1.Read{Kind: "unit", Identity: unit}}}))
+	if err != nil {
+		return nil, err
+	}
+	records := res.GetRead().GetRecords()
+	if len(records) != 1 || records[0].GetUnit() == nil {
+		return nil, fmt.Errorf("the read answered %v", res)
+	}
+	return records[0].GetUnit().GetObserved().GetCondition(), nil
 }
 
 // std: yoke:plugin.12

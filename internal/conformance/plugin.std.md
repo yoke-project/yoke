@@ -136,18 +136,18 @@
 | **Action** | `report` of the occurrence its Manifest declares, at 70, with a line |
 | **Expected** | an event about the unit carrying the occurrence, severity 70 and the unit as its actor |
 
-## yoke:plugin.11 — a health report is carried as the unit graded it
+## yoke:plugin.11 — a health report is carried as the unit graded it, and nobody else states a grade
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.65 · specs/50.66 · specs/90.34 · arch/50-plugin-surface/05 §What a health report carries |
+| **Cites** | specs/50.65 · specs/50.66 · specs/90.34 · arch/50-plugin-surface/05 §What a health report carries · arch/90-sdks/06 §It may not choose a severity on an author's behalf |
 | **Level** | L2 |
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
-| **Precondition** | the harness of case 8, and a subscription to `unit.condition.changed` on the administrative surface |
-| **Action** | `report-health` at 80, with a line |
-| **Expected** | an event about the unit at severity 80, with the unit as its actor |
+| **Precondition** | the harness of case 8, which has not reported its health, on a beat of one second; a subscription to `unit.condition.changed` on the administrative surface |
+| **Action** | nothing for three beats; then `report-health` at 80, with a line; then nothing for three beats |
+| **Expected** | no condition before the report, neither on the subscription nor on the unit's record; then one event about the unit at severity 80, with the unit as its actor, and no other across the three beats that follow; the unit's record carrying the condition at 80, with its line |
 
 ## yoke:plugin.12 — disabling the plugin revokes the Session, and the process ends
 

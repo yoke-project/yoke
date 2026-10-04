@@ -122,6 +122,9 @@ func Main(cfg Config) int {
 	return 0
 }
 
+// Beat is the heartbeat interval a run's composition assigns its unit.
+const Beat = time.Second
+
 // Execute performs one run.
 func Execute(cfg Config) (Report, error) {
 	if cfg.Out == nil {
@@ -200,7 +203,10 @@ func Execute(cfg Config) (Report, error) {
 	if outside {
 		units = map[string]any{}
 	}
-	composition, _ := yaml.Marshal(map[string]any{"units": units})
+	// A beat every second shows within seconds what a library sends on its own; a hundred and twenty
+	// missed intervals keep a unit whose author has not reported yet alive for the whole run.
+	policy := map[string]any{"heartbeat": map[string]any{"interval": Beat.String(), "tolerance": "120"}}
+	composition, _ := yaml.Marshal(map[string]any{"policy": policy, "units": units})
 	os.WriteFile(filepath.Join(tree, "core.yaml"), coreYAML, 0o644)
 	os.WriteFile(filepath.Join(tree, "composition.yaml"), composition, 0o644)
 
