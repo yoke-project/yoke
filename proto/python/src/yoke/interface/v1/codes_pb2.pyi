@@ -26,6 +26,7 @@ class Code(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     CODE_UNIT_NO_SESSION: _ClassVar[Code]
     CODE_UNIT_UNANSWERED: _ClassVar[Code]
     CODE_INSTANCE_STOPPING: _ClassVar[Code]
+    CODE_UNIT_FAILED: _ClassVar[Code]
 CODE_UNSPECIFIED: Code
 CODE_OPERATION_MALFORMED: Code
 CODE_OPERATION_UNKNOWN: Code
@@ -43,6 +44,7 @@ CODE_UNIT_NOT_RUNNING: Code
 CODE_UNIT_NO_SESSION: Code
 CODE_UNIT_UNANSWERED: Code
 CODE_INSTANCE_STOPPING: Code
+CODE_UNIT_FAILED: Code
 CODE_FIELD_NUMBER: _ClassVar[int]
 code: _descriptor.FieldDescriptor
 

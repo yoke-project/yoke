@@ -46,6 +46,10 @@ enum Code {
   CODE_BACKEND_UNAVAILABLE = 14 [(code) = "backend.unavailable"];
   // A write to the Registry or the log store did not succeed: a fault, not a denial.
   CODE_STORE_UNAVAILABLE = 15 [(code) = "store.unavailable"];
+  // A question names a type the unit's Plugin never declared.
+  CODE_SCOPE_UNDECLARED = 16 [(code) = "scope.undeclared"];
+  // The unit answered the Core's message with an error; the detail carries the unit's own code.
+  CODE_UNIT_FAILED = 17 [(code) = "unit.failed"];
 }
 
 // A refusal: a code, a message for a person, and what it names in a detail typed per code.
@@ -56,7 +60,8 @@ message Refusal {
   oneof detail {
     // The subject named: for subject.unknown and subject.wrong_kind, and for the refusals about a unit.
     Subject subject = 3;
-    // The item withheld or undeclared: a capability, or a stream.
+    // The item withheld or undeclared — a capability, a stream or a question's type — or, for
+    // unit.failed, the unit's own code.
     string item = 4;
   }
 }

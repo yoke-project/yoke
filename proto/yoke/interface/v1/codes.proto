@@ -48,6 +48,8 @@ enum Code {
   CODE_UNIT_UNANSWERED = 15 [(code) = "unit.unanswered"];
   // An orderly stop is in progress and the operation would act.
   CODE_INSTANCE_STOPPING = 16 [(code) = "instance.stopping"];
+  // The unit answered the Core's message with an error; the detail carries the unit's own code.
+  CODE_UNIT_FAILED = 17 [(code) = "unit.failed"];
 }
 
 // A refusal: a code, a message for a person, and what it names in a detail typed per code.
@@ -58,7 +60,8 @@ message Refusal {
   oneof detail {
     // The subject named: for subject.unknown, and for the refusals about a unit.
     Subject subject = 3;
-    // The object withheld or undeclared: a stream, a command type or a query type.
+    // The object withheld or undeclared — a stream, a command type or a query type — or, for
+    // unit.failed, the unit's own code.
     string item = 4;
     // For channel.suspended: the grade, and the channel that prevails.
     Suspension suspension = 5;

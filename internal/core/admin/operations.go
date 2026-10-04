@@ -124,6 +124,12 @@ func about(code, kind, identity, message string) *administrativev1.Refusal {
 		Detail: &administrativev1.Refusal_Subject{Subject: &administrativev1.Subject{Kind: kind, Identity: identity}}}
 }
 
+// unitFailed is a unit's error answering the Core's message, as its caller is refused: the unit's code
+// carried in the detail, and its message, neither of them read.
+func unitFailed(f *session.UnitFailed) *administrativev1.Refusal {
+	return &administrativev1.Refusal{Code: "unit.failed", Message: f.Message, Detail: &administrativev1.Refusal_Item{Item: f.Code}}
+}
+
 func unavailable(err error) *administrativev1.Refusal {
 	return refusal("store.unavailable", fmt.Sprintf("the store could not be read or written: %v", err))
 }
@@ -388,9 +394,14 @@ func (c *Core) ask(ctx context.Context, actor event.Actor, r *administrativev1.R
 	c.record(actor, event.Unit, id, uint64(st.Incarnation), "asked "+id+" of the type "+q.GetType())
 	a, err := c.Sessions.Ask(waiting, id, &pluginv1.Query_Question{Type: q.GetType(), Payload: q.GetQuestion()})
 	var refused *session.Refused
+	var failed *session.UnitFailed
 	switch {
 	case errors.As(err, &refused) && refused.Code == pluginv1.Code_CODE_SCOPE_WITHHELD:
 		return nil, &administrativev1.Refusal{Code: "scope.withheld", Message: refused.Error(), Detail: &administrativev1.Refusal_Item{Item: q.GetType()}}
+	case errors.As(err, &refused) && refused.Code == pluginv1.Code_CODE_SCOPE_UNDECLARED:
+		return nil, &administrativev1.Refusal{Code: "scope.undeclared", Message: refused.Error(), Detail: &administrativev1.Refusal_Item{Item: q.GetType()}}
+	case errors.As(err, &failed):
+		return nil, unitFailed(failed)
 	case errors.As(err, &refused):
 		return nil, refusal("operation.malformed", refused.Error())
 	case errors.Is(err, context.DeadlineExceeded):

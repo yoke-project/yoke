@@ -10,6 +10,7 @@ package bus
 import (
 	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
 	"slices"
 	"sync"
@@ -59,11 +60,23 @@ func (b *Bus) snapshot(f event.Filter) Snapshot {
 }
 
 // level is what makes an event the current value of something: its type and what it is about. A unit's
-// value is its current life's, so the life is not part of it.
+// value is its current life's, so the life is not part of it. A stream's state is one level per stream,
+// whose two values are its two types, so the level is named by the stream and not by the type.
 type level struct {
-	typ  string
-	kind event.Kind
-	id   string
+	typ    string
+	kind   event.Kind
+	id     string
+	stream string
+}
+
+// levelOf is the level an event is the current value of.
+func levelOf(e event.Event) level {
+	if e.Type == "unit.stream.activated" || e.Type == "unit.stream.stopped" {
+		var d struct{ Stream string }
+		json.Unmarshal(e.Detail, &d)
+		return level{"unit.stream", e.Subject.Kind, e.Subject.ID, d.Stream}
+	}
+	return level{typ: e.Type, kind: e.Subject.Kind, id: e.Subject.ID}
 }
 
 // Bus is one instance's bus.
@@ -89,7 +102,7 @@ func (b *Bus) Publish(e event.Event) (event.Event, error) {
 	b.seq++
 	e.Seq = b.seq
 	if class, _ := event.ClassOf(e.Type); class == event.Level {
-		b.current[level{e.Type, e.Subject.Kind, e.Subject.ID}] = e
+		b.current[levelOf(e)] = e
 	}
 	for s := range b.subs {
 		if s.filter.Selects(e) {

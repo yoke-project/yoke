@@ -322,6 +322,10 @@ func (s *Service) receive(l *live, e *pluginv1.Envelope) {
 		}
 	case e.GetQuery().GetAnswer() != nil:
 		s.answered(l, e, true)
+	case e.GetError() != nil && e.CorrelationId != "":
+		// An error that answers the Core's message answers it: the exchange closes, and whoever asked is
+		// told rather than left to wait.
+		s.answered(l, e, true)
 	case e.GetEvent() != nil:
 		// The severity a unit attaches widens nothing: what it may report is its grant.
 		if code := l.terms.Scope.Check(scope.Occurrence, e.GetEvent().GetOccurrence()); code != pluginv1.Code_CODE_UNSPECIFIED {
@@ -354,6 +358,10 @@ func (s *Service) answered(l *live, e *pluginv1.Envelope, final bool) {
 	ex := l.exchanges[e.CorrelationId]
 	if ex == nil {
 		s.mu.Unlock()
+		if e.GetError() != nil {
+			s.cfg.Log.Info("session", "unit", l.terms.Unit, "event", "error", "correlation", e.CorrelationId, "code", e.GetError().GetCode(),
+				"reached", "nothing awaiting it")
+		}
 		return
 	}
 	first := !ex.handed
@@ -372,6 +380,9 @@ func (s *Service) answered(l *live, e *pluginv1.Envelope, final bool) {
 	attrs := []any{"unit", l.terms.Unit, "event", "answer", "correlation", e.CorrelationId, "reached", "no caller"}
 	if ack := e.GetAck(); ack != nil {
 		attrs = append(attrs, "outcome", ack.GetOutcome().String(), "line", ack.GetLine())
+	}
+	if failure := e.GetError(); failure != nil {
+		attrs = append(attrs, "code", failure.GetCode())
 	}
 	s.cfg.Log.Info("session", attrs...)
 }
@@ -448,7 +459,7 @@ func (s *Service) issue(ctx context.Context, id string, e *pluginv1.Envelope) (*
 	s.mu.Unlock()
 	select {
 	case got := <-waiter:
-		return got, nil
+		return got, failedBy(got)
 	case <-l.done:
 		return nil, errors.New("the Session ended before the unit answered")
 	case <-ctx.Done():
@@ -460,11 +471,19 @@ func (s *Service) issue(ctx context.Context, id string, e *pluginv1.Envelope) (*
 		// An answer handed over while the wait ran out is still the caller's.
 		select {
 		case got := <-waiter:
-			return got, nil
+			return got, failedBy(got)
 		default:
 			return nil, ctx.Err()
 		}
 	}
+}
+
+// failedBy is the unit's failure where its answer was an error, and nil otherwise.
+func failedBy(got *pluginv1.Envelope) error {
+	if f := got.GetError(); f != nil {
+		return &UnitFailed{Code: f.GetCode(), Message: f.GetMessage()}
+	}
+	return nil
 }
 
 // Revoke ends a Session on the Core's authority, naming which of the four triggers it was.

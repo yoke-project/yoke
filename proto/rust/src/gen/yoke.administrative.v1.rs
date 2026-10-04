@@ -17,7 +17,8 @@ pub mod refusal {
         /// The subject named: for subject.unknown and subject.wrong_kind, and for the refusals about a unit.
         #[prost(message, tag = "3")]
         Subject(super::Subject),
-        /// The item withheld or undeclared: a capability, or a stream.
+        /// The item withheld or undeclared — a capability, a stream or a question's type — or, for
+        /// unit.failed, the unit's own code.
         #[prost(string, tag = "4")]
         Item(::prost::alloc::string::String),
     }
@@ -69,6 +70,10 @@ pub enum Code {
     BackendUnavailable = 14,
     /// A write to the Registry or the log store did not succeed: a fault, not a denial.
     StoreUnavailable = 15,
+    /// A question names a type the unit's Plugin never declared.
+    ScopeUndeclared = 16,
+    /// The unit answered the Core's message with an error; the detail carries the unit's own code.
+    UnitFailed = 17,
 }
 impl Code {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -93,6 +98,8 @@ impl Code {
             Self::InstanceStopping => "CODE_INSTANCE_STOPPING",
             Self::BackendUnavailable => "CODE_BACKEND_UNAVAILABLE",
             Self::StoreUnavailable => "CODE_STORE_UNAVAILABLE",
+            Self::ScopeUndeclared => "CODE_SCOPE_UNDECLARED",
+            Self::UnitFailed => "CODE_UNIT_FAILED",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -114,6 +121,8 @@ impl Code {
             "CODE_INSTANCE_STOPPING" => Some(Self::InstanceStopping),
             "CODE_BACKEND_UNAVAILABLE" => Some(Self::BackendUnavailable),
             "CODE_STORE_UNAVAILABLE" => Some(Self::StoreUnavailable),
+            "CODE_SCOPE_UNDECLARED" => Some(Self::ScopeUndeclared),
+            "CODE_UNIT_FAILED" => Some(Self::UnitFailed),
             _ => None,
         }
     }

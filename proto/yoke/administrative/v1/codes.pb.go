@@ -60,6 +60,10 @@ const (
 	Code_CODE_BACKEND_UNAVAILABLE Code = 14
 	// A write to the Registry or the log store did not succeed: a fault, not a denial.
 	Code_CODE_STORE_UNAVAILABLE Code = 15
+	// A question names a type the unit's Plugin never declared.
+	Code_CODE_SCOPE_UNDECLARED Code = 16
+	// The unit answered the Core's message with an error; the detail carries the unit's own code.
+	Code_CODE_UNIT_FAILED Code = 17
 )
 
 // Enum value maps for Code.
@@ -81,6 +85,8 @@ var (
 		13: "CODE_INSTANCE_STOPPING",
 		14: "CODE_BACKEND_UNAVAILABLE",
 		15: "CODE_STORE_UNAVAILABLE",
+		16: "CODE_SCOPE_UNDECLARED",
+		17: "CODE_UNIT_FAILED",
 	}
 	Code_value = map[string]int32{
 		"CODE_UNSPECIFIED":           0,
@@ -99,6 +105,8 @@ var (
 		"CODE_INSTANCE_STOPPING":     13,
 		"CODE_BACKEND_UNAVAILABLE":   14,
 		"CODE_STORE_UNAVAILABLE":     15,
+		"CODE_SCOPE_UNDECLARED":      16,
+		"CODE_UNIT_FAILED":           17,
 	}
 )
 
@@ -223,7 +231,8 @@ type Refusal_Subject struct {
 }
 
 type Refusal_Item struct {
-	// The item withheld or undeclared: a capability, or a stream.
+	// The item withheld or undeclared — a capability, a stream or a question's type — or, for
+	// unit.failed, the unit's own code.
 	Item string `protobuf:"bytes,4,opt,name=item,proto3,oneof"`
 }
 
@@ -328,7 +337,7 @@ const file_yoke_administrative_v1_codes_proto_rawDesc = "" +
 	"\aSubject\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x1a\n" +
 	"\bidentity\x18\x02 \x01(\tR\bidentity\x12 \n" +
-	"\vincarnation\x18\x03 \x01(\x04R\vincarnation*\x99\x06\n" +
+	"\vincarnation\x18\x03 \x01(\x04R\vincarnation*\xf1\x06\n" +
 	"\x04Code\x12\x14\n" +
 	"\x10CODE_UNSPECIFIED\x10\x00\x125\n" +
 	"\x18CODE_OPERATION_MALFORMED\x10\x01\x1a\x17\x8a\xb5\x18\x13operation.malformed\x121\n" +
@@ -346,7 +355,9 @@ const file_yoke_administrative_v1_codes_proto_rawDesc = "" +
 	"\x16CODE_RETENTION_INVALID\x10\f\x1a\x15\x8a\xb5\x18\x11retention.invalid\x121\n" +
 	"\x16CODE_INSTANCE_STOPPING\x10\r\x1a\x15\x8a\xb5\x18\x11instance.stopping\x125\n" +
 	"\x18CODE_BACKEND_UNAVAILABLE\x10\x0e\x1a\x17\x8a\xb5\x18\x13backend.unavailable\x121\n" +
-	"\x16CODE_STORE_UNAVAILABLE\x10\x0f\x1a\x15\x8a\xb5\x18\x11store.unavailable:7\n" +
+	"\x16CODE_STORE_UNAVAILABLE\x10\x0f\x1a\x15\x8a\xb5\x18\x11store.unavailable\x12/\n" +
+	"\x15CODE_SCOPE_UNDECLARED\x10\x10\x1a\x14\x8a\xb5\x18\x10scope.undeclared\x12%\n" +
+	"\x10CODE_UNIT_FAILED\x10\x11\x1a\x0f\x8a\xb5\x18\vunit.failed:7\n" +
 	"\x04code\x12!.google.protobuf.EnumValueOptions\x18ц\x03 \x01(\tR\x04codeBLZJgithub.com/yoke-project/yoke/proto/yoke/administrative/v1;administrativev1b\x06proto3"
 
 var (
