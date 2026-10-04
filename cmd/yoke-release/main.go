@@ -4,6 +4,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"time"
 
@@ -24,9 +25,26 @@ func main() {
 	// The maintainer publishes the definitions packages alone by hand once, for the first crate: crates.io
 	// trusts a workflow only for a crate that exists.
 	packagesOnly := flag.Bool("packages-only", false, "publish the definitions packages a definitions tag names, and nothing else")
+	// A family that publishes a package — Rust's crate, Python's wheel — names it, and the verb publishes
+	// that package alone, made and published by the family's ci/package.sh.
+	crate := flag.String("crate", "", "publish the family's crate of this name at its release tag, and nothing else")
+	wheel := flag.String("wheel", "", "publish the family's wheel of this name at its release tag, and nothing else")
 	flag.Parse()
 	cfg := release.Config{Root: ".", Proxy: release.FromProxy, Today: time.Now, Out: os.Stdout, Err: os.Stderr}
-	if !*modulesOnly {
+	switch {
+	case *crate != "" && *wheel != "":
+		fmt.Fprintln(os.Stderr, "release: a family publishes one package: -crate or -wheel, not both")
+		os.Exit(2)
+	case *crate != "":
+		cfg.Family, cfg.Settle, cfg.Pause = true, 30, 10*time.Second
+		cfg.Packages = release.Scripted(".", packages.Rust, *crate)
+		cfg.Registries = []release.Registry{release.Crates{API: "https://crates.io", Static: "https://static.crates.io", Root: ".",
+			Name: *crate, Script: "ci/package.sh"}}
+	case *wheel != "":
+		cfg.Family, cfg.Settle, cfg.Pause = true, 30, 10*time.Second
+		cfg.Packages = release.Scripted(".", packages.Python, *wheel)
+		cfg.Registries = []release.Registry{release.PyPI{Index: "https://pypi.org", Upload: "https://upload.pypi.org/legacy/", Name: *wheel}}
+	case !*modulesOnly:
 		cfg.Artifacts, cfg.Source, cfg.Upload = artifacts, "yoke", release.ToForge
 		cfg.Releases = "https://github.com/yoke-project/yoke/releases/tag/"
 		cfg.Packages = func(version, dir string) (string, string, error) { return packages.Package(".", version, dir) }

@@ -142,11 +142,26 @@ func differing(lang packages.Language, built string, served []byte) ([]string, e
 	return names, nil
 }
 
-// The name both packages carry, and what a registry is told of who asks.
+// The name both definitions packages carry — a registry's when it is given none — and what a registry is
+// told of who asks.
 const (
 	packageName = "yoke-proto"
 	userAgent   = "yoke-release (https://github.com/yoke-project/yoke)"
 )
+
+func nameOr(name string) string {
+	if name == "" {
+		return packageName
+	}
+	return name
+}
+
+// crateFile and wheelFile are the files a crate and a pure wheel are written as: a wheel's distribution
+// name has its dashes as underscores.
+func crateFile(name, version string) string { return name + "-" + version + ".crate" }
+func wheelFile(name, version string) string {
+	return strings.ReplaceAll(name, "-", "_") + "-" + version + "-py3-none-any.whl"
+}
 
 // fetch reads what url answers, and whether it answered at all: a 404 is an answer of nothing.
 func fetch(client *http.Client, address string) ([]byte, bool, error) {
@@ -189,22 +204,24 @@ type Crates struct {
 	API, Static string // https://crates.io, https://static.crates.io
 	Name        string // the crate, yoke-proto when empty
 	Root        string // the checkout the crate is published from
+	Script      string // what publishes it there, ci/definitions.sh when empty
 	Getenv      func(string) string
 	Client      *http.Client
 }
 
-func (c Crates) Published() string          { return "crates.io/" + packageName }
+func (c Crates) Published() string          { return "crates.io/" + nameOr(c.Name) }
 func (c Crates) Authenticated() string      { return c.API }
 func (c Crates) Package() packages.Language { return packages.Rust }
 func (c Crates) Where(version string) string {
-	return c.API + "/crates/" + packageName + "/" + version
+	return c.API + "/crates/" + nameOr(c.Name) + "/" + version
 }
 
 func (c Crates) Served(version string) ([]byte, bool, error) {
-	if _, found, err := fetch(c.Client, c.API+"/api/v1/crates/"+packageName+"/"+version); err != nil || !found {
+	name := nameOr(c.Name)
+	if _, found, err := fetch(c.Client, c.API+"/api/v1/crates/"+name+"/"+version); err != nil || !found {
 		return nil, false, err
 	}
-	return fetch(c.Client, fmt.Sprintf("%s/crates/%s/%s-%s.crate", c.Static, packageName, packageName, version))
+	return fetch(c.Client, c.Static+"/crates/"+name+"/"+crateFile(name, version))
 }
 
 func (c Crates) Publish(version, _ string) error {
@@ -213,7 +230,11 @@ func (c Crates) Publish(version, _ string) error {
 		return errors.New("no crates.io credential: CARGO_REGISTRY_TOKEN is empty — the run's identity was not exchanged, " +
 			"which crates.io refuses until the crate exists and trusts this repository's release workflow")
 	}
-	command := exec.Command("bash", "ci/definitions.sh", "publish-crate", version)
+	script := c.Script
+	if script == "" {
+		script = "ci/definitions.sh"
+	}
+	command := exec.Command("bash", script, "publish-crate", version)
 	command.Dir = c.Root
 	command.Env = append(os.Environ(), "CARGO_REGISTRY_TOKEN="+token)
 	if said, err := command.CombinedOutput(); err != nil {
@@ -232,17 +253,15 @@ type PyPI struct {
 	Client *http.Client
 }
 
-func (p PyPI) Published() string          { return "pypi.org/" + packageName }
+func (p PyPI) Published() string          { return "pypi.org/" + nameOr(p.Name) }
 func (p PyPI) Authenticated() string      { return p.Index }
 func (p PyPI) Package() packages.Language { return packages.Python }
 func (p PyPI) Where(version string) string {
-	return p.Index + "/project/" + packageName + "/" + version + "/"
+	return p.Index + "/project/" + nameOr(p.Name) + "/" + version + "/"
 }
 
-func wheelName(version string) string { return "yoke_proto-" + version + "-py3-none-any.whl" }
-
 func (p PyPI) Served(version string) ([]byte, bool, error) {
-	body, found, err := fetch(p.Client, p.Index+"/pypi/"+packageName+"/"+version+"/json")
+	body, found, err := fetch(p.Client, p.Index+"/pypi/"+nameOr(p.Name)+"/"+version+"/json")
 	if err != nil || !found {
 		return nil, false, err
 	}
@@ -253,7 +272,7 @@ func (p PyPI) Served(version string) ([]byte, bool, error) {
 		return nil, false, fmt.Errorf("the index's answer for %s is not JSON: %v", version, err)
 	}
 	for _, f := range release.URLs {
-		if f.Filename == wheelName(version) {
+		if f.Filename == wheelFile(nameOr(p.Name), version) {
 			return fetch(p.Client, f.URL)
 		}
 	}
@@ -273,7 +292,7 @@ func (p PyPI) Publish(version, path string) error {
 	if err != nil {
 		return err
 	}
-	metadata, err := wheelMetadata(path, version)
+	metadata, err := wheelMetadata(path, nameOr(p.Name), version)
 	if err != nil {
 		return err
 	}
@@ -355,12 +374,12 @@ func answered(client *http.Client, request *http.Request, into any) error {
 }
 
 // wheelMetadata reads the fields of a wheel's metadata an upload states, in the form's names.
-func wheelMetadata(path, version string) ([][2]string, error) {
+func wheelMetadata(path, name, version string) ([][2]string, error) {
 	files, err := packages.WheelSources(path)
 	if err != nil {
 		return nil, err
 	}
-	metadata, ok := files["yoke_proto-"+version+".dist-info/METADATA"]
+	metadata, ok := files[strings.ReplaceAll(name, "-", "_")+"-"+version+".dist-info/METADATA"]
 	if !ok {
 		return nil, fmt.Errorf("%s carries no metadata for %s", filepath.Base(path), version)
 	}
@@ -382,7 +401,30 @@ func wheelMetadata(path, version string) ([][2]string, error) {
 	return fields, nil
 }
 
-// Scripted packages a family's one package by its script, ci/package.sh.
+// The script a family packages and publishes its package by, relative to its root: `package <version>
+// <dir>` writes the package at the version into the directory, and `publish-crate <version>` publishes a
+// crate under CARGO_REGISTRY_TOKEN — the two verbs `yoke`'s definitions script answers.
+const familyScript = "ci/package.sh"
+
+// Scripted packages a family's one package by its script, and returns its path as the crate or the
+// wheel, as lang says.
 func Scripted(root string, lang packages.Language, name string) func(version, dir string) (crate, wheel string, err error) {
-	return func(version, dir string) (string, string, error) { return "", "", errors.New("not yet") }
+	return func(version, dir string) (string, string, error) {
+		command := exec.Command("bash", familyScript, "package", version, dir)
+		command.Dir = root
+		if said, err := command.CombinedOutput(); err != nil {
+			return "", "", fmt.Errorf("%s package %s: %v\n%s", familyScript, version, err, said)
+		}
+		file := filepath.Join(dir, crateFile(name, version))
+		if lang == packages.Python {
+			file = filepath.Join(dir, wheelFile(name, version))
+		}
+		if _, err := os.Stat(file); err != nil {
+			return "", "", fmt.Errorf("%s package %s wrote no %s", familyScript, version, filepath.Base(file))
+		}
+		if lang == packages.Python {
+			return "", file, nil
+		}
+		return file, "", nil
+	}
 }
