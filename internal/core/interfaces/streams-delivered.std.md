@@ -82,3 +82,16 @@
 | **Precondition** | `yoke-core` built, with a composition declaring a local channel and a Plugin unit of a program that sends three data messages when its stream is activated |
 | **Action** | on the operator projection, grant the stream and restart the unit; attach, `stream.subscribe` the stream, connect to the socket named, then `stream.start` it |
 | **Expected** | the socket reads the three messages, in order, each with its sequence and payload |
+
+## yoke:streams-delivered.07 — a delivery whose client falls behind is released, and the client is told
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/70-interface-surface/07 §What every path preserves · arch/70-interface-surface/07 §What ends a delivery |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a delivery of a flowing stream on a local-socket channel, whose client connects and never reads, holding at most four frames |
+| **Action** | the stream's transport reads far more than the socket and the delivery can hold |
+| **Expected** | the delivery is released: its socket closes, so the client reads what reached it and then the end, never a gap; and unsubscribing it afterwards is refused, since the attachment no longer holds it |

@@ -26,6 +26,7 @@ import (
 // delivering is a deployment whose bench unit acquire is granted station.spectra and declares
 // station.preview without its grant, with a transport service the test drives as a unit would.
 type delivering struct {
+	queue      int
 	w          *world
 	root       string
 	transports *streams.Service
@@ -34,13 +35,19 @@ type delivering struct {
 
 func deliveringOn(t *testing.T, channels ...gate.Channel) *delivering {
 	t.Helper()
-	d := &delivering{w: newWorld(), root: root(t)}
+	return deliveringWith(t, 0, channels...)
+}
+
+// deliveringWith is deliveringOn with each delivery holding at most queue frames, the default where 0.
+func deliveringWith(t *testing.T, queue int, channels ...gate.Channel) *delivering {
+	t.Helper()
+	d := &delivering{queue: queue, w: newWorld(), root: root(t)}
 	d.transports = streams.New(streams.Config{Root: d.root, Log: slog.New(slog.NewTextHandler(io.Discard, nil)), Publish: d.w.publish})
 	t.Cleanup(func() { d.transports.CloseAll("acquire", streams.UnitExited) })
 	manifest := &gate.Manifest{ID: "com.example.station", Streams: []gate.Stream{{ID: "station.spectra"}, {ID: "station.preview"}}}
 	b, err := interfaces.BindServing(d.root, mode, channels, func(ch gate.Channel) interfacev1.InterfaceServer {
 		return interfaces.NewSurface(interfaces.Config{
-			Channel: ch, Root: d.root, Bus: d.w.bus, Publish: d.w.publish, Units: bench{}, Sessions: &fakeSessions{}, Transports: d.transports,
+			Channel: ch, Root: d.root, Queue: d.queue, Bus: d.w.bus, Publish: d.w.publish, Units: bench{}, Sessions: &fakeSessions{}, Transports: d.transports,
 			Declared: func(id string) (*gate.Manifest, bool) { return manifest, benchUnits[id].kind == unit.Plugin },
 			Granted: func(id string) ([]string, []string, []string) {
 				if id == "acquire" {
@@ -251,5 +258,45 @@ func TestAStreamTheChannelMayNotAddressIsRefused(t *testing.T) {
 	}
 	if entries, _ := os.ReadDir(filepath.Join(d.root, "plugins", "acquire", "subscribers")); len(entries) != 0 {
 		t.Errorf("a refusal left %v", entries)
+	}
+}
+
+// std: yoke:streams-delivered.07
+func TestADeliveryWhoseClientFallsBehindIsReleased(t *testing.T) {
+	d := deliveringWith(t, 4, gate.Channel{Name: "panel", Transport: "local", Clients: "single"})
+	a, _ := attachTo(t, d.bound.Address("panel"))
+	a.next(t)
+	got := a.answerTo(t, "s", subscribeTo("station.spectra")).GetAnswer().GetStreamSubscribe()
+	conn, err := net.Dial("unixpacket", got.GetSocket())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	time.Sleep(50 * time.Millisecond)
+	write := d.flow(t)
+	big := make([]byte, 32<<10)
+	for i := uint64(1); i <= 200; i++ {
+		write(i, big)
+	}
+	var last uint64
+	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	buf := make([]byte, 64<<10)
+	for {
+		n, err := conn.Read(buf)
+		if err != nil || n == 0 {
+			break
+		}
+		sequence := binary.LittleEndian.Uint64(buf[0:8])
+		if sequence != last+1 {
+			t.Fatalf("after %d the client read %d: a gap", last, sequence)
+		}
+		last = sequence
+	}
+	if last == 0 || last == 200 {
+		t.Errorf("the client read up to %d, and the delivery was not released", last)
+	}
+	ref := a.answerTo(t, "u", &interfacev1.Request{Version: 1, Operation: &interfacev1.Request_StreamUnsubscribe{StreamUnsubscribe: &interfacev1.StreamRelease{Delivery: got.GetDelivery()}}}).GetRefusal()
+	if ref == nil {
+		t.Error("the released delivery could still be unsubscribed")
 	}
 }
