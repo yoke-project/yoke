@@ -12,10 +12,12 @@ import (
 	"google.golang.org/grpc/status"
 
 	interfacev1 "github.com/yoke-project/yoke/proto/yoke/interface/v1"
+	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
 
 	"github.com/yoke-project/yoke/internal/core/bus"
 	"github.com/yoke-project/yoke/internal/core/event"
 	"github.com/yoke-project/yoke/internal/core/peer"
+	"github.com/yoke-project/yoke/internal/core/streams"
 	"github.com/yoke-project/yoke/internal/core/supervisor"
 	"github.com/yoke-project/yoke/internal/core/unit"
 	"github.com/yoke-project/yoke/internal/gate"
@@ -77,6 +79,31 @@ type Config struct {
 	Confirm *Confirmation
 	// Accounts resolves an account's number to its name; the host's database where nil.
 	Accounts func(uid string) (string, error)
+
+	// Sessions carry what a channel issues against a unit, and Transports are the streams' own. Optional.
+	Sessions   Sessions
+	Transports Transports
+	// Declared is the Manifest of the plugin a unit runs, and false for a unit that is not a Plugin.
+	Declared func(unit string) (*gate.Manifest, bool)
+	// Stopping says whether the instance is stopping, when operations that act are refused. Optional.
+	Stopping func() bool
+	// Wait replaces the 30 s a unit is waited for, for a test.
+	Wait time.Duration
+}
+
+// Sessions are the units' Sessions, by unit.
+type Sessions interface {
+	Open(unit string) bool
+	Instruct(ctx context.Context, unit string, c *pluginv1.Control) (*pluginv1.Ack, error)
+	Ask(ctx context.Context, unit string, q *pluginv1.Query_Question) (*pluginv1.Query_Answer, error)
+}
+
+// Transports are the streams' own transports.
+type Transports interface {
+	Open(unit string, incarnation uint64, stream string, t streams.Tolerances) (streams.Transport, string, error)
+	Close(unit, stream, reason string) bool
+	Discard(unit, stream string)
+	Active(unit string) []string
 }
 
 // Surface is the local projection's terminator: one bidirectional stream per attachment, many calls on it.
