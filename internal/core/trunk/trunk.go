@@ -198,10 +198,12 @@ func Steps() []Step {
 		{"declarations", declarations},
 		{"channels", channels},
 		{ready, func(st *State) error {
-			st.Log.Info(ready, "root", st.Paths.Root)
+			// Readiness is recorded before it is announced, so whoever reads the announcement and then the
+			// instance finds it ready.
 			st.mu.Lock()
 			st.readyAt = time.Now()
 			st.mu.Unlock()
+			st.Log.Info(ready, "root", st.Paths.Root)
 			st.publish(event.InstanceReady(st.Paths.Name))
 			return nil
 		}},
