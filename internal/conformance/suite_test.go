@@ -426,3 +426,26 @@ func TestAnInterfaceHarnessIsLaunchedAgainstAnInstanceThatBindsTwoChannels(t *te
 		t.Errorf("the suite could not hold bench: %v", held)
 	}
 }
+
+// std: yoke:the-conformance-suite.11
+func TestAPluginRunBindsAChannelForTheSuite(t *testing.T) {
+	var socket, attached, again error
+	var same bool
+	consume := conformance.Case{ID: "yoke:toy.06", Title: "the suite's channel", Issues: "nothing", Requires: "an attachment",
+		Run: func(r *conformance.Run) conformance.Outcome {
+			_, socket = os.Stat(filepath.Join(r.Instance(), "interfaces", conformance.Consumer+".sock"))
+			first, err := r.Attach()
+			attached = err
+			second, err := r.Attach()
+			again, same = err, first == second
+			return conformance.Pass()
+		}}
+	cfg, _ := config(t, unitHello, consume)
+	report, err := conformance.Execute(cfg)
+	if err != nil || !report.OK {
+		t.Fatalf("the run gave %v and %+v\n%s", err, report, cfg.Out)
+	}
+	if socket != nil || attached != nil || again != nil || !same {
+		t.Errorf("the channel's socket: %v; attaching: %v, then %v, the same attachment: %v", socket, attached, again, same)
+	}
+}

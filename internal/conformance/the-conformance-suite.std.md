@@ -134,3 +134,16 @@
 | **Precondition** | a harness that says it implements the interface contract, and an interface case and a plugin case |
 | **Action** | run the suite with both cases; in the interface case, hold the channel `bench` |
 | **Expected** | the Core is started with the fixture plugin declared, no unit, the channels `panel` and `bench` bound as local sockets and `bench` prevailing over `panel`; the harness is launched by the suite once the Core is ready, with the instance's root in `CONFORMANCE_INSTANCE`; the suite attaches to `bench` itself; the interface case runs and passes, and the plugin case is not in the table |
+
+## yoke:the-conformance-suite.11 — a plugin run binds a channel for the suite, which consumes a stream itself
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/90-sdks/03 §A real Core, and no fixture · arch/70-interface-surface/01 §Where a channel is bound · arch/70-interface-surface/03 §The opening picture |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a harness that describes itself with a Manifest and, launched by the Core, says hello with its unit identity; one case attaching the suite |
+| **Action** | run the suite; in the case, attach the suite to the channel `suite`, twice |
+| **Expected** | the Core is started with the channel `suite` bound as a local socket, of one client; the suite attaches to it and is given an opening; the second attachment is the first, not another; the case passes |

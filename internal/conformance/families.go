@@ -16,10 +16,10 @@ import (
 )
 
 // FamilyCases are the plugin contract's cases for the families, the capabilities and the grants, which
-// run after the next life of case 6 is admitted. The suite drives the deployment through the
+// run after the next life of case 6 is admitted, with the cases for streams before the last. The suite drives the deployment through the
 // administrative contract, as any client does.
 func FamilyCases() []Case {
-	return []Case{
+	cases := []Case{
 		{Contract: "plugin", ID: "yoke:plugin.07", Title: "an occurrence outside the granted scope is refused, and the Session goes on",
 			Cites:        []string{"specs/50.30", "specs/50.64", "specs/50.105", "arch/50-plugin-surface/06 §Four families, closed", "arch/50-plugin-surface/04 §Revocation"},
 			Precondition: "the harness of case 6, admitted and granted nothing",
@@ -50,13 +50,15 @@ func FamilyCases() []Case {
 			Issues:       "nothing for three beats; then `report-health` at 80, with a line; then nothing for three beats",
 			Requires:     "no condition before the report, neither on the subscription nor on the unit's record; then one event about the unit at severity 80, with the unit as its actor, and no other across the three beats that follow; the unit's record carrying the condition at 80, with its line",
 			Run:          healthCarried},
-		{Contract: "plugin", ID: "yoke:plugin.12", Title: "disabling the plugin revokes the Session, and the process ends",
+	}
+	cases = append(cases, StreamCases()...)
+	return append(cases,
+		Case{Contract: "plugin", ID: "yoke:plugin.12", Title: "disabling the plugin revokes the Session, and the process ends",
 			Cites:        []string{"specs/50.49", "specs/50.51", "specs/60.29", "specs/90.29", "arch/50-plugin-surface/04 §Revocation"},
-			Precondition: "the harness of case 8, its Session open",
+			Precondition: "the harness of case 8, its Session open and the stream that tolerates loss still flowing",
 			Issues:       "the plugin disabled on the administrative surface",
 			Requires:     "the end observed as a revocation, the plugin disabled, and then the harness gone",
-			Run:          disabledRevoked},
-	}
+			Run:          disabledRevoked})
 }
 
 // declared is what the described Manifest declares, as lists of names.

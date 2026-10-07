@@ -149,6 +149,58 @@
 | **Action** | nothing for three beats; then `report-health` at 80, with a line; then nothing for three beats |
 | **Expected** | no condition before the report, neither on the subscription nor on the unit's record; then one event about the unit at severity 80, with the unit as its actor, and no other across the three beats that follow; the unit's record carrying the condition at 80, with its line |
 
+## yoke:plugin.13 — a stream is activated on the transport its tolerances select
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/50.86 · specs/90.33 · arch/50-plugin-surface/07 §A stream flows because it was told to · arch/50-plugin-surface/07 §What the two tolerances select |
+| **Level** | L2 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the harness of case 8, granted everything; its Manifest declaring a stream that tolerates nothing and one that tolerates loss; the suite attached to the channel `suite` the run composes |
+| **Action** | for each of the two streams, `stream.subscribe` and then `stream.start`, on the interface surface |
+| **Expected** | for each, a delivery on a per-subscriber socket and an acknowledgement; and an observation `activated` naming the stream, with the transport `ordered` for the one that tolerates nothing and `framed` for the one that tolerates loss |
+
+## yoke:plugin.14 — what is emitted on the ordered transport arrives in order, numbered from 1, unchanged
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/50.86 · specs/50.90 · arch/50-plugin-surface/07 §What every transport keeps · arch/90-sdks/03 §A real Core, and no fixture |
+| **Level** | L2 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the stream that tolerates nothing, activated in case 13, and the suite reading its delivery |
+| **Action** | `emit` on it three times, carrying `one`, `two` and `three` |
+| **Expected** | each answered with no refusal; the delivery carrying three frames, of the sequences 1, 2 and 3, with those payloads, in that order |
+
+## yoke:plugin.15 — what is emitted on the framed transport is numbered from 1 with no gap, so a gap would be seen
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/50.90 · arch/50-plugin-surface/07 §The frame · arch/90-sdks/03 §What is outside the suite, and why |
+| **Level** | L2 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the stream that tolerates loss, activated in case 13, and the suite reading its delivery |
+| **Action** | `emit` on it three times, carrying `one`, `two` and `three` |
+| **Expected** | each answered with no refusal; the delivery carrying three frames, of the sequences 1, 2 and 3, with those payloads |
+
+## yoke:plugin.16 — a stop is surfaced, and closes the emission
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/90.33 · arch/50-plugin-surface/07 §Three routes end a stream, and the transport goes in all three · arch/90-sdks/06 §It may not create a stream's transport |
+| **Level** | L2 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the stream that tolerates nothing, flowing |
+| **Action** | `stream.stop` of it, on the interface surface; then `emit` on it |
+| **Expected** | an acknowledgement; an observation `stopped` naming the stream; then a refusal `stream.inactive` |
+
 ## yoke:plugin.12 — disabling the plugin revokes the Session, and the process ends
 
 | Field | Value |
@@ -158,6 +210,6 @@
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
-| **Precondition** | the harness of case 8, its Session open |
+| **Precondition** | the harness of case 8, its Session open and the stream that tolerates loss still flowing |
 | **Action** | the plugin disabled on the administrative surface |
 | **Expected** | the end observed as a revocation, the plugin disabled, and then the harness gone |
