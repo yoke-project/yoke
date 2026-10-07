@@ -236,7 +236,7 @@ func Execute(cfg Config) (Report, error) {
 	}
 
 	// Drive: only the cases of the contract the harness implements.
-	run := &Run{tree: tree, control: control, described: text, instance: paths["run"]}
+	run := &Run{tree: tree, control: control, described: text, instance: paths["run"], deliveries: map[string]*delivery{}}
 	defer run.release()
 	if outside {
 		administering, err := control.launch(cfg, "CONFORMANCE_INSTANCE="+paths["run"])
@@ -342,16 +342,18 @@ func stop(core *exec.Cmd) {
 
 // Run is what a case drives.
 type Run struct {
-	tree      string
-	control   *control
-	unit      *Harness
-	described string
-	instance  string
-	admin     *Harness
-	adminErr  error
-	operator  administrativev1.OperatorClient
-	opening   *Result  // the harness's attachment, once an interface case has made it
-	held      []func() // the attachments the suite holds itself
+	tree       string
+	control    *control
+	unit       *Harness
+	described  string
+	instance   string
+	admin      *Harness
+	adminErr   error
+	operator   administrativev1.OperatorClient
+	opening    *Result              // the harness's attachment, once an interface case has made it
+	held       []func()             // the attachments the suite holds itself
+	consumer   *Attachment          // the suite's attachment to the channel a plugin run composes for it
+	deliveries map[string]*delivery // what the suite reads, by stream
 }
 
 // Described is the Manifest the harness described at the start of the run.
