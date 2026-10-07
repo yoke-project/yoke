@@ -213,8 +213,11 @@ func Execute(cfg Config) (Report, error) {
 	// missed intervals keep a unit whose author has not reported yet alive for the whole run.
 	policy := map[string]any{"heartbeat": map[string]any{"interval": Beat.String(), "tolerance": "120"}}
 	composed := map[string]any{"policy": policy, "units": units}
-	if contract == "interface" {
+	switch contract {
+	case "interface":
 		composed["channels"], composed["arbitration"] = interfaceChannels, interfaceArbitration
+	case "plugin":
+		composed["channels"] = consumerChannels
 	}
 	composition, _ := yaml.Marshal(composed)
 	os.WriteFile(filepath.Join(tree, "core.yaml"), coreYAML, 0o644)
