@@ -9,7 +9,7 @@ set -uo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 results="${1:-$root/.results}"
-family=v0.2.1-0.20261004072756-5cb01418d590
+family=v0.2.2-0.20261007191752-bbb3a8ada03d
 bin="$(mktemp -d)"
 trap 'rm -rf "$bin"' EXIT
 mkdir -p "$results"
