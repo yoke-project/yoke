@@ -14,6 +14,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -112,6 +113,8 @@ type Store struct {
 	// waits on the one an append holds while the queue is full.
 	watching sync.Mutex
 	watchers map[chan struct{}]bool
+
+	vacuums atomic.Int64 // how many times the file was vacuumed
 }
 
 // Open opens the log store at path, creating it if absent, and migrates it forward. A file written by a

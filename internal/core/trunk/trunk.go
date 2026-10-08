@@ -373,6 +373,15 @@ func stores(st *State) error {
 	}
 	st.Logs = logs
 	st.OnStop(logs.Close)
+	// The cleaner is the only thing that deletes what nobody asked to delete. It is stopped before the
+	// store it cleans is closed.
+	cleaner := &logstore.Cleaner{Store: logs, Instance: st.Paths.Name, Interval: time.Hour,
+		Policy: func(string) logstore.Limits { return logstore.DefaultLimits() },
+		Report: func(err error) { st.Log.Error("retention", "error", err) }}
+	ctx, stop := context.WithCancel(context.Background())
+	st.Log.Info("retention", "first", cleaner.First(time.Now()).Format(time.RFC3339Nano), "interval", time.Hour)
+	go cleaner.Run(ctx)
+	st.OnStop(func() error { stop(); return nil })
 	return nil
 }
 
