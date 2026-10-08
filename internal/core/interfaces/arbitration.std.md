@@ -9,14 +9,14 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.24 · specs/70.27 · specs/70.31 · arch/70-interface-surface/06 §What the declaration says, and what holding means · arch/70-interface-surface/06 §When it is computed |
+| **Cites** | specs/70.24 · specs/70.27 · specs/70.31 · arch/70-interface-surface/06 §What the declaration says, and what holding means · arch/70-interface-surface/06 §When it is computed · arch/70-interface-surface/03 §What ends an attachment |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
 | **Precondition** | two channels, `bench` declared to prevail over `remote`, and a third channel no rule names |
 | **Action** | attach to `remote`, then to `bench`, then to the third; detach from `bench` |
-| **Expected** | `remote` is suspended when `bench` attaches — `channel.suspended` with the reason, the channel that prevailed and what `remote` retains — and resumed when `bench` detaches, with `channel.resumed`; attaching to the third publishes neither |
+| **Expected** | `remote` is suspended when `bench` attaches — `channel.suspended` with the reason, the channel that prevailed and what `remote` retains — and resumed when `bench` detaches, with `channel.resumed` published after `bench`'s `channel.detached`, which caused it; attaching to the third publishes neither |
 
 ## yoke:arbitration.02 — a channel whose subscription goes stale stops holding
 
