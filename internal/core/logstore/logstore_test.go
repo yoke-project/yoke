@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -315,6 +316,49 @@ func TestEveryDeclaredTypeIsKeptAsAnEntry(t *testing.T) {
 		if entry.Type != name || entry.SubjectKind != string(e.Subject.Kind) || entry.SubjectID != e.Subject.ID || entry.Source != wantSource ||
 			(unitLife && (entry.Unit != "acquire" || entry.Incarnation != 2)) || (!unitLife && entry.Unit != "") {
 			t.Errorf("%s is kept as %+v", name, entry)
+		}
+	}
+}
+
+// std: yoke:the-log-store.09
+func TestABurstLargerThanTheQueueIsWrittenWhole(t *testing.T) {
+	s, _, _ := open(t)
+	_, stop := s.Watch()
+	defer stop()
+	appended := make(chan error, 1)
+	go func() {
+		for i := 0; i < 10_000; i++ {
+			if err := s.Append(logstore.Entry{At: time.Now(), Unit: "noisy", Incarnation: 1, Source: logstore.Stdout,
+				Severity: 10, Message: strconv.Itoa(i)}); err != nil {
+				appended <- err
+				return
+			}
+		}
+		appended <- nil
+	}()
+	select {
+	case err := <-appended:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("appending a burst never returned")
+	}
+	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(20 * time.Millisecond) {
+		got, err := s.Entries(0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(got) == 10_000 {
+			for i, e := range got {
+				if e.Message != strconv.Itoa(i) {
+					t.Fatalf("entry %d is %q", i, e.Message)
+				}
+			}
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("%d of 10000 were stored", len(got))
 		}
 	}
 }
