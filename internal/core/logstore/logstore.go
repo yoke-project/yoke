@@ -108,7 +108,9 @@ type Store struct {
 	closed  bool
 	queue   chan Entry
 	written chan struct{}
-	// watchers are told each time a batch is written.
+	// watchers are told each time a batch is written. They have a lock of their own, so the writer never
+	// waits on the one an append holds while the queue is full.
+	watching sync.Mutex
 	watchers map[chan struct{}]bool
 }
 
@@ -240,14 +242,14 @@ func (s *Store) write() {
 		if err := s.store(batch); err != nil {
 			s.report(fmt.Errorf("the log store %s lost %d entries: %w", s.path, len(batch), err))
 		}
-		s.mu.Lock()
+		s.watching.Lock()
 		for w := range s.watchers {
 			select {
 			case w <- struct{}{}:
 			default:
 			}
 		}
-		s.mu.Unlock()
+		s.watching.Unlock()
 	}
 }
 
@@ -368,16 +370,16 @@ func (s *Store) Last() (uint64, error) {
 // Watch is told each time entries are written, until it is stopped.
 func (s *Store) Watch() (<-chan struct{}, func()) {
 	w := make(chan struct{}, 1)
-	s.mu.Lock()
+	s.watching.Lock()
 	if s.watchers == nil {
 		s.watchers = map[chan struct{}]bool{}
 	}
 	s.watchers[w] = true
-	s.mu.Unlock()
+	s.watching.Unlock()
 	return w, func() {
-		s.mu.Lock()
+		s.watching.Lock()
 		delete(s.watchers, w)
-		s.mu.Unlock()
+		s.watching.Unlock()
 	}
 }
 
