@@ -38,6 +38,18 @@ func local(name string) gate.Channel {
 }
 
 // waitFor waits until the world has published n events of a type about a channel, and returns them.
+// at is where the first event of typ about channel stands in what was published, or -1.
+func (w *world) at(typ, channel string) int {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	for i, e := range w.pub {
+		if e.Type == typ && e.Subject.ID == channel {
+			return i
+		}
+	}
+	return -1
+}
+
 func (w *world) waitFor(t *testing.T, typ, channel string, n int) []event.Event {
 	t.Helper()
 	deadline := time.Now().Add(2 * time.Second)
@@ -78,6 +90,10 @@ func TestAPrevailingChannelSuspendsTheOthersAndOnlyAChangeIsPublished(t *testing
 	bench.stream.CloseSend()
 	if resumed := w.waitFor(t, "channel.resumed", "remote", 1); len(resumed) != 1 {
 		t.Errorf("remote was not resumed: %+v", resumed)
+	}
+	w.waitFor(t, "channel.detached", "bench", 1)
+	if detached, resumed := w.at("channel.detached", "bench"), w.at("channel.resumed", "remote"); detached > resumed {
+		t.Errorf("remote was resumed (%d) before bench's detachment (%d) was published", resumed, detached)
 	}
 	if n := len(w.of("channel.suspended")) + len(w.of("channel.resumed")); n != 2 {
 		t.Errorf("%d arbitration events were published", n)
