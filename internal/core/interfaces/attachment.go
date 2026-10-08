@@ -130,8 +130,8 @@ func (a *attachment) watch(c *Confirmation) {
 	}
 }
 
-// finish ends the attachment: its calls, its deliveries, its place in the channel, and then the
-// announcement of why.
+// finish ends the attachment: its calls, its deliveries, its place in the channel, the announcement of
+// why, and then arbitration, which the detachment may change.
 func (a *attachment) finish(reason string) {
 	a.end()
 	a.calls.Wait()
@@ -144,10 +144,10 @@ func (a *attachment) finish(reason string) {
 	current := !a.stale
 	a.stale = true
 	a.confirmed.Unlock()
+	a.s.publish(event.ChannelDetached(a.s.cfg.Channel.Name, a.client, reason))
 	if current {
 		a.s.hold(-1)
 	}
-	a.s.publish(event.ChannelDetached(a.s.cfg.Channel.Name, a.client, reason))
 }
 
 // cancel ends a call in flight; the call completes, ended by the caller.
