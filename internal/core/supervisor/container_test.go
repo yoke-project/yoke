@@ -175,7 +175,7 @@ func TestAUnitNamingAnImageIsLaunchedInAContainer(t *testing.T) {
 		l.Instance != "bench" || l.Unit != "calibrate" || l.Incarnation != 1 || l.UID != os.Getuid() || l.GID != os.Getgid() {
 		t.Errorf("created %+v, want the environment %v", l, want)
 	}
-	if status.State != unit.Starting {
+	if status.State != unit.Running {
 		t.Errorf("the unit is %s", status.State)
 	}
 }
@@ -187,7 +187,9 @@ func TestTheEnginesReportOfAnEndIsTheUnitsExit(t *testing.T) {
 	s, _ := inContainers(t, c, fast())
 	s.Launch(imaged("first", unit.Oneshot))
 	until(t, "the first to complete", 3*time.Second, func() bool { return s.Status("first").State == unit.Completed })
-	s.Launch(imaged("second", unit.Oneshot))
+	second := imaged("second", unit.Oneshot)
+	second.RestartOnFailure = true
+	s.Launch(second)
 	until(t, "the second to fail", 3*time.Second, func() bool {
 		st := s.Status("second")
 		return st.State == unit.Failed && st.Waiting
@@ -200,7 +202,7 @@ func TestAnAbsentImageIsAFaultTheRestartPolicyWaitsOn(t *testing.T) {
 	c := newContainers()
 	c.absent = true
 	s, _ := inContainers(t, c, fast())
-	u := imaged("calibrate", unit.Oneshot)
+	u := imaged("calibrate", unit.Interface)
 	s.Launch(u)
 	until(t, "the unit to fail and wait", 3*time.Second, func() bool {
 		st := s.Status("calibrate")
@@ -246,7 +248,7 @@ func TestAStopSignalsWaitsEndsAndRemoves(t *testing.T) {
 // std: yoke:the-container-backend.05
 func TestWithNoEngineALaunchInAContainerIsAFault(t *testing.T) {
 	s, _ := inContainers(t, nil, fast())
-	s.Launch(imaged("calibrate", unit.Oneshot))
+	s.Launch(imaged("calibrate", unit.Interface))
 	s.Launch(declared(t, "beside", unit.Oneshot, "exit-0"))
 	until(t, "the containerised unit to fail and wait", 3*time.Second, func() bool {
 		st := s.Status("calibrate")

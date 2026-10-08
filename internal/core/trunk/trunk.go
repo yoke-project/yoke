@@ -36,6 +36,7 @@ import (
 	"github.com/yoke-project/yoke/internal/core/bus"
 	"github.com/yoke-project/yoke/internal/core/config"
 	"github.com/yoke-project/yoke/internal/core/discovery"
+	"github.com/yoke-project/yoke/internal/core/engine"
 	"github.com/yoke-project/yoke/internal/core/event"
 	"github.com/yoke-project/yoke/internal/core/instance"
 	"github.com/yoke-project/yoke/internal/core/interfaces"
@@ -183,6 +184,9 @@ type Step struct {
 
 // The step whose success makes the instance observable: failure before it is fatal.
 const ready = "ready"
+
+// engineReach bounds how long the Core waits for the container engine to answer, once, before its units.
+const engineReach = 10 * time.Second
 
 // Steps are the eleven, in their order. A step a later part of the Core owns does nothing yet.
 func Steps() []Step {
@@ -752,7 +756,7 @@ func (s held) Instruct(ctx context.Context, unitID string, c *pluginv1.Control) 
 // units hands the declared units to the supervisor, which is stopped first on the way down.
 func units(st *State) error {
 	cfg := supervisor.Config{
-		Root: st.Paths.Root, Policy: supervisor.DefaultPolicy(),
+		Root: st.Paths.Root, Instance: st.Paths.Name, Policy: supervisor.DefaultPolicy(),
 		Incarnations: supervisor.NewCounter(), Tokens: supervisor.NewTokens(), Output: captured{st.Log, st.Logs},
 		Publish: st.publish,
 	}
@@ -774,6 +778,19 @@ func units(st *State) error {
 	cfg.NotStarted = func(id, cause string) { st.Log.Warn("not started", "unit", id, "cause", cause) }
 	if st.Logs != nil {
 		cfg.Incarnations = counted{st.Logs, st.Log}
+	}
+	// The engine is reached where a unit names an image, and only there. One not reached makes each such
+	// launch a fault, on which the restart policy waits; nothing else waits on it.
+	if slices.ContainsFunc(st.Units, func(u supervisor.Unit) bool { return u.Image != "" }) {
+		ctx, cancel := context.WithTimeout(context.Background(), engineReach)
+		e, err := engine.Reach(ctx, st.Config.Engine)
+		cancel()
+		if err != nil {
+			st.Log.Warn("the container engine is not reached", "engine", st.Config.Engine, "error", err)
+		} else {
+			st.Log.Info("the container engine is reached", "engine", e.Kind, "version", e.Version, "rootless", e.Rootless)
+			cfg.Containers = e
+		}
 	}
 	s := supervisor.New(cfg)
 	st.Supervisor = s
