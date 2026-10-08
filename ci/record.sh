@@ -16,7 +16,8 @@ for each in checks.txt started finished; do
   [[ -f "$results/$each" ]] || { echo "record: the run left no $each in $results" >&2; exit 1; }
 done
 
-# The architecture as the environment's dimension names it.
+# The architecture as the environment's dimension names it. The container engine is declared, never
+# assumed: the reference tier runs rootless Podman, which every runner carries.
 case "$(uname -m)" in
   x86_64) architecture=amd64 ;;
   aarch64 | arm64) architecture=arm64 ;;
@@ -28,6 +29,7 @@ arguments=(record
   --tier reference
   --repository yoke
   --environment "architecture=$architecture"
+  --environment "container engine=podman"
   --started "$(tr -d '[:space:]' < "$results/started")"
   --finished "$(tr -d '[:space:]' < "$results/finished")"
   --ran "yoke-verify=unreleased@$(git -C "$root" rev-parse --short HEAD 2>/dev/null)"
