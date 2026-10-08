@@ -344,21 +344,25 @@ func TestABurstLargerThanTheQueueIsWrittenWhole(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("appending a burst never returned")
 	}
-	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(20 * time.Millisecond) {
-		got, err := s.Entries(0)
+	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(200 * time.Millisecond) {
+		last, err := s.Last()
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(got) == 10_000 {
-			for i, e := range got {
-				if e.Message != strconv.Itoa(i) {
-					t.Fatalf("entry %d is %q", i, e.Message)
-				}
-			}
-			return
+		if last == 10_000 {
+			break
 		}
 		if time.Now().After(deadline) {
-			t.Fatalf("%d of 10000 were stored", len(got))
+			t.Fatalf("%d of 10000 were stored", last)
+		}
+	}
+	got, err := s.Entries(0)
+	if err != nil || len(got) != 10_000 {
+		t.Fatalf("%d entries read (%v)", len(got), err)
+	}
+	for i, e := range got {
+		if e.Message != strconv.Itoa(i) {
+			t.Fatalf("entry %d is %q", i, e.Message)
 		}
 	}
 }
