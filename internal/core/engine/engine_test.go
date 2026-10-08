@@ -59,7 +59,7 @@ func short(t *testing.T) string {
 }
 
 // serve binds f on a local socket and returns its address as the configuration names it.
-func serve(t *testing.T, f *fake) string {
+func serve(t *testing.T, f http.Handler) string {
 	t.Helper()
 	path := filepath.Join(short(t), "engine.sock")
 	l, err := net.Listen("unix", path)
