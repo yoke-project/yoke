@@ -133,8 +133,13 @@ func launch() engine.Launch {
 		Incarnation: 4, UID: 1000, GID: 1000}
 }
 
-func ctx(t *testing.T) context.Context {
-	c, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+func ctx(t *testing.T) context.Context { return bounded(t, 5*time.Second) }
+
+// patient is the bound for a real engine, which can be slow on its first answers when the host is busy.
+func patient(t *testing.T) context.Context { return bounded(t, time.Minute) }
+
+func bounded(t *testing.T, d time.Duration) context.Context {
+	c, cancel := context.WithTimeout(context.Background(), d)
 	t.Cleanup(cancel)
 	return c
 }
@@ -294,22 +299,22 @@ func TestUnderRootlessPodmanAContainerRunsAsTheLauncher(t *testing.T) {
 	image := fixtureImage(t)
 	e := podmanService(t)
 	instance := "l3-" + strconv.Itoa(os.Getpid())
-	events, err := e.Events(ctx(t), instance)
+	events, err := e.Events(patient(t), instance)
 	if err != nil {
 		t.Fatal(err)
 	}
 	dir := short(t)
-	id, err := e.Create(ctx(t), engine.Launch{Image: image, Env: []string{"WRITE=" + filepath.Join(dir, "written")}, Directory: dir,
+	id, err := e.Create(patient(t), engine.Launch{Image: image, Env: []string{"WRITE=" + filepath.Join(dir, "written")}, Directory: dir,
 		Instance: instance, Unit: "probe", Incarnation: 1, UID: os.Getuid(), GID: os.Getgid()})
 	if err != nil {
 		t.Fatal(err)
 	}
 	var stdout, stderr bytes.Buffer
-	attached, err := e.Attach(ctx(t), id, &stdout, &stderr)
+	attached, err := e.Attach(patient(t), id, &stdout, &stderr)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := e.Start(ctx(t), id); err != nil {
+	if err := e.Start(patient(t), id); err != nil {
 		t.Fatal(err)
 	}
 	status := -1
@@ -320,7 +325,7 @@ func TestUnderRootlessPodmanAContainerRunsAsTheLauncher(t *testing.T) {
 		}
 	}
 	<-attached
-	if err := e.Remove(ctx(t), id); err != nil {
+	if err := e.Remove(patient(t), id); err != nil {
 		t.Error(err)
 	}
 	said := stdout.String()
@@ -378,7 +383,7 @@ func podmanService(t *testing.T) *engine.Engine {
 			t.Fatal("Podman's API never appeared")
 		}
 	}
-	e, err := engine.Reach(ctx(t), "unix://"+socket)
+	e, err := engine.Reach(patient(t), "unix://"+socket)
 	if err != nil {
 		t.Fatal(err)
 	}

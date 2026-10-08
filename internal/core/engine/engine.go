@@ -34,6 +34,7 @@ type Engine struct {
 	Version  string
 
 	address string
+	path    string // the socket's path, which a hijacked connection dials itself
 	client  *http.Client
 }
 
@@ -83,7 +84,7 @@ func Reach(ctx context.Context, address string) (*Engine, error) {
 	if !ok || !strings.HasPrefix(path, "/") {
 		return nil, &Refused{Address: address}
 	}
-	e := &Engine{address: address, client: &http.Client{Transport: &http.Transport{
+	e := &Engine{address: address, path: path, client: &http.Client{Transport: &http.Transport{
 		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 			var d net.Dialer
 			return d.DialContext(ctx, "unix", path)
