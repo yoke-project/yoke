@@ -10,17 +10,32 @@ import (
 	"github.com/yoke-project/yoke/internal/core/logstore"
 )
 
-// fill appends n entries to unit's group, at, each a message of ten bytes, and waits until they are written.
+// fill appends n entries to unit's group, at, each a message of ten bytes, and waits until they are
+// written — by the store's last sequence, which deletions do not move back.
 func fill(t *testing.T, s *logstore.Store, unit string, incarnation uint64, at time.Time, n int, severity int, detail []byte) {
 	t.Helper()
-	before, _ := s.Entries(0)
+	before, err := s.Last()
+	if err != nil {
+		t.Fatal(err)
+	}
 	for i := 0; i < n; i++ {
 		if err := s.Append(logstore.Entry{At: at, Unit: unit, Incarnation: incarnation, Source: logstore.Stdout,
 			Severity: severity, Message: "0123456789", Detail: detail}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	stored(t, s, len(before)+n)
+	for deadline := time.Now().Add(30 * time.Second); ; time.Sleep(20 * time.Millisecond) {
+		last, err := s.Last()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if last >= before+uint64(n) {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("%d of %d entries were stored", last-before, n)
+		}
+	}
 }
 
 // of are the entries of a group, oldest first.
