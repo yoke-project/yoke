@@ -399,9 +399,9 @@ func (c *Core) ask(ctx context.Context, actor event.Actor, r *administrativev1.R
 	var failed *session.UnitFailed
 	switch {
 	case errors.As(err, &refused) && refused.Code == pluginv1.Code_CODE_SCOPE_WITHHELD:
-		return nil, &administrativev1.Refusal{Code: "scope.withheld", Message: refused.Error(), Detail: &administrativev1.Refusal_Item{Item: q.GetType()}}
+		return nil, &administrativev1.Refusal{Code: "scope.withheld", Message: refused.Reason, Detail: &administrativev1.Refusal_Item{Item: q.GetType()}}
 	case errors.As(err, &refused) && refused.Code == pluginv1.Code_CODE_SCOPE_UNDECLARED:
-		return nil, &administrativev1.Refusal{Code: "scope.undeclared", Message: refused.Error(), Detail: &administrativev1.Refusal_Item{Item: q.GetType()}}
+		return nil, &administrativev1.Refusal{Code: "scope.undeclared", Message: refused.Reason, Detail: &administrativev1.Refusal_Item{Item: q.GetType()}}
 	case errors.As(err, &failed):
 		return nil, unitFailed(failed)
 	case errors.As(err, &refused):
