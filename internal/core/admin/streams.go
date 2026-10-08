@@ -64,7 +64,7 @@ func (c *Core) instruct(ctx context.Context, id, stream string, control *pluginv
 	case errors.As(err, &failed):
 		return nil, unitFailed(failed)
 	case errors.As(err, &refused) && refused.Code == pluginv1.Code_CODE_SCOPE_WITHHELD:
-		return nil, &administrativev1.Refusal{Code: "scope.withheld", Message: refused.Error(), Detail: &administrativev1.Refusal_Item{Item: stream}}
+		return nil, &administrativev1.Refusal{Code: "scope.withheld", Message: refused.Reason, Detail: &administrativev1.Refusal_Item{Item: stream}}
 	case errors.As(err, &refused):
 		return nil, refusal("operation.malformed", refused.Error())
 	case errors.Is(err, context.DeadlineExceeded):
