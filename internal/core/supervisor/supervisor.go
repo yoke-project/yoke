@@ -7,6 +7,7 @@
 package supervisor
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -22,6 +23,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/yoke-project/yoke/internal/core/engine"
 	"github.com/yoke-project/yoke/internal/core/event"
 	"github.com/yoke-project/yoke/internal/core/unit"
 )
@@ -32,6 +34,7 @@ type Unit struct {
 	Kind             unit.Kind
 	Plugin           string // the plugin a Plugin unit is a copy of
 	Exec             string // the resolved executable
+	Image            string // an image pinned by digest, for a unit that runs in a container; then Exec is empty
 	Digest           string // `sha256:<hex>`, the identity the executable must have; empty where there is none to compare
 	Args             []string
 	Env              map[string]string
@@ -70,7 +73,10 @@ type Output interface {
 
 // Config is what a supervisor is built with.
 type Config struct {
-	Root         string // the instance root: every path handed to a unit derives from it
+	Root     string // the instance root: every path handed to a unit derives from it
+	Instance string // the instance's identity, which labels its containers and names its slice
+	// Containers is the engine a unit naming an image is launched on; nil where none was reached.
+	Containers   Containers
 	Policy       Policy
 	Incarnations Incarnations
 	Tokens       Tokens
@@ -83,6 +89,16 @@ type Config struct {
 	// Publish is told each state a unit's life enters, as the event the Core concluded. It never waits.
 	// Optional.
 	Publish func(event.Event)
+}
+
+// Containers is what the supervisor asks of a container engine.
+type Containers interface {
+	Create(ctx context.Context, l engine.Launch) (string, error)
+	Attach(ctx context.Context, id string, stdout, stderr io.Writer) (<-chan struct{}, error)
+	Start(ctx context.Context, id string) error
+	Signal(ctx context.Context, id, signal string) error
+	Remove(ctx context.Context, id string) error
+	Events(ctx context.Context, instance string) (<-chan engine.Event, error)
 }
 
 // Status is what is observed of a unit: its state, and the facts about its next incarnation.
