@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -97,6 +98,9 @@ func TestUnitStreamStartCreatesTheTransportThenActivates(t *testing.T) {
 		_, ref := b.call(t, streamRequest(true, c.unit, c.stream))
 		if ref.GetCode() != c.code || ref.GetItem()+ref.GetSubject().GetIdentity() != c.names {
 			t.Errorf("starting %s of %s was refused %v, want %s naming %s", c.stream, c.unit, ref, c.code, c.names)
+		}
+		if strings.Contains(ref.GetMessage(), ref.GetCode()) {
+			t.Errorf("starting %s of %s was refused with the code in its message: %q", c.stream, c.unit, ref.GetMessage())
 		}
 		if active := svc.Active(c.unit); len(active) != 0 {
 			t.Errorf("starting %s of %s left %v open", c.stream, c.unit, active)

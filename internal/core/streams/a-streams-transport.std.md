@@ -74,14 +74,14 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/60.27 · specs/60.34 · arch/60-administrative-surface/04 §Every operation terminates in the Core · arch/60-administrative-surface/04 §What every answer carries · arch/45-events/06 §The set |
+| **Cites** | specs/60.27 · specs/60.34 · arch/60-administrative-surface/04 §Every operation terminates in the Core · arch/60-administrative-surface/04 §What every answer carries · arch/45-events/06 §The set · arch/60-administrative-surface/07 §The shape is the corpus's |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
 | **Precondition** | a running Plugin unit with a Session, whose Manifest declares two streams of which its plugin was granted one |
 | **Action** | `unit.stream.start` for a unit nobody declared, for a stream not declared, for the stream not granted, and for the granted one, twice; then for a unit with no Session |
-| **Expected** | `subject.unknown`, `stream.undeclared` naming the stream, `scope.withheld` naming it, and `unit.no_session`, each leaving no transport; the granted stream answers a change effective immediately, previously `stopped`, with one consequence for the unit, after the transport existed and before the answer the unit was handed the activation, `unit.stream.activated` is published naming the stream, and the unit's record lists it; the second start answers that it was previously `activated` and changes nothing |
+| **Expected** | `subject.unknown`, `stream.undeclared` naming the stream, `scope.withheld` naming it with a message that does not repeat its code, and `unit.no_session`, each leaving no transport; the granted stream answers a change effective immediately, previously `stopped`, with one consequence for the unit, after the transport existed and before the answer the unit was handed the activation, `unit.stream.activated` is published naming the stream, and the unit's record lists it; the second start answers that it was previously `activated` and changes nothing |
 
 ## yoke:a-streams-transport.07 — unit.stream.stop instructs the unit, then removes the transport
 

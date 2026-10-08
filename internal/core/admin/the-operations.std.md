@@ -139,11 +139,11 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/60.47 · arch/60-administrative-surface/07 §This surface's codes · arch/50-plugin-surface/05 §An error answering the Core's message closes the exchange |
+| **Cites** | specs/60.47 · arch/60-administrative-surface/07 §This surface's codes · arch/60-administrative-surface/07 §The shape is the corpus's · arch/50-plugin-surface/05 §An error answering the Core's message closes the exchange |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
 | **Precondition** | a running unit with a Session, which answers one question with an error |
 | **Action** | `unit.ask` with a type its Plugin never declared; then with the type it fails |
-| **Expected** | the first is refused `scope.undeclared` naming the type; the second is refused `unit.failed`, its detail carrying the unit's code and its message the unit's |
+| **Expected** | the first is refused `scope.undeclared` naming the type, its message not repeating its code; the second is refused `unit.failed`, its detail carrying the unit's code and its message the unit's |

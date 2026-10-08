@@ -1,6 +1,7 @@
 package admin_test
 
 import (
+	"strings"
 	"testing"
 
 	administrativev1 "github.com/yoke-project/yoke/proto/yoke/administrative/v1"
@@ -14,7 +15,7 @@ func TestAnUndeclaredQuestionAndAUnitsErrorAreRefusedAsWhatTheyAre(t *testing.T)
 			Unit: "acquire", Type: typ, Question: []byte("?")}}}))
 		return ref
 	}
-	if ref := ask("undeclared.type"); ref.GetCode() != "scope.undeclared" || ref.GetItem() != "undeclared.type" {
+	if ref := ask("undeclared.type"); ref.GetCode() != "scope.undeclared" || ref.GetItem() != "undeclared.type" || strings.Contains(ref.GetMessage(), ref.GetCode()) {
 		t.Errorf("a question of an undeclared type was refused %v", ref)
 	}
 	if ref := ask("head-status"); ref.GetCode() != "unit.failed" || ref.GetItem() != "instrument.busy" || ref.GetMessage() != "the lamp is warming" {
