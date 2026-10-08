@@ -167,7 +167,7 @@ func TestTheProcessIsHandedWhatItNeeds(t *testing.T) {
 		s.Launch(u)
 	}
 	until(t, "both units telling what they received", 5*time.Second, func() bool {
-		return strings.Count(strings.Join(out.all(), "\n"), "args ") >= 2
+		return saidArgs(out.all(), "tell-"+string(unit.Plugin)) && saidArgs(out.all(), "tell-"+string(unit.Oneshot))
 	})
 	root := s.Root()
 	for _, kind := range []unit.Kind{unit.Plugin, unit.Oneshot} {
@@ -381,4 +381,14 @@ func TestASupervisorThatCannotObserveConcludesNothing(t *testing.T) {
 	if status.Unobservable || status.State != unit.Running {
 		t.Errorf("after the source returned: %+v", status)
 	}
+}
+
+// saidArgs says whether the unit id has told the arguments it was handed, which it tells last.
+func saidArgs(lines []string, id string) bool {
+	for _, line := range lines {
+		if strings.HasPrefix(line, id+"#") && strings.Contains(line, " args ") {
+			return true
+		}
+	}
+	return false
 }
