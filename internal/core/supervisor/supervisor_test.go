@@ -27,6 +27,10 @@ func TestMain(m *testing.M) {
 		os.Exit(m.Run())
 	case "exit-0":
 		os.Exit(0)
+	case "announce":
+		// The containerised oneshot's line: who it runs as.
+		fmt.Printf("announced as uid=%d gid=%d\n", os.Getuid(), os.Getgid())
+		os.Exit(0)
 	case "exit-1":
 		os.Exit(1)
 	case "serve":
