@@ -108,3 +108,16 @@
 | **Precondition** | the log store's file, left by a process killed inside a write with its journal on disk |
 | **Action** | open it |
 | **Expected** | it is opened: the unfinished write is rolled back, and the schema number read from what the file holds |
+
+## yoke:the-log-store.09 — a burst larger than the write queue is written whole, and appending never waits on the writer's bookkeeping
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/30.37 · arch/40-state/03 §Insertion order is the total order |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an open store, with a reader watching it |
+| **Action** | append ten thousand entries at once, more than the write queue holds |
+| **Expected** | every append returns, and all ten thousand are stored in the order appended, within ten seconds |
