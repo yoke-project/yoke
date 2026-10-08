@@ -16,7 +16,7 @@
 | **Label** | blocking |
 | **Precondition** | an engine recording what it is asked, whose container writes a line and keeps running |
 | **Action** | launch a unit of kind `oneshot` naming an image, with arguments and an environment of its own |
-| **Expected** | the engine is asked to create a container from that image with the unit's arguments, the environment the supervisor hands a unit on the host, the instance's root as the directory, the instance, the unit and its incarnation, and the launching account's identity; it is attached before it is started; the line reaches the output under the unit and its incarnation; the unit is `Starting` |
+| **Expected** | the engine is asked to create a container from that image with the unit's arguments, the environment the supervisor hands a unit on the host, the instance's root as the directory, the instance, the unit and its incarnation, and the launching account's identity; it is attached before it is started; the line reaches the output under the unit and its incarnation; the unit is `Running`, as a oneshot whose process started is |
 
 ## yoke:the-container-backend.02 — the engine's report of a container's end is the unit's exit, and the container is removed
 
@@ -27,7 +27,7 @@
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
-| **Precondition** | an engine whose containers end on their own, the first with status 0 and the second with status 1 |
+| **Precondition** | an engine whose containers end on their own, the first with status 0 and the second with status 1; the second unit restarts on failure |
 | **Action** | launch two units of kind `oneshot` naming an image |
 | **Expected** | the first is `Completed` and the second `Failed`, waiting to be launched again; each container is removed once its end is concluded |
 
@@ -41,7 +41,7 @@
 | **Not applicable in** | — |
 | **Label** | blocking |
 | **Precondition** | an engine that holds no image, until the test gives it one |
-| **Action** | launch a unit naming an image; then let the engine hold it |
+| **Action** | launch a unit of kind `interface` naming an image; then let the engine hold it |
 | **Expected** | the unit is `Failed`, never `Refused`, with a failure naming the image, and waits; nothing is obtained; once the engine holds the image the next attempt is created and started |
 
 ## yoke:the-container-backend.04 — a stop signals the container, waits the stop window, ends it, and removes it
@@ -67,7 +67,7 @@
 | **Not applicable in** | — |
 | **Label** | blocking |
 | **Precondition** | a supervisor given no engine |
-| **Action** | launch a unit naming an image |
+| **Action** | launch a unit of kind `interface` naming an image, and a unit on the host beside it |
 | **Expected** | the unit is `Failed` and waits, its failure saying that no container engine is reached; a unit on the host beside it is launched as ever |
 
 ## yoke:the-container-backend.06 — the Core runs a oneshot in a container under rootless Podman

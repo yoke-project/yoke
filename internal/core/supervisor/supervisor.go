@@ -136,8 +136,9 @@ type managed struct {
 	decl        Unit
 	machine     *unit.Machine
 	status      Status
-	process     *os.Process
+	running     running // the incarnation's process, however it was launched; nil when there is none
 	exited      chan struct{}
+	launching   int // the attempt a container is being launched for, which a stop or a new attempt supersedes
 	incarnation int
 	failures    int
 	readyAt     time.Time
@@ -161,7 +162,11 @@ type Supervisor struct {
 	stopping   bool
 	quiet      bool
 	quietSince time.Time
-	held       []*managed // the units waiting on their dependencies, in the order they were given
+
+	ev       sync.Mutex          // guards what follows, never held with mu
+	events   bool                // whether the engine's events are being followed
+	watching map[string]*watched // the containers launched, by identity, until their end is concluded
+	held     []*managed          // the units waiting on their dependencies, in the order they were given
 }
 
 // New is a supervisor with no unit yet.
@@ -311,7 +316,8 @@ func (s *Supervisor) attempt(m *managed) {
 	m.incarnation = 0
 	m.status.Waiting, m.status.Failure, m.windowOut = false, "", false
 	m.exitStatus, m.hasExit = 0, false
-	m.process, m.exited = nil, nil
+	m.running, m.exited = nil, nil
+	m.launching++
 
 	if s.quiet {
 		s.failedLaunch(m, fmt.Sprintf("the %s backend cannot be reached", backend))
@@ -324,6 +330,10 @@ func (s *Supervisor) attempt(m *managed) {
 			s.failedLaunch(m, fmt.Sprintf("the directory for the unit's socket cannot be made: %v", err))
 			return
 		}
+	}
+	if m.decl.Image != "" {
+		s.inContainer(m)
+		return
 	}
 	file, err := os.Open(m.decl.Exec)
 	if err != nil {
@@ -365,7 +375,7 @@ func (s *Supervisor) attempt(m *managed) {
 	}
 	file.Close()
 
-	m.incarnation, m.process, m.exited = incarnation, command.Process, make(chan struct{})
+	m.incarnation, m.running, m.exited = incarnation, hostProcess{command.Process.Pid}, make(chan struct{})
 	m.status.Incarnation, m.status.PID, m.status.Token = incarnation, command.Process.Pid, token
 	s.publish(event.StateChanged(m.decl.ID, uint64(incarnation), "", unit.Starting))
 	m.status.Since = time.Now()
@@ -420,11 +430,11 @@ func (s *Supervisor) failedLaunch(m *managed, why string) {
 func (s *Supervisor) windowElapsed(m *managed, incarnation int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if m.incarnation != incarnation || m.machine.State() != unit.Starting || m.process == nil {
+	if m.incarnation != incarnation || m.machine.State() != unit.Starting || m.running == nil {
 		return
 	}
 	m.windowOut = true
-	syscall.Kill(-m.process.Pid, syscall.SIGKILL)
+	m.running.kill()
 }
 
 // ended is the kernel's report that an incarnation's process is gone.
@@ -434,7 +444,7 @@ func (s *Supervisor) ended(m *managed, incarnation, status int) {
 	if m.incarnation != incarnation {
 		return
 	}
-	m.process = nil
+	m.running = nil
 	m.exitStatus, m.hasExit = status, true
 	if m.windowOut {
 		s.apply(m, unit.WindowElapsed{})
@@ -464,15 +474,15 @@ func (s *Supervisor) apply(m *managed, in unit.Input) {
 		s.release(m.decl.ID)
 	}
 	// A terminal state reached while the process lingers: disposing of it follows the conclusion.
-	if moved && t.To.Terminal() && m.process != nil {
+	if moved && t.To.Terminal() && m.running != nil {
 		// Asked, given the stop window, then ended — as any ending is.
-		process, exited, window := m.process, m.exited, s.policy(m).StopWindow
-		syscall.Kill(-process.Pid, syscall.SIGTERM)
+		r, exited, window := m.running, m.exited, s.policy(m).StopWindow
 		go func() {
+			r.terminate()
 			select {
 			case <-exited:
 			case <-time.After(window):
-				syscall.Kill(-process.Pid, syscall.SIGKILL)
+				r.kill()
 			}
 		}()
 	}
@@ -593,7 +603,7 @@ func (s *Supervisor) StartUnit(unitID string) error {
 	if s.quiet {
 		return fmt.Errorf("the unit %s cannot be started on the %s backend: %w", unitID, backend, ErrUnreachable)
 	}
-	if m.held || (m.process != nil && !m.machine.State().Terminal()) {
+	if m.held || (m.running != nil && !m.machine.State().Terminal()) {
 		return nil
 	}
 	if m.restart != nil {
@@ -705,23 +715,38 @@ func (s *Supervisor) stopOne(m *managed) {
 	if m.restart != nil {
 		m.restart.Stop()
 	}
-	process, exited, window := m.process, m.exited, s.policy(m).StopWindow
-	if process == nil {
+	r, exited, window := m.running, m.exited, s.policy(m).StopWindow
+	// A container still being launched is superseded, and removed once it is.
+	m.launching++
+	if r == nil {
 		s.mu.Unlock()
 		return
 	}
 	s.apply(m, unit.StopAsked{})
 	s.mu.Unlock()
 
-	// Ask the unit's process group, so what it forked goes with it; then end what does not go.
-	syscall.Kill(-process.Pid, syscall.SIGTERM)
+	// Ask, wait the stop window, then end what did not go.
+	r.terminate()
 	select {
 	case <-exited:
 	case <-time.After(window):
-		syscall.Kill(-process.Pid, syscall.SIGKILL)
+		r.kill()
 		<-exited
 	}
 }
+
+// running is an incarnation's process, however it was launched: what ending it asks for.
+type running interface {
+	terminate()
+	kill()
+}
+
+// hostProcess is a unit launched on the host, asked through its process group so what it forked goes
+// with it.
+type hostProcess struct{ pid int }
+
+func (p hostProcess) terminate() { syscall.Kill(-p.pid, syscall.SIGTERM) }
+func (p hostProcess) kill()      { syscall.Kill(-p.pid, syscall.SIGKILL) }
 
 // lineWriter hands a unit's output on one line at a time.
 type lineWriter struct {
