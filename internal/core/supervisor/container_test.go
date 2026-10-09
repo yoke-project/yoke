@@ -2,6 +2,7 @@ package supervisor_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -31,10 +32,19 @@ type containers struct {
 	outputs  map[string][2]io.Writer
 	closers  map[string]chan struct{}
 	count    int
+
+	away     bool                     // the engine cannot be followed, nor asked what it holds
+	watch    []string                 // "events" for each time it is followed, "list" for each time it is asked what it holds
+	of       map[string]engine.Launch // what each container was created with
+	exited   map[string]int           // the status each container ended with
+	gone     map[string]bool          // containers the engine no longer holds, though nobody removed them
+	foreign  []engine.Found           // containers under the label that nobody here launched
+	returned chan struct{}            // a notice that the engine returned
 }
 
 func newContainers() *containers {
-	return &containers{removed: map[string]bool{}, outputs: map[string][2]io.Writer{}, closers: map[string]chan struct{}{}}
+	return &containers{removed: map[string]bool{}, outputs: map[string][2]io.Writer{}, closers: map[string]chan struct{}{},
+		of: map[string]engine.Launch{}, exited: map[string]int{}, gone: map[string]bool{}, returned: make(chan struct{}, 1)}
 }
 
 func (c *containers) record(act string) {
@@ -60,6 +70,7 @@ func (c *containers) Create(_ context.Context, l engine.Launch) (string, error) 
 	id := fmt.Sprintf("c%d", c.count)
 	c.asked = append(c.asked, "create "+l.Unit)
 	c.launched = append(c.launched, l)
+	c.of[id] = l
 	c.closers[id] = make(chan struct{})
 	return id, nil
 }
@@ -93,18 +104,20 @@ func (c *containers) Start(_ context.Context, id string) error {
 	return nil
 }
 
-// die ends a container: its output closes, and the engine reports its end.
+// die ends a container: its output closes, and the engine reports its end while it is followed.
 func (c *containers) die(id string, status int) {
 	c.mu.Lock()
+	defer c.mu.Unlock()
 	done, open := c.closers[id]
 	delete(c.closers, id)
-	events := c.events
-	c.mu.Unlock()
 	if !open {
 		return
 	}
 	close(done)
-	events <- engine.Event{ID: id, Action: "die", ExitCode: status}
+	c.exited[id] = status
+	if c.events != nil {
+		c.events <- engine.Event{ID: id, Action: "die", ExitCode: status}
+	}
 }
 
 func (c *containers) Signal(_ context.Context, id, signal string) error {
@@ -126,8 +139,98 @@ func (c *containers) Remove(_ context.Context, id string) error {
 func (c *containers) Events(ctx context.Context, instance string) (<-chan engine.Event, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	c.watch = append(c.watch, "events")
+	if c.away {
+		return nil, &engine.Unreachable{Address: "unix:///engine.sock", Err: errors.New("connection refused")}
+	}
 	c.events = make(chan engine.Event, 16)
 	return c.events, nil
+}
+
+func (c *containers) List(_ context.Context, instance string) ([]engine.Found, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.watch = append(c.watch, "list")
+	if c.away {
+		return nil, &engine.Unreachable{Address: "unix:///engine.sock", Err: errors.New("connection refused")}
+	}
+	var found []engine.Found
+	for id, l := range c.of {
+		if c.removed[id] || c.gone[id] {
+			continue
+		}
+		f := engine.Found{ID: id, Unit: l.Unit, Incarnation: l.Incarnation, Running: true}
+		if status, ended := c.exited[id]; ended {
+			f.Running, f.ExitCode = false, status
+		}
+		found = append(found, f)
+	}
+	for _, f := range c.foreign {
+		if !c.removed[f.ID] {
+			found = append(found, f)
+		}
+	}
+	return found, nil
+}
+
+func (c *containers) Returned(context.Context) (<-chan struct{}, error) { return c.returned, nil }
+
+// goAway is the engine going away: its event stream ends, and it cannot be followed again until it comes
+// back.
+func (c *containers) goAway() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.away = true
+	if c.events != nil {
+		close(c.events)
+		c.events = nil
+	}
+}
+
+// comeBack lets the engine be followed again; nothing is told.
+func (c *containers) comeBack() {
+	c.mu.Lock()
+	c.away = false
+	c.mu.Unlock()
+}
+
+// notice is the engine's return, as a notice.
+func (c *containers) notice() { c.returned <- struct{}{} }
+
+// endQuietly ends a container while nobody follows the engine: it is held, ended with its status.
+func (c *containers) endQuietly(id string, status int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if done, open := c.closers[id]; open {
+		close(done)
+		delete(c.closers, id)
+	}
+	c.exited[id] = status
+}
+
+// vanish is a container the engine no longer holds.
+func (c *containers) vanish(id string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if done, open := c.closers[id]; open {
+		close(done)
+		delete(c.closers, id)
+	}
+	c.gone[id] = true
+}
+
+// write is a line a running container writes on its output, to whoever is attached last.
+func (c *containers) write(id, line string) {
+	c.mu.Lock()
+	out := c.outputs[id]
+	c.mu.Unlock()
+	io.WriteString(out[0], line+"\n")
+}
+
+func (c *containers) watched() []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]string(nil), c.watch...)
 }
 
 func (c *containers) wasRemoved(id string) bool {

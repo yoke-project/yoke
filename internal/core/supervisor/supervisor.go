@@ -99,11 +99,14 @@ type Containers interface {
 	Signal(ctx context.Context, id, signal string) error
 	Remove(ctx context.Context, id string) error
 	Events(ctx context.Context, instance string) (<-chan engine.Event, error)
+	List(ctx context.Context, instance string) ([]engine.Found, error)
+	Returned(ctx context.Context) (<-chan struct{}, error)
 }
 
 // Status is what is observed of a unit: its state, and the facts about its next incarnation.
 type Status struct {
-	State unit.State
+	State   unit.State
+	Backend string
 	// Since is the moment of the last transition, and ConditionSince when the condition last changed.
 	Since          time.Time
 	ConditionSince time.Time

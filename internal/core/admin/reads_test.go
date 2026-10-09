@@ -13,6 +13,7 @@ import (
 
 	administrativev1 "github.com/yoke-project/yoke/proto/yoke/administrative/v1"
 
+	"github.com/yoke-project/yoke/internal/core/event"
 	"github.com/yoke-project/yoke/internal/core/logstore"
 	"github.com/yoke-project/yoke/internal/core/registry"
 	"github.com/yoke-project/yoke/internal/core/unit"
@@ -284,5 +285,26 @@ func TestAReadAndAQueryLeaveNoTrace(t *testing.T) {
 	defer b.events.mu.Unlock()
 	if len(b.events.events) != 0 {
 		t.Errorf("reading published %v", b.events.events)
+	}
+}
+
+// std: yoke:the-quiet-engine.06
+func TestAUnitReadWhileItsEngineIsQuietShowsItsBackendAndTheCondition(t *testing.T) {
+	quiet := time.Date(2026, 10, 9, 4, 12, 0, 0, time.UTC)
+	b := newBench(t, map[string]*fakeUnit{
+		"panel": {state: unit.Running, incarnation: 1, since: quiet, backend: "container",
+			condition: &unit.Condition{Grade: event.Notable, Line: "not currently observable: the container engine stopped reporting"}},
+		"acquire": {plugin: station, state: unit.Running, incarnation: 2, since: quiet, backend: "host"},
+	}, map[string]string{})
+	panel := b.records(t, "unit", "panel")[0].GetUnit()
+	if panel.GetDeclared().GetBackend() != "container" || panel.GetObserved().GetState() != "Running" {
+		t.Errorf("the containerised unit reads %v", panel)
+	}
+	if c := panel.GetObserved().GetCondition(); c.GetGrade() != event.Notable || !strings.Contains(c.GetLine(), "container engine") ||
+		!c.GetSince().AsTime().Equal(quiet) {
+		t.Errorf("its condition reads %v", c)
+	}
+	if got := b.records(t, "unit", "acquire")[0].GetUnit().GetDeclared().GetBackend(); got != "host" {
+		t.Errorf("the host unit's backend reads %q", got)
 	}
 }
