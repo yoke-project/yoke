@@ -129,8 +129,29 @@ type Status struct {
 	NotStarted string   // why the unit was not started, once its window ran out waiting
 }
 
-// The backend this supervisor launches on.
-const backend = "host"
+// The two backends a unit runs on: the host, where the kernel reports its process's end, and a container,
+// where the engine's events do.
+const (
+	hostBackend      = "host"
+	containerBackend = "container"
+)
+
+// backendOf is the backend a unit runs on.
+func backendOf(u Unit) string {
+	if u.Image != "" {
+		return containerBackend
+	}
+	return hostBackend
+}
+
+// unobserved is the condition a unit carries while its backend is quiet: the one the Core grades itself.
+func unobserved(backend string) unit.Condition {
+	source := "the host"
+	if backend == containerBackend {
+		source = "the container engine"
+	}
+	return unit.Condition{Grade: event.Notable, Line: "not currently observable: " + source + " has stopped reporting"}
+}
 
 // ErrUnreachable is the error of an act that needs the backend while it cannot be reached.
 var ErrUnreachable = errors.New("the backend cannot be reached")
@@ -158,23 +179,31 @@ type managed struct {
 type Supervisor struct {
 	cfg Config
 
-	mu         sync.Mutex
-	units      map[string]*managed
-	order      []string
-	stopOrder  []string
-	stopping   bool
-	quiet      bool
-	quietSince time.Time
+	mu        sync.Mutex
+	units     map[string]*managed
+	order     []string
+	stopOrder []string
+	stopping  bool
+	quiet     map[string]time.Time // the backends gone quiet, and since when
 
-	ev       sync.Mutex          // guards what follows, never held with mu
-	events   bool                // whether the engine's events are being followed
-	watching map[string]*watched // the containers launched, by identity, until their end is concluded
-	held     []*managed          // the units waiting on their dependencies, in the order they were given
+	life context.Context // ends once the supervisor has stopped, and what follows the engine with it
+	end  context.CancelFunc
+
+	follows sync.Mutex // held while the engine is followed again and reconciled with, never with mu or ev
+
+	ev        sync.Mutex          // guards what follows, never held with mu
+	events    bool                // whether the engine's events are being followed
+	returning bool                // whether the engine's return is being waited for
+	watching  map[string]*watched // the containers launched, by identity, until their end is concluded
+	inflight  map[string]bool     // the lives being launched in a container, as unit#incarnation
+	held      []*managed          // the units waiting on their dependencies, in the order they were given
 }
 
 // New is a supervisor with no unit yet.
 func New(cfg Config) *Supervisor {
-	return &Supervisor{cfg: cfg, units: map[string]*managed{}}
+	life, end := context.WithCancel(context.Background())
+	return &Supervisor{cfg: cfg, units: map[string]*managed{}, quiet: map[string]time.Time{}, life: life, end: end,
+		watching: map[string]*watched{}, inflight: map[string]bool{}}
 }
 
 // Root is the instance root the supervisor derives a unit's paths from.
@@ -322,8 +351,10 @@ func (s *Supervisor) attempt(m *managed) {
 	m.running, m.exited = nil, nil
 	m.launching++
 
-	if s.quiet {
-		s.failedLaunch(m, fmt.Sprintf("the %s backend cannot be reached", backend))
+	// A launch on a quiet host fails as an attempt; one in a container tries to reach the engine, and fails
+	// as an attempt where it cannot.
+	if _, quiet := s.quiet[hostBackend]; quiet && backendOf(m.decl) == hostBackend {
+		s.failedLaunch(m, fmt.Sprintf("the %s backend cannot be reached", hostBackend))
 		return
 	}
 	// A Plugin unit binds its own socket under plugins/, which the Core provides: the unit supplies the
@@ -557,38 +588,95 @@ func (s *Supervisor) Status(unitID string) Status {
 	}
 	status := m.status
 	status.Awaiting = append([]string(nil), m.status.Awaiting...)
-	status.Unobservable, status.UnobservableSince = s.quiet, s.quietSince
-	if !s.quiet {
-		status.UnobservableSince = time.Time{}
+	status.Backend = backendOf(m.decl)
+	if since, quiet := s.quiet[status.Backend]; quiet {
+		// The condition the Core concluded stands in front of whatever the unit last reported, for as long
+		// as its cause lasts.
+		status.Unobservable, status.UnobservableSince = true, since
+		status.Condition, status.HasCondition, status.ConditionSince = unobserved(status.Backend), true, since
 	}
 	return status
 }
 
-// Quiet records that the backend's source of facts has gone quiet, and since when. Nothing concludes.
+// Quiet records that the host's source of facts has gone quiet, and since when. Nothing concludes.
 func (s *Supervisor) Quiet(since time.Time) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.quiet, s.quietSince = true, since
+	s.goQuiet(hostBackend, since)
 }
 
-// Observable records that the source of facts has returned.
+// Observable records that the host's source of facts has returned.
 func (s *Supervisor) Observable() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.quiet, s.quietSince = false, time.Time{}
+	s.observable(hostBackend)
+}
+
+// goQuiet records that a backend's facts stopped arriving, and since when: each unit on it keeps its
+// state and carries the condition, which is published. Lock held.
+func (s *Supervisor) goQuiet(backend string, since time.Time) {
+	if _, quiet := s.quiet[backend]; quiet {
+		return
+	}
+	s.quiet[backend] = since
+	line := unobserved(backend).Line
+	for _, id := range s.order {
+		m := s.units[id]
+		if backendOf(m.decl) != backend {
+			continue
+		}
+		var from *int
+		if own, has := m.machine.Condition(); has {
+			from = &own.Grade
+		}
+		s.publish(event.Unobservable(id, uint64(m.incarnation), from, line))
+	}
+}
+
+// observable records that a backend's facts arrive again: each unit on it carries its own condition again,
+// or none, and that is published. Lock held.
+func (s *Supervisor) observable(backend string) {
+	if _, quiet := s.quiet[backend]; !quiet {
+		return
+	}
+	delete(s.quiet, backend)
+	for _, id := range s.order {
+		m := s.units[id]
+		if backendOf(m.decl) != backend {
+			continue
+		}
+		var own *unit.Condition
+		if c, has := m.machine.Condition(); has {
+			own = &c
+		}
+		s.publish(event.Observable(id, uint64(m.incarnation), own))
+	}
+}
+
+// unreachable is the fault of an operation on a unit whose backend is quiet, naming the backend; nil where
+// it is not. Lock held.
+func (s *Supervisor) unreachable(m *managed, op string) error {
+	backend := backendOf(m.decl)
+	if _, quiet := s.quiet[backend]; !quiet {
+		return nil
+	}
+	return fmt.Errorf("the unit %s cannot be %s on the %s backend: %w", m.decl.ID, op, backend, ErrUnreachable)
 }
 
 // StopUnit stops one unit: asks, waits the stop window, then ends it.
 func (s *Supervisor) StopUnit(unitID string) error {
 	s.mu.Lock()
 	m, ok := s.units[unitID]
-	quiet := s.quiet
+	var fault error
+	if ok {
+		fault = s.unreachable(m, "stopped")
+	}
 	s.mu.Unlock()
 	if !ok {
 		return fmt.Errorf("no unit %s", unitID)
 	}
-	if quiet {
-		return fmt.Errorf("the unit %s cannot be stopped on the %s backend: %w", unitID, backend, ErrUnreachable)
+	if fault != nil {
+		return fault
 	}
 	s.stopOne(m)
 	return nil
@@ -603,8 +691,8 @@ func (s *Supervisor) StartUnit(unitID string) error {
 	if !ok {
 		return fmt.Errorf("no unit %s", unitID)
 	}
-	if s.quiet {
-		return fmt.Errorf("the unit %s cannot be started on the %s backend: %w", unitID, backend, ErrUnreachable)
+	if err := s.unreachable(m, "started"); err != nil {
+		return err
 	}
 	if m.held || (m.running != nil && !m.machine.State().Terminal()) {
 		return nil
@@ -695,14 +783,16 @@ func (s *Supervisor) Stop() error {
 		s.mu.Lock()
 		m := s.units[order[i]]
 		s.stopOrder = append(s.stopOrder, order[i])
-		quiet := s.quiet
+		fault := s.unreachable(m, "stopped")
 		s.mu.Unlock()
-		if quiet {
-			failed = append(failed, fmt.Errorf("the unit %s cannot be stopped on the %s backend: %w", order[i], backend, ErrUnreachable))
+		if fault != nil {
+			failed = append(failed, fault)
 			continue
 		}
 		s.stopOne(m)
 	}
+	// Nothing is followed once everything that could be stopped has been.
+	s.end()
 	return errors.Join(failed...)
 }
 

@@ -91,8 +91,12 @@ func (c *Core) Records(kind, identity string) ([]*administrativev1.Record, *admi
 func (c *Core) unitRecord(id string) *administrativev1.UnitRecord {
 	plugin, _ := c.Units.Plugin(id)
 	st := c.Units.Status(id)
+	backend := st.Backend
+	if backend == "" {
+		backend = "host"
+	}
 	r := &administrativev1.UnitRecord{
-		Declared: &administrativev1.UnitRecord_Declared{Identity: id, Kind: string(c.Units.Kind(id)), Backend: "host", Plugin: plugin},
+		Declared: &administrativev1.UnitRecord_Declared{Identity: id, Kind: string(c.Units.Kind(id)), Backend: backend, Plugin: plugin},
 		Observed: &administrativev1.UnitRecord_Observed{State: string(st.State), Incarnation: uint64(st.Incarnation), Since: stamp(st.Since)},
 	}
 	if c.Streams != nil {
