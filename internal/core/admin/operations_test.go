@@ -35,6 +35,7 @@ type fakeUnit struct {
 	incarnation int
 	since       time.Time
 	condition   *unit.Condition
+	backend     string
 }
 
 // fakeUnits is a supervisor that does at once what it is asked.
@@ -91,7 +92,7 @@ func (f *fakeUnits) Status(id string) supervisor.Status {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if u, ok := f.units[id]; ok {
-		st := supervisor.Status{State: u.state, Incarnation: u.incarnation, Since: u.since}
+		st := supervisor.Status{State: u.state, Incarnation: u.incarnation, Since: u.since, Backend: u.backend}
 		if u.condition != nil {
 			st.Condition, st.HasCondition, st.ConditionSince = *u.condition, true, u.since
 		}

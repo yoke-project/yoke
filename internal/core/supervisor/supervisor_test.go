@@ -33,6 +33,11 @@ func TestMain(m *testing.M) {
 		os.Exit(0)
 	case "exit-1":
 		os.Exit(1)
+	case "linger":
+		// The containerised oneshot that outlasts its engine: it waits, says so, and completes.
+		time.Sleep(6 * time.Second)
+		fmt.Println("lingered")
+		os.Exit(0)
 	case "serve":
 		time.Sleep(time.Hour)
 	case "exit-soon":
