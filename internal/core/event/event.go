@@ -236,6 +236,33 @@ func ConditionChanged(unitID string, incarnation uint64, from *int, to int, line
 	return e
 }
 
+// Unobservable is the Core's conclusion that a unit's backend went quiet: the unit carries the condition
+// that it is not currently observable, the one condition the Core grades itself. from is the grade the
+// unit had reported, nil where it had not.
+func Unobservable(unitID string, incarnation uint64, from *int, line string) Event {
+	detail := map[string]any{"to": Notable, "message": line}
+	if from != nil {
+		detail["from"] = *from
+	}
+	e := concluded("unit.condition.changed", UnitSubject(unitID, incarnation), Notable, detail)
+	e.Line = line
+	return e
+}
+
+// Observable is the Core's conclusion that a unit's backend returned: the condition is the unit's own
+// again, or none where it never reported.
+func Observable(unitID string, incarnation uint64, to *unit.Condition) Event {
+	detail := map[string]any{"from": Notable}
+	if to != nil {
+		detail["to"], detail["message"] = to.Grade, to.Line
+	}
+	e := concluded("unit.condition.changed", UnitSubject(unitID, incarnation), Routine, detail)
+	if to != nil {
+		e.Line = to.Line
+	}
+	return e
+}
+
 // Names are the types a producer in this Core emits.
 func Names() []string {
 	names := make([]string, 0, len(declared))
