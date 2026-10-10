@@ -58,6 +58,16 @@ func TestTheCoreRunsAOneshotInAContainer(t *testing.T) {
 // lines it writes, one at a time.
 func coreWith(t *testing.T, socket, units string) (*exec.Cmd, <-chan string) {
 	t.Helper()
+	return deployed(t, socket, units).start(t)
+}
+
+// deployment is a built Core and the configuration it is started with, which a case can start again.
+type deployment struct{ binary, config, composition string }
+
+// deployed builds the Core and writes its configuration, with the engine at socket and a composition of
+// units.
+func deployed(t *testing.T, socket, units string) deployment {
+	t.Helper()
 	binary := filepath.Join(t.TempDir(), "yoke-core")
 	if said, err := exec.Command("go", "build", "-o", binary, "github.com/yoke-project/yoke/cmd/yoke-core").CombinedOutput(); err != nil {
 		t.Fatalf("yoke-core does not build: %v\n%s", err, said)
@@ -72,8 +82,14 @@ func coreWith(t *testing.T, socket, units string) (*exec.Cmd, <-chan string) {
 	config := filepath.Join(dir, "core.yaml")
 	os.WriteFile(config, []byte(fmt.Sprintf("state_dir: %s/state\nruntime_dir: %s\nengine: unix://%s\nplugins:\n  manifests: %s/plugins.d\n  executables: %s/plugins\n",
 		dir, run, socket, dir, dir)), 0o644)
-	core := exec.Command(binary)
-	core.Env = append(os.Environ(), "YOKE_CONFIG="+config, "YOKE_COMPOSITION="+composition)
+	return deployment{binary, config, composition}
+}
+
+// start starts the Core, and returns it and the lines it writes, one at a time.
+func (d deployment) start(t *testing.T) (*exec.Cmd, <-chan string) {
+	t.Helper()
+	core := exec.Command(d.binary)
+	core.Env = append(os.Environ(), "YOKE_CONFIG="+d.config, "YOKE_COMPOSITION="+d.composition)
 	out, _ := core.StderrPipe()
 	if err := core.Start(); err != nil {
 		t.Fatal(err)

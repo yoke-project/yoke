@@ -28,6 +28,7 @@ type containers struct {
 	asked    []string // the acts, in order: "create <unit>", "attach <id>", "start <id>", "signal <id> <sig>", "remove <id>"
 	launched []engine.Launch
 	removed  map[string]bool
+	refuses  map[string]bool // containers the engine will not remove
 	events   chan engine.Event
 	outputs  map[string][2]io.Writer
 	closers  map[string]chan struct{}
@@ -131,8 +132,11 @@ func (c *containers) Signal(_ context.Context, id, signal string) error {
 func (c *containers) Remove(_ context.Context, id string) error {
 	c.record("remove " + id)
 	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.refuses[id] {
+		return fmt.Errorf("the engine would not remove %s: 500 removal of container %s is already in progress", id, id)
+	}
 	c.removed[id] = true
-	c.mu.Unlock()
 	return nil
 }
 
