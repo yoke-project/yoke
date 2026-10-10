@@ -273,3 +273,32 @@ func TestTheReturnIsLearntFromANoticeAndNeverOnATimer(t *testing.T) {
 		t.Errorf("after the notice the engine was %v", back)
 	}
 }
+
+// std: yoke:the-quiet-engine.08
+func TestOnlyTheUnitsRunningOnAQuietEngineCarryTheCondition(t *testing.T) {
+	c := newContainers()
+	c.ends = []int{0}
+	s, _, pub := beside(t, c, patient())
+	s.Launch(imaged("calibrate", unit.Oneshot))
+	until(t, "the oneshot completed", 3*time.Second, func() bool { return s.Status("calibrate").State == unit.Completed })
+	s.Launch(imaged("panel", unit.Interface))
+	until(t, "the interface running", 3*time.Second, allRunning(s, "panel"))
+
+	c.goAway()
+	until(t, "the running unit unobservable", 3*time.Second, unobservable(s, "panel"))
+	if st := s.Status("calibrate"); st.Unobservable || st.HasCondition || st.State != unit.Completed {
+		t.Errorf("the concluded unit is %+v", st)
+	}
+	if got := pub.conditions("calibrate"); len(got) != 0 {
+		t.Errorf("published about the concluded unit while the engine was away: %+v", got)
+	}
+	c.comeBack()
+	c.notice()
+	until(t, "the running unit observable again", 3*time.Second, func() bool { return !s.Status("panel").Unobservable })
+	if got := pub.conditions("calibrate"); len(got) != 0 {
+		t.Errorf("published about the concluded unit on the engine's return: %+v", got)
+	}
+	if got := pub.conditions("panel"); len(got) != 2 {
+		t.Errorf("published about the running unit: %+v", got)
+	}
+}

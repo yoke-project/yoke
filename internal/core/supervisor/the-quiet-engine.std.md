@@ -95,3 +95,16 @@
 | **Precondition** | rootless Podman serving its API on a socket the Core is configured with; a fixture image, built by the test over `scratch` and referenced by its digest, whose process waits a few seconds and exits 0; a composition with one unit of kind `oneshot` naming it |
 | **Action** | start the Core and wait for the unit to run; kill the API service; wait for the container to end; serve the API on the same socket again; then stop the Core |
 | **Expected** | while the service is away the unit carries the condition and is not concluded; after it returns the condition is cleared, the unit is `Completed` on its first incarnation and no second one is launched; once the Core has stopped, the engine holds no container under the instance's label |
+
+## yoke:the-quiet-engine.08 — only the units running on a quiet engine carry the condition
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/20.20 · specs/45.26 · arch/30-core/05 §When the source of facts goes quiet · arch/35-units/05 §Driving the engine · arch/35-units/03 §Three things that look like states and are not |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an engine whose first container ends on its own with status 0 and whose second keeps running; a unit of kind `oneshot` and one of kind `interface`, each naming an image |
+| **Action** | launch the oneshot and let it complete; launch the interface; end the engine's events; then let it return |
+| **Expected** | the running interface carries the condition while the engine is away, and is observable again on its return; the completed oneshot stays `Completed`, never carries the condition, and nothing is published about it on either the departure or the return |
