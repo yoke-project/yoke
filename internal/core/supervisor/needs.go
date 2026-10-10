@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 )
@@ -68,10 +69,22 @@ func (x *expansion) device(path string) error {
 		return fmt.Errorf("the device bound to %s does not exist on this host", path)
 	}
 	x.devices = append(x.devices, path)
-	if st, ok := info.Sys().(*syscall.Stat_t); ok {
+	// The owning group is carried only where it is the account's way in: a node every account may use needs
+	// none, and a group the account is not in grants it nothing. Asking a rootless engine to keep the
+	// account's groups when none is needed only adds a step that can fail.
+	if st, ok := info.Sys().(*syscall.Stat_t); ok && info.Mode().Perm()&0o006 != 0o006 && member(int(st.Gid)) {
 		x.groups = append(x.groups, int(st.Gid))
 	}
 	return nil
+}
+
+// member says whether the account running the Core is in the group.
+func member(gid int) bool {
+	if gid == os.Getgid() {
+		return true
+	}
+	groups, _ := os.Getgroups()
+	return slices.Contains(groups, gid)
 }
 
 // display finds Wayland's socket and X11's in the Core's environment; either is enough, and neither is a
