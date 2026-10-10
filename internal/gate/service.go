@@ -165,6 +165,16 @@ func (c *checker) hostFacts() bool {
 			}
 		}
 	}
+	// The engine is looked for where a unit names an image, and only there.
+	if h.Engine != nil && at(Installing, Creating, Starting) && slices.ContainsFunc(c.deployment.Order, func(name string) bool {
+		return c.deployment.Units[name].Image != ""
+	}) {
+		if facts, err := h.Engine(); err != nil {
+			c.refuse("engine.unreachable", "", "the deployment declares containerised units, and the container engine cannot be reached: %v", err)
+		} else {
+			c.engine = &facts
+		}
+	}
 	if longest > SocketCeiling && at(Installing, Creating, Starting) {
 		c.refuse("socket.path.ceiling", "", "the longest socket path this deployment can produce is %d characters, %s, and the ceiling is %d", longest, longestPath, SocketCeiling)
 	}

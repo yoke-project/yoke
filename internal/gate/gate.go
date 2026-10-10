@@ -160,6 +160,7 @@ type checker struct {
 	deployment *Deployment
 	manifest   *Manifest
 	manifests  map[string]*Manifest // by plugin, the ones the document names
+	engine     *EngineFacts         // the engine phase 4 reached, where a unit names an image
 }
 
 func (c *checker) refuse(code, location, format string, args ...any) {

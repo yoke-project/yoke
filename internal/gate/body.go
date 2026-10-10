@@ -826,6 +826,9 @@ func (c *checker) weaker() bool {
 				"the channel %s is bound on the loopback address, which keeps none of the first trust layer and requires nothing of a caller", name)
 		}
 	}
+	if c.engine != nil && !c.engine.Rootless {
+		c.note("engine.rootful", "", "containerised units are driven through a root-owned daemon, which can do anything as root on behalf of whoever reaches it")
+	}
 	return true
 }
 
