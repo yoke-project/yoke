@@ -96,6 +96,14 @@ type Host struct {
 	Executables string // where a Plugin's executable is found by its identity
 	StateDir    string // the instance's state directory, holding secrets/
 	RuntimeRoot string // the instance root, under which every socket path is derived
+	// Engine reaches the container engine. It is asked only where a unit names an image, and at most
+	// once a pass; nil looks for none.
+	Engine func() (EngineFacts, error)
+}
+
+// EngineFacts is what the gate learns of an engine it reached.
+type EngineFacts struct {
+	Rootless bool
 }
 
 // Input is what a pass is given. A phase whose inputs are absent is named as not run: phase 3 needs the
