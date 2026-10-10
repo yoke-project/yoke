@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -58,6 +59,42 @@ func TestMain(m *testing.M) {
 			fmt.Printf("env %s=%s set=%v\n", name, value, set)
 		}
 		fmt.Printf("args %d %q\n", len(os.Args)-1, os.Args[1:])
+		os.Exit(0)
+	case "keep":
+		// The storage need's oneshot: how its directory was found, and whether an earlier life wrote in it.
+		dir := os.Args[1]
+		info, err := os.Stat(dir)
+		if err != nil {
+			fmt.Println("no directory:", err)
+			os.Exit(1)
+		}
+		fmt.Printf("mode %o uid %d\n", info.Mode().Perm(), info.Sys().(*syscall.Stat_t).Uid)
+		if _, err := os.Stat(filepath.Join(dir, "kept")); err == nil {
+			fmt.Println("found what was kept")
+		}
+		os.WriteFile(filepath.Join(dir, "kept"), []byte("kept"), 0o600)
+		os.Exit(0)
+	case "needs":
+		// The containerised oneshot that uses its needs: it writes its storage, opens its device, and counts
+		// the interfaces other than loopback.
+		if err := os.WriteFile(filepath.Join(os.Args[1], "written-"+os.Getenv("YOKE_UNIT")), nil, 0o600); err != nil {
+			fmt.Println("not written:", err)
+			os.Exit(1)
+		}
+		device, err := os.OpenFile(os.Args[2], os.O_WRONLY, 0)
+		if err != nil {
+			fmt.Println("not opened:", err)
+			os.Exit(1)
+		}
+		device.Close()
+		interfaces, _ := net.Interfaces()
+		others := 0
+		for _, i := range interfaces {
+			if i.Flags&net.FlagLoopback == 0 {
+				others++
+			}
+		}
+		fmt.Printf("wrote opened interfaces=%d\n", others)
 		os.Exit(0)
 	case "environment":
 		// Everything the process was handed.
