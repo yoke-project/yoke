@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sync"
+	"sync/atomic"
 
 	interfacev1 "github.com/yoke-project/yoke/proto/yoke/interface/v1"
 
@@ -102,7 +103,13 @@ func (s *Surface) subscribeStream(r *interfacev1.Request, a *attachment) (*inter
 		size = Queued
 	}
 	frames := make(chan streams.Frame, size)
+	// Once behind, the delivery accepts nothing more: the release is asynchronous, and a frame accepted
+	// while it lands would reach the client after the one dropped.
+	var behind atomic.Bool
 	carry := func(f streams.Frame) {
+		if behind.Load() {
+			return
+		}
 		// A channel suspended dark keeps its deliveries and they carry nothing.
 		if s.cfg.Arbiter != nil {
 			if suspended, grade, _, _ := s.cfg.Arbiter.State(s.cfg.Channel.Name); suspended && grade == "dark" {
@@ -113,6 +120,7 @@ func (s *Surface) subscribeStream(r *interfacev1.Request, a *attachment) (*inter
 		case frames <- f:
 		default:
 			// Behind: released, so the client learns it rather than meeting a gap.
+			behind.Store(true)
 			go held.drop(n)
 		}
 	}
