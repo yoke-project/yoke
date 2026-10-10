@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -41,6 +42,10 @@ type Launch struct {
 	Network     bool     // the engine's default network, where none is given otherwise
 }
 
+// KeepGroups is the runtime annotation that keeps the launching account's supplementary groups inside a
+// rootless container. crun honours it; a runtime that does not leaves the container with none of them.
+const KeepGroups = "run.oci.keep_original_groups"
+
 // Absent is an image the engine does not hold. The Core never obtains one.
 type Absent struct{ Image string }
 
@@ -60,10 +65,24 @@ type Event struct {
 // at the identical path and nothing else shared, no network, the three labels, the instance's slice as
 // its parent, and the launching identity held constant across the boundary as this engine needs it.
 func (e *Engine) Create(ctx context.Context, l Launch) (string, error) {
+	binds := []string{l.Directory + ":" + l.Directory}
+	for _, path := range l.Mounts {
+		binds = append(binds, path+":"+path)
+	}
 	host := map[string]any{
-		"NetworkMode":  "none",
-		"Binds":        []string{l.Directory + ":" + l.Directory},
+		"Binds":        binds,
 		"CgroupParent": Slice(l.Instance),
+	}
+	// No network unless one was asked for, and then the engine's own default.
+	if !l.Network {
+		host["NetworkMode"] = "none"
+	}
+	if len(l.Devices) > 0 {
+		var devices []map[string]string
+		for _, path := range l.Devices {
+			devices = append(devices, map[string]string{"PathOnHost": path, "PathInContainer": path, "CgroupPermissions": "rwm"})
+		}
+		host["Devices"] = devices
 	}
 	body := map[string]any{
 		"Image":  l.Image,
@@ -83,6 +102,24 @@ func (e *Engine) Create(ctx context.Context, l Launch) (string, error) {
 		body["User"] = "0:0"
 	default:
 		body["User"] = fmt.Sprintf("%d:%d", l.UID, l.GID)
+	}
+	// A device's group, as the engine can carry it: a rootless Podman maps no other group, so the runtime
+	// is asked to keep the account's own (what `--group-add keep-groups` asks, which the engine's API takes
+	// only as this annotation); a rootless Docker is given none; an engine running as root the numbers.
+	if len(l.Groups) > 0 {
+		switch {
+		case e.Kind == Podman && e.Rootless:
+			host["Annotations"] = map[string]string{KeepGroups: "1"}
+		case e.Rootless:
+		default:
+			var groups []string
+			for _, g := range l.Groups {
+				if !slices.Contains(groups, strconv.Itoa(g)) {
+					groups = append(groups, strconv.Itoa(g))
+				}
+			}
+			host["GroupAdd"] = groups
+		}
 	}
 	body["HostConfig"] = host
 	resp, err := e.do(ctx, http.MethodPost, "/containers/create", nil, body)

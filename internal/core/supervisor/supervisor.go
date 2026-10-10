@@ -378,8 +378,14 @@ func (s *Supervisor) attempt(m *managed) {
 			return
 		}
 	}
+	// Every need is expanded at every launch: what held when the instance started says nothing about now.
+	needs, err := s.expand(m.decl, m.decl.Image != "")
+	if err != nil {
+		s.failedLaunch(m, err.Error())
+		return
+	}
 	if m.decl.Image != "" {
-		s.inContainer(m)
+		s.inContainer(m, needs)
 		return
 	}
 	file, err := os.Open(m.decl.Exec)
@@ -406,7 +412,7 @@ func (s *Supervisor) attempt(m *managed) {
 	command := &exec.Cmd{
 		Path:        "/proc/self/fd/3",
 		Args:        append([]string{m.decl.Exec}, m.decl.Args...),
-		Env:         s.Environment(m.decl, token),
+		Env:         append(s.Environment(m.decl, token), needs.env...),
 		ExtraFiles:  []*os.File{file},
 		SysProcAttr: &syscall.SysProcAttr{Setpgid: true},
 		WaitDelay:   time.Second,
