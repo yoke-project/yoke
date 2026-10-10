@@ -226,3 +226,16 @@
 | **Action** | check each |
 | **Expected** | `field.type` for `2.5` and `field.value` for `0`; the last passes, with a tolerance of 5 |
 
+
+## yoke:the-gate.18 — a device is the one class a document binds
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/12.35 · specs/14.16 · specs/14.17 · specs/14.18 · arch/15-gate/03 §`units` · arch/15-gate/06 §Phase 1 — shape · arch/15-gate/06 §Phase 3 — cross-document |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | interfaces needing, in turn: `storage:datasets` binding `datasets`; `display` binding `display`; `audio` and `network` binding both; `device:head-a` binding nothing; `storage:datasets` with an argument naming `${bind.datasets}`; and `display` with an argument naming `${bind.display}` |
+| **Action** | check each |
+| **Expected** | `bind.class` naming `datasets`, then `display`, then `audio` and `network`; `unit.needs.unbound` naming `head-a`; the storage reference passes; `substitution.unresolved` naming `${bind.display}` |
