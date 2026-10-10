@@ -131,7 +131,7 @@ func (s *Supervisor) launchContainer(m *managed, attempt int, l engine.Launch, t
 	}
 	m.incarnation, m.running, m.exited = l.Incarnation, r, w.exited
 	m.status.Incarnation, m.status.PID, m.status.Token = l.Incarnation, 0, token
-	s.publish(event.StateChanged(m.decl.ID, uint64(l.Incarnation), "", unit.Starting))
+	s.publish(event.StateChangedOf(m.decl.ID, pluginOf(m.decl), uint64(l.Incarnation), "", unit.Starting))
 	m.status.Since = time.Now()
 	s.apply(m, unit.ProcessStarted{})
 	w.window = time.AfterFunc(s.policy(m).StartupWindow, func() { s.windowElapsed(m, l.Incarnation) })

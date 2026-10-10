@@ -14,7 +14,7 @@ import (
 var makes = map[string]string{
 	"instance.ready":             "InstanceReady",
 	"instance.stopping":          "InstanceStopping",
-	"unit.state.changed":         "StateChanged",
+	"unit.state.changed":         "StateChangedOf",
 	"unit.condition.changed":     "ConditionChanged",
 	"unit.occurrence.reported":   "OccurrenceReported",
 	"unit.stream.activated":      "StreamActivated",
