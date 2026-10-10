@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/42.7 · specs/40.18 · arch/50-plugin-surface/02 §The document |
+| **Cites** | specs/28.15 · specs/40.18 · specs/42.7 · arch/50-plugin-surface/02 §The document |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

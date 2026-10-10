@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/25.14 · specs/25.17 · specs/45.24 · arch/30-core/03 §The eleven steps · arch/30-core/03 §Cleanup belongs to the next start · arch/35-units/05 §Driving the engine |
+| **Cites** | specs/25.14 · specs/25.17 · specs/28.49 · specs/45.24 · arch/30-core/03 §The eleven steps · arch/30-core/03 §Cleanup belongs to the next start · arch/35-units/05 §Driving the engine |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | — |

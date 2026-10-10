@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/20.37 · specs/31.43 · arch/30-core/06 §Nothing that watches a deployment may poll · arch/45-events/06 §The set |
+| **Cites** | specs/20.37 · specs/28.33 · specs/28.34 · specs/31.43 · arch/30-core/06 §Nothing that watches a deployment may poll · arch/45-events/06 §The set |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | — |
