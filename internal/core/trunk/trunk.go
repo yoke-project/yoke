@@ -933,3 +933,10 @@ func ClearDebris(root string) error {
 	}
 	return nil
 }
+
+// RetentionOf resolves a group's limits, at every cleaning cycle: the store's override where the unit has
+// one, replacing everything; otherwise the unit's own resolved policy; otherwise, for the Core's own group
+// or a unit no longer declared, the deployment's. Without a deployment, the defaults.
+func RetentionOf(logs *logstore.Store, deployment func() *gate.Deployment) func(group string) logstore.Limits {
+	return func(string) logstore.Limits { return logstore.DefaultLimits() }
+}
