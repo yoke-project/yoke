@@ -238,3 +238,16 @@
 | **Precondition** | a supervisor told of failed launches, and a unit whose executable does not exist |
 | **Action** | launch it |
 | **Expected** | the supervisor is told the unit's identity and the reason its launch failed, naming the executable — the same reason its status carries |
+
+## yoke:the-supervisor.19 — a lifecycle event carries all three names
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/28.52 · specs/28.11 · arch/45-events/06 §`unit` · arch/45-events/01 §The subject is a kind and an identity |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a Plugin unit `acquire`, a copy of `com.yoke.test`, and a unit that runs to completion |
+| **Action** | launch both |
+| **Expected** | every `unit.state.changed` about `acquire` carries its unit and incarnation in its subject and `com.yoke.test` as its plugin; those about the other unit carry its unit and incarnation and no plugin |

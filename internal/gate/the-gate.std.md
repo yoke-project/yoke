@@ -239,3 +239,16 @@
 | **Precondition** | interfaces needing, in turn: `storage:datasets` binding `datasets`; `display` binding `display`; `audio` and `network` binding both; `device:head-a` binding nothing; `storage:datasets` with an argument naming `${bind.datasets}`; and `display` with an argument naming `${bind.display}` |
 | **Action** | check each |
 | **Expected** | `bind.class` naming `datasets`, then `display`, then `audio` and `network`; `unit.needs.unbound` naming `head-a`; the storage reference passes; `substitution.unresolved` naming `${bind.display}` |
+
+## yoke:the-gate.19 — a key written twice in one mapping is not YAML, so a unit's identity is unique
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/28.12 · specs/14.50 · arch/15-gate/03 §`units` · arch/15-gate/06 §Phase 0 — reading |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a composition declaring the unit `a` twice; a Manifest writing `id` twice |
+| **Action** | check each |
+| **Expected** | `document.malformed` for each, naming the repeated key; nothing past reading is checked |

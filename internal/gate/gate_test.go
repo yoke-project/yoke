@@ -473,3 +473,15 @@ func TestADeviceIsTheOneClassADocumentBinds(t *testing.T) {
 		t.Errorf("the network binding is not named: %v", r.Findings)
 	}
 }
+
+// std: yoke:the-gate.19
+func TestAKeyWrittenTwiceIsNotYAML(t *testing.T) {
+	r, dep := composition(t, "units:\n  a: { kind: oneshot, exec: /bin/true }\n  a: { kind: oneshot, exec: /bin/false }\n")
+	if got := codes(r); !slices.Equal(got, []string{"document.malformed"}) || !strings.Contains(r.Findings[0].Message, `"a"`) || dep != nil {
+		t.Errorf("a unit declared twice gives %v", r.Findings)
+	}
+	m, _ := gate.CheckManifest(gate.Document{Path: "com.example.twice/manifest.yaml", Bytes: []byte("manifest: 1\nid: com.example.twice\nid: com.example.other\nprotocol: 1\n")})
+	if got := codes(m); !slices.Equal(got, []string{"document.malformed"}) || !strings.Contains(m.Findings[0].Message, `"id"`) {
+		t.Errorf("a Manifest writing id twice gives %v", m.Findings)
+	}
+}
