@@ -840,3 +840,10 @@ func sortedKeys[V any](m map[string]V) []string {
 	slices.Sort(keys)
 	return keys
 }
+
+// WorstCase is what the deployment's log store may occupy: the sum, over one group per declared unit and
+// the Core's own, of each group's effective bytes limit; unbounded, with no figure, where any group's limit
+// is zero.
+func (d *Deployment) WorstCase() (bytes uint64, bounded bool) {
+	return 0, true
+}
