@@ -1,0 +1,56 @@
+# The complete tier (testing/20 §The environments): every value of every dimension the reference tier
+# leaves out, daily and before a release. Docker on amd64, and rootless Podman on arm64; each run's
+# records are kept beside the reference tier's, under the tier and the environment they were made in.
+name: complete
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+  # A change to the tier itself runs it before it merges.
+  pull_request:
+    paths:
+      - .github/workflows/complete.yml
+      - internal/core/engine/enginetest/**
+
+jobs:
+  complete:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - engine: docker
+            runner: ubuntu-24.04
+            architecture: amd64
+          - engine: podman
+            runner: ubuntu-24.04-arm
+            architecture: arm64
+    runs-on: ${{ matrix.runner }}
+    env:
+      YOKE_TEST_ENGINE: ${{ matrix.engine }}
+      YOKE_TIER: complete
+    steps:
+      - uses: actions/checkout@v7
+      - uses: extractions/setup-just@v4
+        with:
+          just-version: 1.58.0
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.26'
+      - run: just build
+      - run: just test
+      - run: ci/record.sh L1 > record-L1.json
+        if: always()
+      - run: ci/record.sh L2 > record-L2.json
+        if: always()
+        env:
+          PREDECESSOR: record-L1.json
+      - run: ci/record.sh L3 > record-L3.json
+        if: always()
+        env:
+          PREDECESSOR: record-L2.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: record-complete-${{ matrix.engine }}-${{ matrix.architecture }}
+          path: record-L*.json
