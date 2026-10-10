@@ -876,6 +876,7 @@ func units(st *State) error {
 	// A unit whose dependency never arrived is reported, and nothing more: past readiness a failure is
 	// reported rather than fatal.
 	cfg.NotStarted = func(id, cause string) { st.Log.Warn("not started", "unit", id, "cause", cause) }
+	cfg.LaunchFailed = func(id, why string) { st.Log.Warn("launch failed", "unit", id, "cause", why) }
 	if st.Logs != nil {
 		cfg.Incarnations = counted{st.Logs, st.Log}
 	}
