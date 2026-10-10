@@ -252,10 +252,17 @@ func (s *service) start() {
 			s.t.Fatal("Podman's API never appeared")
 		}
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
-	if _, err := engine.Reach(ctx, "unix://"+s.socket); err != nil {
-		s.t.Fatalf("Podman's API never answered: %v", err)
+	// The socket is bound before the service listens on it, and a refused connection is retried.
+	for deadline := time.Now().Add(time.Minute); ; time.Sleep(100 * time.Millisecond) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		_, err := engine.Reach(ctx, "unix://"+s.socket)
+		cancel()
+		if err == nil {
+			return
+		}
+		if time.Now().After(deadline) {
+			s.t.Fatalf("Podman's API never answered: %v", err)
+		}
 	}
 }
 
