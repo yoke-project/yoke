@@ -225,3 +225,16 @@
 | **Precondition** | a running unit, and the backend's source of facts going quiet at a known instant |
 | **Action** | read the unit; ask to stop it; launch another; then let the source return |
 | **Expected** | the unit is still `Running`, carrying the condition that it is not observable since that instant; stopping it fails naming the backend; the new launch is an ordinary failed attempt; when the source returns the condition is gone and the state is what it was |
+
+## yoke:the-supervisor.18 — a launch that fails is told, with why
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/35-units/04 §The plan · arch/30-core/05 §The process is the evidence |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a supervisor told of failed launches, and a unit whose executable does not exist |
+| **Action** | launch it |
+| **Expected** | the supervisor is told the unit's identity and the reason its launch failed, naming the executable — the same reason its status carries |
