@@ -455,11 +455,26 @@ func (st *State) composition() *composed {
 			Document:  doc,
 			Moment:    gate.Starting,
 			Manifests: plugins.Manifests,
-			Host:      &gate.Host{Executables: plugins.Executables, StateDir: st.Paths.State, RuntimeRoot: st.Paths.Root},
+			Host: &gate.Host{Executables: plugins.Executables, StateDir: st.Paths.State, RuntimeRoot: st.Paths.Root,
+				Engine: st.reachEngine},
 		})
 		st.composed = &composed{doc, report, dep}
 	}
 	return st.composed
+}
+
+// reachEngine is the gate's way to the container engine: the one the Core then launches on. The gate asks
+// it only where a unit names an image.
+func (st *State) reachEngine() (gate.EngineFacts, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), engineReach)
+	defer cancel()
+	e, err := engine.Reach(ctx, st.Config.Engine)
+	if err != nil {
+		return gate.EngineFacts{}, err
+	}
+	st.Log.Info("the container engine is reached", "engine", e.Kind, "version", e.Version, "rootless", e.Rootless)
+	st.engine = e
+	return gate.EngineFacts{Rootless: e.Rootless}, nil
 }
 
 // inherited is step 7: what an earlier life of the instance left in the engine is stopped and removed,
@@ -468,26 +483,30 @@ func (st *State) composition() *composed {
 // engine not reached or a container not removed is fatal. The engine reached is the one units launch on.
 func inherited(st *State) error {
 	c := st.composition()
-	if c == nil || c.deployment == nil || !namesAnImage(c.deployment) {
+	if c == nil {
 		return nil
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), engineReach)
-	e, err := engine.Reach(ctx, st.Config.Engine)
-	cancel()
-	if err != nil {
-		return fmt.Errorf("a unit names an image, and the container engine cannot be asked what this instance left: %w", err)
+	// The gate reached the engine where a unit names an image; an engine it could not reach is the refusal
+	// this step fails on, since nothing can establish that this instance left nothing running.
+	for _, f := range c.report.Findings {
+		if f.Code == "engine.unreachable" {
+			return fmt.Errorf("%s: %s", f.Code, f.Message)
+		}
 	}
-	st.Log.Info("the container engine is reached", "engine", e.Kind, "version", e.Version, "rootless", e.Rootless)
-	ctx, cancel = context.WithTimeout(context.Background(), engineClear)
+	if c.deployment == nil || !namesAnImage(c.deployment) || st.engine == nil {
+		return nil
+	}
+	e := st.engine
+	ctx, cancel := context.WithTimeout(context.Background(), engineClear)
 	defer cancel()
 	cleared, err := supervisor.Inherited(ctx, e, st.Paths.Name)
 	for _, f := range cleared {
 		st.Log.Warn("an inherited container is removed", "container", f.ID, "unit", f.Unit, "incarnation", f.Incarnation, "running", f.Running)
 	}
 	if err != nil {
+		st.engine = nil
 		return err
 	}
-	st.engine = e
 	return nil
 }
 
