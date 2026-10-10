@@ -61,18 +61,17 @@ func (c *checker) bindings(u Unit, m *Manifest) {
 	needs := map[string]Need{}
 	for _, n := range m.Needs {
 		needs[n.Key()] = n
-		if _, bound := u.Bind[n.Key()]; !bound && n.Class != "secret" {
+		if _, bound := u.Bind[n.Key()]; !bound && n.Class == "device" {
 			c.refuse("unit.needs.unbound", at, "the plugin %s needs %s, and the unit %s binds nothing to %s", m.ID, written(n), u.Name, n.Key())
 		}
 	}
 	for _, key := range sortedKeys(u.Bind) {
 		n, needed := needs[key]
-		switch {
-		case !needed:
+		if !needed {
 			c.refuse("bind.undeclared", joined(at, key), "the unit %s binds %s, which the Manifest of %s never declares: the composing document cannot widen what it asked for", u.Name, key, m.ID)
-		case n.Class == "secret":
-			c.refuse("bind.secret", joined(at, key), "%s names the secret %s, which a document never binds", key, n.Name)
+			continue
 		}
+		c.unbindable(n, joined(at, key))
 	}
 	check := func(value, location string) {
 		for _, match := range reference.FindAllStringSubmatch(value, -1) {
@@ -81,7 +80,7 @@ func (c *checker) bindings(u Unit, m *Manifest) {
 				if _, bound := u.Bind[key]; bound {
 					continue
 				}
-				if n, needed := needs[key]; needed && n.Class == "secret" {
+				if n, needed := needs[key]; needed && materialised(n) {
 					continue
 				}
 			}

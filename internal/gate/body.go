@@ -412,8 +412,8 @@ func (c *checker) unit(name string, n *node, outer overrides) (Unit, bool) {
 		if bind, ok := c.stringMap(b, at("bind"), true); ok {
 			for _, entry := range b.entries() {
 				for _, need := range u.Needs {
-					if need.Class == "secret" && need.Key() == entry.key {
-						c.refuse("bind.secret", joined(at("bind"), entry.key), "%s names the secret %s, which a document never binds", entry.key, need.Name)
+					if need.Key() == entry.key {
+						c.unbindable(need, joined(at("bind"), entry.key))
 					}
 				}
 			}
@@ -458,6 +458,20 @@ func (c *checker) need(written, location string) (Need, bool) {
 	c.refuse("field.value", location, "the need %q is not one of device:<name>, storage:<name>, secret:<name>, display, audio, network", written)
 	return Need{}, false
 }
+
+// unbindable refuses a binding of a need a document never binds: every class but a device.
+func (c *checker) unbindable(n Need, at string) {
+	switch n.Class {
+	case "device":
+	case "secret":
+		c.refuse("bind.secret", at, "%s names the secret %s, which a document never binds", n.Key(), n.Name)
+	default:
+		c.refuse("bind.class", at, "%s names the need %s, which the runtime satisfies and a document never binds: a device is the one class bound", n.Key(), written(n))
+	}
+}
+
+// materialised is a need the Core satisfies at a path it derives, which ${bind.<name>} resolves to.
+func materialised(n Need) bool { return n.Class == "secret" || n.Class == "storage" }
 
 // policy reads one scope's block. The unit's scope is the only one that may say restart.on_failure, and
 // only for a oneshot; a key a scope does not have is unknown there.
@@ -773,8 +787,11 @@ func (c *checker) joins() bool {
 func (c *checker) resolve(u Unit) {
 	secrets := map[string]bool{}
 	for _, n := range u.Needs {
-		if n.Class == "secret" {
+		if materialised(n) {
 			secrets[n.Key()] = true
+		}
+		if _, bound := u.Bind[n.Key()]; n.Class == "device" && !bound {
+			c.refuse("unit.needs.unbound", fmt.Sprintf("units.%s.bind", u.Name), "the unit %s needs %s, and binds nothing to %s", u.Name, written(n), n.Key())
 		}
 	}
 	check := func(value, at string) {
