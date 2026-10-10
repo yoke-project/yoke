@@ -476,6 +476,9 @@ func (s *Supervisor) Environment(u Unit, token string) []string {
 // failedLaunch is an attempt that produced no process: an ordinary failed attempt. Lock held.
 func (s *Supervisor) failedLaunch(m *managed, why string) {
 	m.status.Failure = why
+	if tell := s.cfg.LaunchFailed; tell != nil {
+		go tell(m.decl.ID, why)
+	}
 	s.apply(m, unit.LaunchFailed{Reason: why})
 	s.settle(m)
 }
