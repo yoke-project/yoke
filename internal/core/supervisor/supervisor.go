@@ -412,7 +412,7 @@ func (s *Supervisor) attempt(m *managed) {
 		return
 	}
 
-	token := s.cfg.Tokens.Issue(m.decl.ID)
+	token := s.issue(m.decl)
 	command := &exec.Cmd{
 		Path:        "/proc/self/fd/3",
 		Args:        append([]string{m.decl.Exec}, m.decl.Args...),
@@ -451,6 +451,15 @@ func (s *Supervisor) attempt(m *managed) {
 
 // Environment is what a unit is handed: the reserved variables, then the declaration's own.
 func (s *Supervisor) Environment(u Unit, token string) []string {
+	if u.Kind == unit.Oneshot {
+		// Nothing connects to an exit status: a unit that runs to completion is told who it is, and has no
+		// socket to bind, no admission to present a token to and no Manifest.
+		env := []string{"YOKE_UNIT=" + u.ID}
+		for name, value := range u.Env {
+			env = append(env, name+"="+value)
+		}
+		return env
+	}
 	if u.Kind == unit.Interface {
 		// A managed interface consumes a channel the Core bound: it is told where, and nothing a Plugin is
 		// told, having nothing to bind, no admission to present a token to and no Manifest.
@@ -473,6 +482,15 @@ func (s *Supervisor) Environment(u Unit, token string) []string {
 		env = append(env, name+"="+value)
 	}
 	return env
+}
+
+// issue is the bootstrap token a launch carries: a Plugin unit's alone, the one kind that presents an
+// admission.
+func (s *Supervisor) issue(u Unit) string {
+	if u.Kind != unit.Plugin {
+		return ""
+	}
+	return s.cfg.Tokens.Issue(u.ID)
 }
 
 // failedLaunch is an attempt that produced no process: an ordinary failed attempt. Lock held.

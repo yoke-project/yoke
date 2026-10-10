@@ -30,3 +30,16 @@
 | **Precondition** | a supervisor whose policy's startup window is five seconds; two Plugin units that never register, `quick` with a policy of its own whose window is 300 ms, and `patient` with none |
 | **Action** | launch both, and look after one second |
 | **Expected** | `quick` has ended `Failed`; `patient` is still `Starting` |
+
+## yoke:what-a-unit-arrives-with.03 — a unit that runs to completion is told its identity and nothing else
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/28.26 · arch/35-units/04 §What the Core hands the process |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a supervisor whose token issuer records whom it issues for; a unit of kind `oneshot` declaring one variable |
+| **Action** | launch it; it writes out the reserved variables and its declared one |
+| **Expected** | it arrives with `YOKE_UNIT` and its declared variable; `YOKE_PLUGIN`, `YOKE_SOCKET`, `YOKE_BIND` and `YOKE_TOKEN` are absent; no bootstrap token was issued, and its status carries none |

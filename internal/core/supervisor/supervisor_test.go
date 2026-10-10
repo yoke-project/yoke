@@ -226,23 +226,27 @@ func TestTheProcessIsHandedWhatItNeeds(t *testing.T) {
 			}
 		}
 		told := strings.Join(said, "\n")
-		for _, want := range []string{
+		wants := []string{
 			"env YOKE_UNIT=" + id + " set=true",
-			"env YOKE_SOCKET=" + filepath.Join(root, "plugin.sock") + " set=true",
-			"env YOKE_BIND=" + filepath.Join(root, "plugins", id+".sock") + " set=true",
 			"env DECLARED=its own set=true",
 			`args 1 ["one argument, with spaces"]`,
-		} {
+		}
+		if kind == unit.Plugin {
+			wants = append(wants, "env YOKE_PLUGIN=com.yoke.test set=true",
+				"env YOKE_SOCKET="+filepath.Join(root, "plugin.sock")+" set=true",
+				"env YOKE_BIND="+filepath.Join(root, "plugins", id+".sock")+" set=true")
+		} else {
+			// Nothing connects to an exit status: no socket, no admission, no Manifest.
+			wants = append(wants, "env YOKE_PLUGIN= set=false", "env YOKE_SOCKET= set=false",
+				"env YOKE_BIND= set=false", "env YOKE_TOKEN= set=false")
+		}
+		for _, want := range wants {
 			if !strings.Contains(told, want) {
 				t.Errorf("%s was not handed %q:\n%s", id, want, told)
 			}
 		}
-		if strings.Contains(told, "env YOKE_TOKEN= set") {
+		if kind == unit.Plugin && strings.Contains(told, "env YOKE_TOKEN= set") {
 			t.Errorf("%s was handed no token:\n%s", id, told)
-		}
-		plugin := strings.Contains(told, "env YOKE_PLUGIN=com.yoke.test set=true")
-		if plugin != (kind == unit.Plugin) {
-			t.Errorf("%s: YOKE_PLUGIN handed is %v, want %v:\n%s", id, plugin, kind == unit.Plugin, told)
 		}
 	}
 }
@@ -279,7 +283,7 @@ func TestAnExitReachesTheMachineWhenItHappens(t *testing.T) {
 // std: yoke:the-supervisor.12
 func TestTheWaitDoublesToItsCeilingAndAttemptsNeverRunOut(t *testing.T) {
 	s, _ := started(t, fast())
-	s.Launch(declared(t, "crashing", unit.Interface, "exit-1"))
+	s.Launch(declared(t, "crashing", unit.Plugin, "exit-1"))
 	var waits []time.Duration
 	var tokens []string
 	seen := 0

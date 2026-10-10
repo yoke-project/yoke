@@ -120,7 +120,7 @@
 | **Label** | blocking |
 | **Precondition** | a Plugin unit and a unit that runs to completion, each declaring an argument holding a space and a variable of its own |
 | **Action** | launch each, and read what its process received |
-| **Expected** | each has `YOKE_UNIT`, `YOKE_SOCKET` at the instance's plugin channel, `YOKE_BIND` at `plugins/<unit>.sock` under the root and a `YOKE_TOKEN` issued for it; the Plugin unit alone has `YOKE_PLUGIN`; the declared variable is added; the argument arrives as one element |
+| **Expected** | each has `YOKE_UNIT`; the Plugin unit alone has `YOKE_PLUGIN`, `YOKE_SOCKET` at the instance's plugin channel, `YOKE_BIND` at `plugins/<unit>.sock` under the root and a `YOKE_TOKEN` issued for it, and the unit that runs to completion has none of the four; the declared variable is added; the argument arrives as one element |
 
 ## yoke:the-supervisor.10 — a unit's output is captured line by line, with the incarnation that wrote it
 
@@ -157,7 +157,7 @@
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
-| **Precondition** | a managed interface that fails at once, a first wait of 50 ms and a ceiling of 200 ms |
+| **Precondition** | a Plugin unit that fails at once, a first wait of 50 ms and a ceiling of 200 ms |
 | **Action** | let it fail repeatedly |
 | **Expected** | the waits run 50, 100, 200, 200 ms and attempts continue past the ceiling; every attempt is a new incarnation with a new token |
 
