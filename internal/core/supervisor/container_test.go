@@ -29,6 +29,7 @@ type containers struct {
 	launched []engine.Launch
 	removed  map[string]bool
 	refuses  map[string]bool // containers the engine will not remove
+	unmade   []string        // what a launch mounted that did not exist when its container was created
 	events   chan engine.Event
 	outputs  map[string][2]io.Writer
 	closers  map[string]chan struct{}
@@ -66,6 +67,11 @@ func (c *containers) Create(_ context.Context, l engine.Launch) (string, error) 
 	if c.absent {
 		c.asked = append(c.asked, "create "+l.Unit+" absent")
 		return "", &engine.Absent{Image: l.Image}
+	}
+	for _, path := range l.Mounts {
+		if _, err := os.Stat(path); err != nil {
+			c.unmade = append(c.unmade, path)
+		}
 	}
 	c.count++
 	id := fmt.Sprintf("c%d", c.count)

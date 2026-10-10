@@ -42,6 +42,14 @@ type Unit struct {
 	DependsOn        []string // the units this one waits on, each until it is ready by its kind
 	Policy           *Policy  // the unit's own figures; nil takes the deployment's
 	Channel          string   // a managed interface's: the address of the channel that names it
+	Needs            []Need   // what each launch expands, on the host or in a container
+}
+
+// Need is one declared need as a launch expands it: its class, and the path a device is bound to or a
+// storage need is materialised at. A secret is not among them: it is 0.5's.
+type Need struct {
+	Class string // device, storage, display, audio or network
+	Path  string
 }
 
 // Policy holds the deployment's figures.
@@ -89,6 +97,11 @@ type Config struct {
 	// Publish is told each state a unit's life enters, as the event the Core concluded. It never waits.
 	// Optional.
 	Publish func(event.Event)
+	// Getenv reads the Core's own environment, where a display and an audio path are found at each
+	// launch. Nil reads the process's.
+	Getenv func(string) string
+	// X11 is the directory X11 servers listen in. Empty is /tmp/.X11-unix.
+	X11 string
 }
 
 // Containers is what the supervisor asks of a container engine.

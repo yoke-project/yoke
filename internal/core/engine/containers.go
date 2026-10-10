@@ -35,6 +35,10 @@ type Launch struct {
 	Unit        string
 	Incarnation int
 	UID, GID    int
+	Devices     []string // device nodes, mapped at their own paths
+	Mounts      []string // host paths bound at their own paths, beside the instance's directory
+	Groups      []int    // the devices' owning groups, as numbers the host's lookup returned
+	Network     bool     // the engine's default network, where none is given otherwise
 }
 
 // Absent is an image the engine does not hold. The Core never obtains one.

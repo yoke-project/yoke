@@ -161,8 +161,11 @@ func Units(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), e
 			needs = m.Needs
 		}
 		for _, n := range needs {
-			if n.Class == "secret" {
+			switch n.Class {
+			case "secret":
 				secrets[n.Key()] = filepath.Join(stateDir, "secrets", n.Name)
+			case "storage":
+				secrets[n.Key()] = filepath.Join(stateDir, "storage", n.Name)
 			}
 		}
 		resolve := func(value string) string {
