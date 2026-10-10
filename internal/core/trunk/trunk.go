@@ -119,8 +119,10 @@ type State struct {
 	mu             sync.Mutex
 	readyAt        time.Time
 	stoppingAt     time.Time
-	compositionSum string   // the digest the composition in force was read at
-	weaker         []string // the weaker arrangements the gate reported, in force
+	compositionSum string         // the digest the composition in force was read at
+	composed       *composed      // the composition in force as the gate found it, read once, at step 7
+	engine         *engine.Engine // the container engine step 7 reached, where a unit names an image
+	weaker         []string       // the weaker arrangements the gate reported, in force
 	interfaces     *interfaces.Bound
 }
 
@@ -185,12 +187,15 @@ type Step struct {
 // The step whose success makes the instance observable: failure before it is fatal.
 const ready = "ready"
 
-// engineReach bounds how long the Core waits for the container engine to answer, once, before its units.
-const engineReach = 10 * time.Second
+// engineReach bounds how long the Core waits for the container engine to answer at step 7, and
+// engineClear how long it waits for what an earlier life left to be removed.
+const (
+	engineReach = 10 * time.Second
+	engineClear = time.Minute
+)
 
-// Steps are the eleven, in their order. A step a later part of the Core owns does nothing yet.
+// Steps are the eleven, in their order.
 func Steps() []Step {
-	nothingYet := func(*State) error { return nil }
 	return []Step{
 		{"identity and paths", identity},
 		{"parameters", parameters},
@@ -198,7 +203,7 @@ func Steps() []Step {
 		{"claim", claim},
 		{"debris", func(st *State) error { return ClearDebris(st.Paths.Root) }},
 		{"stores", stores},
-		{"inherited runtime facts", nothingYet},
+		{"inherited runtime facts", inherited},
 		{"declarations", declarations},
 		{"channels", channels},
 		{ready, func(st *State) error {
@@ -405,13 +410,8 @@ func declarations(st *State) error {
 	if st.Composition == "" {
 		return nil
 	}
-	composition := gate.Read(st.Composition, gate.Composition)
-	report, dep := gate.Check(gate.Input{
-		Document:  composition,
-		Moment:    gate.Starting,
-		Manifests: plugins.Manifests,
-		Host:      &gate.Host{Executables: plugins.Executables, StateDir: st.Paths.State, RuntimeRoot: st.Paths.Root},
-	})
+	c := st.composition()
+	composition, report, dep := c.document, c.report, c.deployment
 	for _, f := range report.Findings {
 		level := slog.LevelError
 		if f.Class == gate.Weaker {
@@ -432,6 +432,72 @@ func declarations(st *State) error {
 	st.Deployment = dep
 	st.Units = discovery.Units(dep, d.Manifest, plugins.Executables, st.Paths.State)
 	return nil
+}
+
+// composed is the composition in force as the gate found it.
+type composed struct {
+	document   gate.Document
+	report     gate.Report
+	deployment *gate.Deployment // nil where it is refused
+}
+
+// composition reads the composition in force and passes it through the gate, once: step 7 needs to know
+// whether a unit names an image, and step 8 reports what the gate found and takes the deployment from the
+// same reading. Nil where the form reads none.
+func (st *State) composition() *composed {
+	if st.Form != Service || st.Composition == "" {
+		return nil
+	}
+	if st.composed == nil {
+		plugins := st.Config.Plugins
+		doc := gate.Read(st.Composition, gate.Composition)
+		report, dep := gate.Check(gate.Input{
+			Document:  doc,
+			Moment:    gate.Starting,
+			Manifests: plugins.Manifests,
+			Host:      &gate.Host{Executables: plugins.Executables, StateDir: st.Paths.State, RuntimeRoot: st.Paths.Root},
+		})
+		st.composed = &composed{doc, report, dep}
+	}
+	return st.composed
+}
+
+// inherited is step 7: what an earlier life of the instance left in the engine is stopped and removed,
+// each container named. The engine is looked for only where a unit names an image, and there a Core that
+// cannot establish that nothing of its own instance still runs has failed the claim's exclusivity, so an
+// engine not reached or a container not removed is fatal. The engine reached is the one units launch on.
+func inherited(st *State) error {
+	c := st.composition()
+	if c == nil || c.deployment == nil || !namesAnImage(c.deployment) {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), engineReach)
+	e, err := engine.Reach(ctx, st.Config.Engine)
+	cancel()
+	if err != nil {
+		return fmt.Errorf("a unit names an image, and the container engine cannot be asked what this instance left: %w", err)
+	}
+	st.Log.Info("the container engine is reached", "engine", e.Kind, "version", e.Version, "rootless", e.Rootless)
+	ctx, cancel = context.WithTimeout(context.Background(), engineClear)
+	defer cancel()
+	cleared, err := supervisor.Inherited(ctx, e, st.Paths.Name)
+	for _, f := range cleared {
+		st.Log.Warn("an inherited container is removed", "container", f.ID, "unit", f.Unit, "incarnation", f.Incarnation, "running", f.Running)
+	}
+	if err != nil {
+		return err
+	}
+	st.engine = e
+	return nil
+}
+
+func namesAnImage(d *gate.Deployment) bool {
+	for _, u := range d.Units {
+		if u.Image != "" {
+			return true
+		}
+	}
+	return false
 }
 
 // channels binds every channel with its terminator: the plugin surface's, where there is a deployment for
@@ -788,18 +854,10 @@ func units(st *State) error {
 	if st.Logs != nil {
 		cfg.Incarnations = counted{st.Logs, st.Log}
 	}
-	// The engine is reached where a unit names an image, and only there. One not reached makes each such
-	// launch a fault, on which the restart policy waits; nothing else waits on it.
-	if slices.ContainsFunc(st.Units, func(u supervisor.Unit) bool { return u.Image != "" }) {
-		ctx, cancel := context.WithTimeout(context.Background(), engineReach)
-		e, err := engine.Reach(ctx, st.Config.Engine)
-		cancel()
-		if err != nil {
-			st.Log.Warn("the container engine is not reached", "engine", st.Config.Engine, "error", err)
-		} else {
-			st.Log.Info("the container engine is reached", "engine", e.Kind, "version", e.Version, "rootless", e.Rootless)
-			cfg.Containers = e
-		}
+	// The engine is the one step 7 reached, where a unit names an image. Where there is none, a launch in a
+	// container is a fault, on which the restart policy waits.
+	if st.engine != nil {
+		cfg.Containers = st.engine
 	}
 	s := supervisor.New(cfg)
 	st.Supervisor = s
