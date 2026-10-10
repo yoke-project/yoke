@@ -34,6 +34,9 @@ type containers struct {
 	outputs  map[string][2]io.Writer
 	closers  map[string]chan struct{}
 	count    int
+	slow     time.Duration // how long creating a container takes
+	busy     int           // the launches between their create and the end of their start
+	overlap  bool          // whether a launch was created while another was in flight
 
 	away     bool                     // the engine cannot be followed, nor asked what it holds
 	watch    []string                 // "events" for each time it is followed, "list" for each time it is asked what it holds
@@ -63,8 +66,15 @@ func (c *containers) acts() []string {
 
 func (c *containers) Create(_ context.Context, l engine.Launch) (string, error) {
 	c.mu.Lock()
+	c.busy++
+	c.overlap = c.overlap || c.busy > 1
+	slow := c.slow
+	c.mu.Unlock()
+	time.Sleep(slow)
+	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.absent {
+		c.busy--
 		c.asked = append(c.asked, "create "+l.Unit+" absent")
 		return "", &engine.Absent{Image: l.Image}
 	}
@@ -94,6 +104,7 @@ func (c *containers) Attach(_ context.Context, id string, stdout, stderr io.Writ
 func (c *containers) Start(_ context.Context, id string) error {
 	c.record("start " + id)
 	c.mu.Lock()
+	c.busy--
 	out, says := c.outputs[id], c.says
 	var end *int
 	if len(c.ends) > 0 {
@@ -371,4 +382,28 @@ func TestWithNoEngineALaunchInAContainerIsAFault(t *testing.T) {
 		t.Errorf("the failure says %q", st.Failure)
 	}
 	until(t, "the host unit to complete", 3*time.Second, func() bool { return s.Status("beside").State == unit.Completed })
+}
+
+// std: yoke:the-container-backend.07
+func TestOneLaunchIsAskedOfTheEngineAtATime(t *testing.T) {
+	c := newContainers()
+	c.slow = 50 * time.Millisecond
+	s, _ := inContainers(t, c, fast())
+	units := []string{"first", "second", "third"}
+	for _, id := range units {
+		s.Launch(imaged(id, unit.Interface))
+	}
+	until(t, "every unit to run", 3*time.Second, func() bool {
+		for _, id := range units {
+			if s.Status(id).State != unit.Running {
+				return false
+			}
+		}
+		return true
+	})
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.overlap {
+		t.Errorf("a container was created while another launch was in flight: %v", c.asked)
+	}
 }

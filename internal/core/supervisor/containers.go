@@ -60,11 +60,10 @@ func (s *Supervisor) inContainer(m *managed, needs expansion) {
 	go s.launchContainer(m, m.launching, launch, token)
 }
 
-// launchContainer asks the engine for the container, attaches to it, and starts it.
+// launchContainer asks the engine for the container, attaches to it, and starts it. One launch is asked
+// at a time: rootless Podman 4.9 under crun does not survive two in flight together.
 func (s *Supervisor) launchContainer(m *managed, attempt int, l engine.Launch, token string) {
 	c := s.cfg.Containers
-	ctx, cancel := context.WithTimeout(context.Background(), engineWait)
-	defer cancel()
 	fail := func(why string) {
 		s.mu.Lock()
 		defer s.mu.Unlock()
@@ -86,6 +85,17 @@ func (s *Supervisor) launchContainer(m *managed, attempt int, l engine.Launch, t
 		delete(s.inflight, life)
 		s.ev.Unlock()
 	}()
+	s.launches.Lock()
+	held := true
+	release := func() {
+		if held {
+			held = false
+			s.launches.Unlock()
+		}
+	}
+	defer release()
+	ctx, cancel := context.WithTimeout(context.Background(), engineWait)
+	defer cancel()
 	id, err := c.Create(ctx, l)
 	var absent *engine.Absent
 	switch {
@@ -119,6 +129,7 @@ func (s *Supervisor) launchContainer(m *managed, attempt int, l engine.Launch, t
 		fail(fmt.Sprintf("the container could not be started: %v", err))
 		return
 	}
+	release()
 
 	s.mu.Lock()
 	defer s.mu.Unlock()

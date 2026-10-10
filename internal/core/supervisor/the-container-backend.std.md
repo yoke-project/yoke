@@ -82,3 +82,16 @@
 | **Precondition** | the environment's engine serving its API on a socket the Core is configured with — rootless Podman on a socket of the test's, or the Docker daemon; a fixture image, built by the test over `scratch` and referenced by its digest, that says who it runs as and exits 0; a composition with one unit of kind `oneshot` naming it |
 | **Action** | start the Core, and wait for the unit to complete; then stop the Core |
 | **Expected** | the unit's line reaches the Core's log under its first incarnation and says the launching user; the unit is `Completed`; once the Core has stopped, the engine holds no container under the instance's label |
+
+## yoke:the-container-backend.07 — one launch is asked of the engine at a time
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/35-units/05 §Driving the engine |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an engine that takes a while to create a container, and notes whether a container is created while another launch is between its creation and its start |
+| **Action** | launch three units of kind `interface` naming an image, together |
+| **Expected** | every unit is `Running`; no container was created while another was still being created, attached or started |
