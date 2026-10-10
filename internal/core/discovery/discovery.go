@@ -146,7 +146,7 @@ func (d *Discovery) Available(id string) bool {
 
 // Units are what a deployment launches: each unit that starts with it, its program resolved — a
 // plugin's from its identity in the executables directory — and every reference already resolved, a
-// binding to its value and a secret to its path in the state directory.
+// binding to its value and a secret or a storage need to its path in the state directory.
 func Units(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), executables, stateDir string) []supervisor.Unit {
 	var out []supervisor.Unit
 	kinds := map[string]unit.Kind{"plugin": unit.Plugin, "oneshot": unit.Oneshot, "interface": unit.Interface}
@@ -155,7 +155,7 @@ func Units(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), e
 		if !u.Autostart {
 			continue
 		}
-		secrets := map[string]string{}
+		materialised := map[string]string{}
 		needs := u.Needs
 		if m, ok := manifest(u.Plugin); ok && u.Kind == "plugin" {
 			needs = m.Needs
@@ -163,21 +163,31 @@ func Units(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), e
 		for _, n := range needs {
 			switch n.Class {
 			case "secret":
-				secrets[n.Key()] = filepath.Join(stateDir, "secrets", n.Name)
+				materialised[n.Key()] = filepath.Join(stateDir, "secrets", n.Name)
 			case "storage":
-				secrets[n.Key()] = filepath.Join(stateDir, "storage", n.Name)
+				materialised[n.Key()] = filepath.Join(stateDir, "storage", n.Name)
 			}
 		}
 		resolve := func(value string) string {
 			for key, bound := range u.Bind {
 				value = strings.ReplaceAll(value, "${bind."+key+"}", bound)
 			}
-			for key, path := range secrets {
+			for key, path := range materialised {
 				value = strings.ReplaceAll(value, "${bind."+key+"}", path)
 			}
 			return value
 		}
 		s := supervisor.Unit{ID: name, Kind: kinds[u.Kind], Plugin: u.Plugin, Exec: u.Exec, Image: u.Image, RestartOnFailure: u.OnFailure, DependsOn: u.DependsOn, Env: map[string]string{}}
+		for _, n := range needs {
+			switch n.Class {
+			case "device":
+				s.Needs = append(s.Needs, supervisor.Need{Class: n.Class, Path: resolve(u.Bind[n.Key()])})
+			case "storage":
+				s.Needs = append(s.Needs, supervisor.Need{Class: n.Class, Path: materialised[n.Key()]})
+			case "display", "audio", "network":
+				s.Needs = append(s.Needs, supervisor.Need{Class: n.Class})
+			}
+		}
 		if u.Kind == "plugin" {
 			s.Exec = filepath.Join(executables, u.Plugin)
 		}

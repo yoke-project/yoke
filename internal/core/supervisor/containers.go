@@ -47,15 +47,16 @@ type watched struct {
 // inContainer launches a unit that names an image. What is decided here is decided with the lock held,
 // as on the host; what the engine is asked is asked without it, and the outcome recorded under it again,
 // unless a stop or another attempt has superseded this one meanwhile. Lock held.
-func (s *Supervisor) inContainer(m *managed) {
+func (s *Supervisor) inContainer(m *managed, needs expansion) {
 	if s.cfg.Containers == nil {
 		s.failedLaunch(m, "no container engine is reached, and the unit names an image")
 		return
 	}
 	token := s.cfg.Tokens.Issue(m.decl.ID)
 	incarnation := s.cfg.Incarnations.Next(m.decl.ID)
-	launch := engine.Launch{Image: m.decl.Image, Args: m.decl.Args, Env: s.Environment(m.decl, token), Directory: s.cfg.Root,
-		Instance: s.cfg.Instance, Unit: m.decl.ID, Incarnation: incarnation, UID: os.Getuid(), GID: os.Getgid()}
+	launch := engine.Launch{Image: m.decl.Image, Args: m.decl.Args, Env: append(s.Environment(m.decl, token), needs.env...),
+		Directory: s.cfg.Root, Instance: s.cfg.Instance, Unit: m.decl.ID, Incarnation: incarnation, UID: os.Getuid(), GID: os.Getgid(),
+		Devices: needs.devices, Mounts: needs.mounts, Groups: needs.groups, Network: needs.network}
 	go s.launchContainer(m, m.launching, launch, token)
 }
 
