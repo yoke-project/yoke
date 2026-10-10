@@ -52,7 +52,7 @@ func (s *Supervisor) inContainer(m *managed, needs expansion) {
 		s.failedLaunch(m, "no container engine is reached, and the unit names an image")
 		return
 	}
-	token := s.cfg.Tokens.Issue(m.decl.ID)
+	token := s.issue(m.decl)
 	incarnation := s.cfg.Incarnations.Next(m.decl.ID)
 	launch := engine.Launch{Image: m.decl.Image, Args: m.decl.Args, Env: append(s.Environment(m.decl, token), needs.env...),
 		Directory: s.cfg.Root, Instance: s.cfg.Instance, Unit: m.decl.ID, Incarnation: incarnation, UID: os.Getuid(), GID: os.Getgid(),
