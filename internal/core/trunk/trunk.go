@@ -381,7 +381,11 @@ func stores(st *State) error {
 	// The cleaner is the only thing that deletes what nobody asked to delete. It is stopped before the
 	// store it cleans is closed.
 	cleaner := &logstore.Cleaner{Store: logs, Instance: st.Paths.Name, Interval: time.Hour,
-		Policy: func(string) logstore.Limits { return logstore.DefaultLimits() },
+		Policy: RetentionOf(logs, func() *gate.Deployment {
+			st.mu.Lock()
+			defer st.mu.Unlock()
+			return st.Deployment
+		}),
 		Report: func(err error) { st.Log.Error("retention", "error", err) }}
 	ctx, stop := context.WithCancel(context.Background())
 	st.Log.Info("retention", "first", cleaner.First(time.Now()).Format(time.RFC3339Nano), "interval", time.Hour)
@@ -429,7 +433,9 @@ func declarations(st *State) error {
 	sum := sha256.Sum256(composition.Bytes)
 	st.compositionSum = "sha256:" + hex.EncodeToString(sum[:])
 	st.publish(event.DocumentResolved(st.Composition, fmt.Sprintf("%d units", len(dep.Units)), st.compositionSum))
+	st.mu.Lock()
 	st.Deployment = dep
+	st.mu.Unlock()
 	st.Units = discovery.Units(dep, d.Manifest, plugins.Executables, st.Paths.State)
 	return nil
 }
@@ -919,5 +925,30 @@ func ClearDebris(root string) error {
 // one, replacing everything; otherwise the unit's own resolved policy; otherwise, for the Core's own group
 // or a unit no longer declared, the deployment's. Without a deployment, the defaults.
 func RetentionOf(logs *logstore.Store, deployment func() *gate.Deployment) func(group string) logstore.Limits {
-	return func(string) logstore.Limits { return logstore.DefaultLimits() }
+	limits := func(p gate.Policy) logstore.Limits {
+		return logstore.Limits{Age: p.RetentionAge, Bytes: uint64(p.RetentionBytes), Entries: uint64(p.RetentionEntries)}
+	}
+	return func(group string) logstore.Limits {
+		if group != logstore.CoreGroup {
+			// An override is read live, and a limit it leaves out is unconstrained.
+			if o, set, err := logs.Override(group); err == nil && set {
+				l := logstore.Limits{Age: o.Age}
+				if o.Bytes != nil {
+					l.Bytes = *o.Bytes
+				}
+				if o.Entries != nil {
+					l.Entries = *o.Entries
+				}
+				return l
+			}
+		}
+		d := deployment()
+		if d == nil {
+			return logstore.DefaultLimits()
+		}
+		if u, declared := d.Units[group]; declared {
+			return limits(u.Policy)
+		}
+		return limits(d.Policy)
+	}
 }
