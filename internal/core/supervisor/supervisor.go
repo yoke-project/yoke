@@ -206,6 +206,8 @@ type Supervisor struct {
 
 	follows sync.Mutex // held while the engine is followed again and reconciled with, never with mu or ev
 
+	launches sync.Mutex // held while one container is created, attached and started; taken before mu or ev, never with them
+
 	ev        sync.Mutex          // guards what follows, never held with mu
 	events    bool                // whether the engine's events are being followed
 	returning bool                // whether the engine's return is being waited for
