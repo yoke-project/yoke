@@ -36,6 +36,8 @@ func TestMain(m *testing.M) {
 	switch os.Getenv(role) {
 	case "panel":
 		os.Exit(reachTheChannel())
+	case "attach":
+		os.Exit(attachToTheChannel())
 	case "once":
 		os.Exit(0)
 	case "commanded":
@@ -44,6 +46,33 @@ func TestMain(m *testing.M) {
 		os.Exit(emitWhenActivated())
 	}
 	os.Exit(m.Run())
+}
+
+// attachToTheChannel attaches to the channel its environment names, as a client of the interface
+// contract, says so once the opening has arrived, and stays attached.
+func attachToTheChannel() int {
+	address := os.Getenv("YOKE_SOCKET")
+	conn, err := grpc.NewClient("unix://"+address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		fmt.Println("no channel at", address, err)
+		return 1
+	}
+	defer conn.Close()
+	stream, err := interfacev1.NewInterfaceClient(conn).Attach(context.Background())
+	if err != nil {
+		fmt.Println("not attached to", address, err)
+		return 1
+	}
+	if _, err := stream.Recv(); err != nil {
+		fmt.Println("no opening from", address, err)
+		return 1
+	}
+	fmt.Println("attached to", address)
+	for {
+		if _, err := stream.Recv(); err != nil {
+			return 1
+		}
+	}
 }
 
 // reachTheChannel connects to the address its environment names, says so, and stays.
@@ -64,6 +93,12 @@ func reachTheChannel() int {
 // %s the role variable; it returns the runtime directory and the Core's output, line by line.
 func startCore(t *testing.T, composition string) (string, <-chan string) {
 	t.Helper()
+	return startCoreWith(t, "", composition)
+}
+
+// startCoreWith is startCore with more lines of core.yaml.
+func startCoreWith(t *testing.T, configured, composition string) (string, <-chan string) {
+	t.Helper()
 	binary := filepath.Join(t.TempDir(), "yoke-core")
 	if said, err := exec.Command("go", "build", "-o", binary, "github.com/yoke-project/yoke/cmd/yoke-core").CombinedOutput(); err != nil {
 		t.Fatalf("yoke-core does not build: %v\n%s", err, said)
@@ -83,7 +118,7 @@ func startCore(t *testing.T, composition string) (string, <-chan string) {
 	path := filepath.Join(dir, "bench.yaml")
 	os.WriteFile(path, []byte(fmt.Sprintf(composition, self, role)), 0o644)
 	core := filepath.Join(dir, "core.yaml")
-	os.WriteFile(core, []byte(fmt.Sprintf("state_dir: %s/state\nruntime_dir: %s\nplugins:\n  manifests: %s\n  executables: %s\n", dir, run, manifests, executables)), 0o644)
+	os.WriteFile(core, []byte(fmt.Sprintf("state_dir: %s/state\nruntime_dir: %s\nplugins:\n  manifests: %s\n  executables: %s\n", dir, run, manifests, executables)+configured), 0o644)
 	command := exec.Command(binary)
 	command.Env = append(os.Environ(), "YOKE_CONFIG="+core, "YOKE_COMPOSITION="+path)
 	out, _ := command.StderrPipe()
