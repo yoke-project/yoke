@@ -845,5 +845,15 @@ func sortedKeys[V any](m map[string]V) []string {
 // the Core's own, of each group's effective bytes limit; unbounded, with no figure, where any group's limit
 // is zero.
 func (d *Deployment) WorstCase() (bytes uint64, bounded bool) {
-	return 0, true
+	limits := []int64{d.Policy.RetentionBytes}
+	for _, u := range d.Units {
+		limits = append(limits, u.Policy.RetentionBytes)
+	}
+	for _, l := range limits {
+		if l <= 0 {
+			return 0, false
+		}
+		bytes += uint64(l)
+	}
+	return bytes, true
 }
