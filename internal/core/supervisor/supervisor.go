@@ -187,6 +187,7 @@ type managed struct {
 	exitStatus int  // the status the last process ended with
 	hasExit    bool // whether the last process ended by exiting, rather than never starting
 	held       bool // waiting on its dependencies, with no incarnation yet
+	unobserved bool // carrying the condition of a quiet backend, which it was running on when it went quiet
 	hold       *time.Timer
 }
 
@@ -641,7 +642,7 @@ func (s *Supervisor) Status(unitID string) Status {
 	status := m.status
 	status.Awaiting = append([]string(nil), m.status.Awaiting...)
 	status.Backend = backendOf(m.decl)
-	if since, quiet := s.quiet[status.Backend]; quiet {
+	if since, quiet := s.quiet[status.Backend]; quiet && m.unobserved {
 		// The condition the Core concluded stands in front of whatever the unit last reported, for as long
 		// as its cause lasts.
 		status.Unobservable, status.UnobservableSince = true, since
@@ -664,8 +665,9 @@ func (s *Supervisor) Observable() {
 	s.observable(hostBackend)
 }
 
-// goQuiet records that a backend's facts stopped arriving, and since when: each unit on it keeps its
-// state and carries the condition, which is published. Lock held.
+// goQuiet records that a backend's facts stopped arriving, and since when: each unit running on it keeps
+// its state and carries the condition, which is published. A unit with nothing running is not affected.
+// Lock held.
 func (s *Supervisor) goQuiet(backend string, since time.Time) {
 	if _, quiet := s.quiet[backend]; quiet {
 		return
@@ -674,9 +676,10 @@ func (s *Supervisor) goQuiet(backend string, since time.Time) {
 	line := unobserved(backend).Line
 	for _, id := range s.order {
 		m := s.units[id]
-		if backendOf(m.decl) != backend {
+		if backendOf(m.decl) != backend || m.running == nil {
 			continue
 		}
+		m.unobserved = true
 		var from *int
 		if own, has := m.machine.Condition(); has {
 			from = &own.Grade
@@ -685,8 +688,8 @@ func (s *Supervisor) goQuiet(backend string, since time.Time) {
 	}
 }
 
-// observable records that a backend's facts arrive again: each unit on it carries its own condition again,
-// or none, and that is published. Lock held.
+// observable records that a backend's facts arrive again: each unit that carried its condition carries its
+// own again, or none, and that is published. Lock held.
 func (s *Supervisor) observable(backend string) {
 	if _, quiet := s.quiet[backend]; !quiet {
 		return
@@ -694,9 +697,10 @@ func (s *Supervisor) observable(backend string) {
 	delete(s.quiet, backend)
 	for _, id := range s.order {
 		m := s.units[id]
-		if backendOf(m.decl) != backend {
+		if !m.unobserved {
 			continue
 		}
+		m.unobserved = false
 		var own *unit.Condition
 		if c, has := m.machine.Condition(); has {
 			own = &c
