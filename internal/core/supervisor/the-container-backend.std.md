@@ -70,15 +70,15 @@
 | **Action** | launch a unit of kind `interface` naming an image, and a unit on the host beside it |
 | **Expected** | the unit is `Failed` and waits, its failure saying that no container engine is reached; a unit on the host beside it is launched as ever |
 
-## yoke:the-container-backend.06 — the Core runs a oneshot in a container under rootless Podman
+## yoke:the-container-backend.06 — the Core runs a oneshot in a container under the environment's engine
 
 | Field | Value |
 | --- | --- |
 | **Cites** | specs/45.1 · specs/45.8 · specs/45.23 · arch/35-units/05 §Driving the engine · arch/35-units/05 §Identity across the boundary |
 | **Level** | L3 |
 | **Method** | test |
-| **Not applicable in** | container engine: docker |
+| **Not applicable in** | — |
 | **Label** | blocking |
-| **Precondition** | rootless Podman serving its API on a socket the Core is configured with; a fixture image, built by the test over `scratch` and referenced by its digest, that says who it runs as and exits 0; a composition with one unit of kind `oneshot` naming it |
+| **Precondition** | the environment's engine serving its API on a socket the Core is configured with — rootless Podman on a socket of the test's, or the Docker daemon; a fixture image, built by the test over `scratch` and referenced by its digest, that says who it runs as and exits 0; a composition with one unit of kind `oneshot` naming it |
 | **Action** | start the Core, and wait for the unit to complete; then stop the Core |
 | **Expected** | the unit's line reaches the Core's log under its first incarnation and says the launching user; the unit is `Completed`; once the Core has stopped, the engine holds no container under the instance's label |

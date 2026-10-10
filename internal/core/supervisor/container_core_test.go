@@ -2,24 +2,22 @@ package supervisor_test
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"syscall"
 	"testing"
 	"time"
 
-	"github.com/yoke-project/yoke/internal/core/engine"
+	"github.com/yoke-project/yoke/internal/core/engine/enginetest"
 )
 
 // std: yoke:the-container-backend.06
 func TestTheCoreRunsAOneshotInAContainer(t *testing.T) {
 	image := fixtureImage(t, "announce")
-	socket := podmanService(t).socket
+	socket := enginetest.Serve(t).Socket
 	core, lines := coreWith(t, socket, "units:\n  announcer:\n    kind: oneshot\n    image: "+image+"\n")
 
 	want := fmt.Sprintf("announced as uid=%d gid=%d", os.Getuid(), os.Getgid())
@@ -47,9 +45,7 @@ func TestTheCoreRunsAOneshotInAContainer(t *testing.T) {
 	for range lines {
 	}
 	core.Wait()
-	left, _ := exec.Command("podman", "ps", "-aq", "--filter", "label=dev.yoke-project.unit=announcer",
-		"--filter", "label=dev.yoke-project.instance="+instanceOf(said)).Output()
-	if len(strings.TrimSpace(string(left))) != 0 {
+	if left := enginetest.Labelled("dev.yoke-project.unit=announcer", "dev.yoke-project.instance="+instanceOf(said)); len(left) != 0 {
 		t.Errorf("containers are left under the instance's label: %s", left)
 	}
 }
@@ -108,9 +104,10 @@ func (d deployment) start(t *testing.T) (*exec.Cmd, <-chan string) {
 
 // std: yoke:the-quiet-engine.07
 func TestAContainerThatEndedWhileTheEngineWasAwayIsConcludedOnItsReturn(t *testing.T) {
+	enginetest.Not(t, enginetest.Docker)
 	image := fixtureImage(t, "linger")
-	engine := podmanService(t)
-	core, lines := coreWith(t, engine.socket, "units:\n  lingerer:\n    kind: oneshot\n    image: "+image+"\n")
+	engine := enginetest.Serve(t)
+	core, lines := coreWith(t, engine.Socket, "units:\n  lingerer:\n    kind: oneshot\n    image: "+image+"\n")
 	var said []string
 	// next reads the Core's lines until one satisfies holds, failing on anything forbidden on the way.
 	next := func(what string, within time.Duration, holds func(string) bool) {
@@ -149,13 +146,12 @@ func TestAContainerThatEndedWhileTheEngineWasAwayIsConcludedOnItsReturn(t *testi
 	}
 	next("the unit to run", time.Minute, about("unit.state.changed", "to=Running"))
 
-	engine.kill()
+	engine.Kill()
 	next("the condition", 10*time.Second, about("unit.condition.changed"))
 	instance := instanceOf(said)
 	for deadline := time.Now().Add(30 * time.Second); ; time.Sleep(200 * time.Millisecond) {
-		state, _ := exec.Command("podman", "ps", "-a", "--format", "{{.State}}", "--filter", "label=dev.yoke-project.unit=lingerer",
-			"--filter", "label=dev.yoke-project.instance="+instance).Output()
-		if strings.TrimSpace(string(state)) == "exited" {
+		state := enginetest.State("dev.yoke-project.unit=lingerer", "dev.yoke-project.instance="+instance)
+		if state == "exited" {
 			break
 		}
 		if time.Now().After(deadline) {
@@ -168,7 +164,7 @@ func TestAContainerThatEndedWhileTheEngineWasAwayIsConcludedOnItsReturn(t *testi
 		}
 	}
 
-	engine.start()
+	engine.Start()
 	next("the condition cleared", 30*time.Second, about("unit.condition.changed"))
 	next("the unit to complete", 30*time.Second, about("unit.state.changed", "to=Completed"))
 	core.Process.Signal(syscall.SIGTERM)
@@ -176,8 +172,7 @@ func TestAContainerThatEndedWhileTheEngineWasAwayIsConcludedOnItsReturn(t *testi
 		said = append(said, line)
 	}
 	core.Wait()
-	left, _ := exec.Command("podman", "ps", "-aq", "--filter", "label=dev.yoke-project.instance="+instance).Output()
-	if len(strings.TrimSpace(string(left))) != 0 {
+	if left := enginetest.Labelled("dev.yoke-project.instance=" + instance); len(left) != 0 {
 		t.Errorf("containers are left under the instance's label: %s", left)
 	}
 }
@@ -194,7 +189,7 @@ func instanceOf(said []string) string {
 }
 
 // fixtureImage builds, over scratch, a static copy of this test binary playing part, and returns it
-// referenced by its digest.
+// referenced by its digest, held by the engine under test.
 func fixtureImage(t *testing.T, part string) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -204,76 +199,5 @@ func fixtureImage(t *testing.T, part string) string {
 		t.Fatalf("the fixture does not build: %v\n%s", err, said)
 	}
 	os.WriteFile(filepath.Join(dir, "Containerfile"), []byte("FROM scratch\nCOPY unit /unit\nENV "+role+"="+part+"\nENTRYPOINT [\"/unit\"]\n"), 0o644)
-	tag := "localhost/yoke-l3-" + part + ":" + strconv.Itoa(os.Getpid())
-	if said, err := exec.Command("podman", "build", "-q", "-t", tag, dir).CombinedOutput(); err != nil {
-		t.Fatalf("the fixture image does not build: %v\n%s", err, said)
-	}
-	t.Cleanup(func() { exec.Command("podman", "rmi", "-f", tag).Run() })
-	digest, err := exec.Command("podman", "images", "--digests", "--format", "{{.Digest}}", tag).Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-	return "localhost/yoke-l3-" + part + "@" + strings.TrimSpace(string(digest))
-}
-
-// service is rootless Podman's API, served on a socket of the test's, which a case can take away and
-// bring back on the same path.
-type service struct {
-	t       *testing.T
-	socket  string
-	running *exec.Cmd
-}
-
-// podmanService starts rootless Podman's API on a socket of the test's.
-func podmanService(t *testing.T) *service {
-	t.Helper()
-	dir, _ := os.MkdirTemp("", "eng-")
-	t.Cleanup(func() { os.RemoveAll(dir) })
-	s := &service{t: t, socket: filepath.Join(dir, "podman.sock")}
-	s.start()
-	t.Cleanup(s.kill)
-	return s
-}
-
-// start serves the API on the socket, and returns once the API answers. A socket that exists is not yet
-// an engine that answers: on a loaded runner Podman's first answer can take longer than the Core waits
-// at its start, and a case about a container would then be about a cold engine.
-func (s *service) start() {
-	s.t.Helper()
-	s.running = exec.Command("podman", "system", "service", "--time=0", "unix://"+s.socket)
-	if err := s.running.Start(); err != nil {
-		s.t.Fatalf("the environment declares rootless Podman, and it cannot be run: %v", err)
-	}
-	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(50 * time.Millisecond) {
-		if _, err := os.Stat(s.socket); err == nil {
-			break
-		}
-		if time.Now().After(deadline) {
-			s.t.Fatal("Podman's API never appeared")
-		}
-	}
-	// The socket is bound before the service listens on it, and a refused connection is retried.
-	for deadline := time.Now().Add(time.Minute); ; time.Sleep(100 * time.Millisecond) {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		_, err := engine.Reach(ctx, "unix://"+s.socket)
-		cancel()
-		if err == nil {
-			return
-		}
-		if time.Now().After(deadline) {
-			s.t.Fatalf("Podman's API never answered: %v", err)
-		}
-	}
-}
-
-// kill takes the API away as a crash would, leaving what it ran running, and its socket's file behind it
-// removed as a restart would remove it.
-func (s *service) kill() {
-	if s.running == nil {
-		return
-	}
-	s.running.Process.Kill()
-	s.running.Wait()
-	s.running = nil
-	os.Remove(s.socket)
+	return enginetest.Image(t, dir, "yoke-l3-"+part)
 }

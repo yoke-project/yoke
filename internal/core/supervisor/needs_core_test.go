@@ -8,12 +8,14 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/yoke-project/yoke/internal/core/engine/enginetest"
 )
 
 // std: yoke:what-a-need-expands-into.06
 func TestUnderPodmanAUnitUsesItsNeeds(t *testing.T) {
 	image := fixtureImage(t, "needs")
-	socket := podmanService(t).socket
+	socket := enginetest.Serve(t).Socket
 	unit := func(name, needs string) string {
 		return "  " + name + ":\n    kind: oneshot\n    image: " + image + "\n    needs: [ \"storage:data\", \"device:sink\"" + needs + " ]\n" +
 			"    bind: { sink: /dev/null }\n    args: [ \"${bind.data}\", \"${bind.sink}\" ]\n"

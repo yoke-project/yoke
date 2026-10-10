@@ -40,7 +40,7 @@
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
-| **Precondition** | rootless Podman serving its API; a Core whose composition runs a containerised oneshot that does not end, killed with `SIGKILL` once the unit is `Running`, so its container still runs; a container of the same image under another instance's label |
+| **Precondition** | the environment's engine serving its API; a Core whose composition runs a containerised oneshot that does not end, killed with `SIGKILL` once the unit is `Running`, so its container still runs; a container of the same image under another instance's label |
 | **Action** | start the Core again on the same configuration |
 | **Expected** | before the line that step 7 is done, a line names the first life's container with its unit, its incarnation `1` and that it was running; that container no longer exists; the other instance's container still runs; the unit is launched as incarnation `2` |
 

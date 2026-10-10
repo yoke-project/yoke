@@ -70,7 +70,7 @@
 | **Action** | launch both |
 | **Expected** | the first is created with the device mapped at its path and its owning group's number, the storage directory, the Wayland socket, the X11 socket, the authority file and both audio sockets mounted at their paths, a network, and `WAYLAND_DISPLAY` absolute with no `XDG_RUNTIME_DIR`; the storage directory existed before the container was created; the second is created with nothing mounted but the instance's directory, no device, no group and no network |
 
-## yoke:what-a-need-expands-into.06 — under rootless Podman, a unit writes its storage, opens its device and reaches a network only where it asked for one
+## yoke:what-a-need-expands-into.06 — under the environment's engine, a unit writes its storage, opens its device and reaches a network only where it asked for one
 
 | Field | Value |
 | --- | --- |
@@ -79,6 +79,6 @@
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
-| **Precondition** | rootless Podman serving its API; a composition with two containerised oneshots, each needing `storage:data` and `device:sink` bound to `/dev/null`, the second also needing `network` |
+| **Precondition** | the environment's engine serving its API; a composition with two containerised oneshots, each needing `storage:data` and `device:sink` bound to `/dev/null`, the second also needing `network` |
 | **Action** | start the Core and let both complete |
 | **Expected** | each writes a file into its storage directory, which the host then finds under `<state>/storage/data` owned by the launching account, and opens the device for writing; the first sees only the loopback interface, the second at least one other |
