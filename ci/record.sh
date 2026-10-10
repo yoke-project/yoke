@@ -17,7 +17,8 @@ for each in checks.txt started finished; do
 done
 
 # The architecture as the environment's dimension names it. The container engine is declared, never
-# assumed: the reference tier runs rootless Podman, which every runner carries.
+# assumed: the reference tier runs rootless Podman, which every runner carries, and the complete tier
+# declares the engine it runs in YOKE_TEST_ENGINE, which the L3 cases run against.
 case "$(uname -m)" in
   x86_64) architecture=amd64 ;;
   aarch64 | arm64) architecture=arm64 ;;
@@ -26,10 +27,10 @@ esac
 
 arguments=(record
   --level "$level"
-  --tier reference
+  --tier "${YOKE_TIER:-reference}"
   --repository yoke
   --environment "architecture=$architecture"
-  --environment "container engine=podman"
+  --environment "container engine=${YOKE_TEST_ENGINE:-podman}"
   --started "$(tr -d '[:space:]' < "$results/started")"
   --finished "$(tr -d '[:space:]' < "$results/finished")"
   --ran "yoke-verify=unreleased@$(git -C "$root" rev-parse --short HEAD 2>/dev/null)"
