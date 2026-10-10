@@ -251,3 +251,16 @@
 | **Precondition** | a Plugin unit `acquire`, a copy of `com.yoke.test`, and a unit that runs to completion |
 | **Action** | launch both |
 | **Expected** | every `unit.state.changed` about `acquire` carries its unit and incarnation in its subject and `com.yoke.test` as its plugin; those about the other unit carry its unit and incarnation and no plugin |
+
+## yoke:the-supervisor.20 — an incarnation's output follows the state change that starts it
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/28.53 · arch/35-units/04 §Capturing output |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | one log recording state changes and captured lines in the order they arrive; an engine whose container writes a line the instant it starts and then ends with status 0 |
+| **Action** | launch a unit of kind `oneshot` naming an image, and a unit of kind `oneshot` on the host that writes three lines and fails |
+| **Expected** | for each, the `Starting` of its first incarnation comes before every line that incarnation wrote, its first included |

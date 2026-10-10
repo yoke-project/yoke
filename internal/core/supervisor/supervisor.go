@@ -423,8 +423,9 @@ func (s *Supervisor) attempt(m *managed) {
 		WaitDelay:   time.Second,
 	}
 	incarnation := s.cfg.Incarnations.Next(m.decl.ID)
-	stdout := &lineWriter{emit: func(line string) { s.cfg.Output.Line(m.decl.ID, incarnation, "stdout", line) }}
-	stderr := &lineWriter{emit: func(line string) { s.cfg.Output.Line(m.decl.ID, incarnation, "stderr", line) }}
+	stdout := heldUntilOpened(func(line string) { s.cfg.Output.Line(m.decl.ID, incarnation, "stdout", line) })
+	stderr := heldUntilOpened(func(line string) { s.cfg.Output.Line(m.decl.ID, incarnation, "stderr", line) })
+	defer func() { stdout.open(); stderr.open() }()
 	command.Stdout, command.Stderr = stdout, stderr
 	if err := command.Start(); err != nil {
 		file.Close()
@@ -902,7 +903,13 @@ type lineWriter struct {
 	mu      sync.Mutex
 	pending []byte
 	emit    func(string)
+	closed  bool     // the incarnation is not yet opened: its lines are held, never the writer
+	held    []string // the lines written before it was opened, in order
 }
+
+// heldUntilOpened is a writer whose lines wait for open: an incarnation speaks only once the change that
+// starts it has been told.
+func heldUntilOpened(emit func(string)) *lineWriter { return &lineWriter{emit: emit, closed: true} }
 
 func (w *lineWriter) Write(p []byte) (int, error) {
 	w.mu.Lock()
@@ -913,7 +920,7 @@ func (w *lineWriter) Write(p []byte) (int, error) {
 		if i < 0 {
 			return len(p), nil
 		}
-		w.emit(string(w.pending[:i]))
+		w.line(string(w.pending[:i]))
 		w.pending = w.pending[i+1:]
 	}
 }
@@ -922,9 +929,29 @@ func (w *lineWriter) flush() {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if len(w.pending) > 0 {
-		w.emit(string(w.pending))
+		w.line(string(w.pending))
 		w.pending = nil
 	}
+}
+
+// line emits a line, or holds it while the incarnation is not opened. w.mu held.
+func (w *lineWriter) line(s string) {
+	if w.closed {
+		w.held = append(w.held, s)
+		return
+	}
+	w.emit(s)
+}
+
+// open emits what was held, in order, and every line after it as it comes.
+func (w *lineWriter) open() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.closed = false
+	for _, s := range w.held {
+		w.emit(s)
+	}
+	w.held = nil
 }
 
 func indexByte(b []byte, c byte) int {
