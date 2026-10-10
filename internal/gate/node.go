@@ -2,6 +2,7 @@ package gate
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 
@@ -24,7 +25,31 @@ func parse(b []byte) (*node, error) {
 	if len(doc.Content) != 1 {
 		return nil, errors.New("more than one document")
 	}
+	if err := unique(doc.Content[0]); err != nil {
+		return nil, err
+	}
 	return &node{doc.Content[0]}, nil
+}
+
+// unique refuses a mapping that writes a key twice, at any depth: YAML has no such mapping, and the
+// parser keeps one of the two without saying which.
+func unique(n *yaml.Node) error {
+	if n.Kind == yaml.MappingNode {
+		seen := map[string]bool{}
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			key := n.Content[i]
+			if seen[key.Value] {
+				return fmt.Errorf("the key %q is written twice, the second time at line %d", key.Value, key.Line)
+			}
+			seen[key.Value] = true
+		}
+	}
+	for _, child := range n.Content {
+		if err := unique(child); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (n *node) isMapping() bool  { return n.n.Kind == yaml.MappingNode }

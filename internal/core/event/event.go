@@ -176,6 +176,12 @@ func concluded(typ string, subject Subject, severity int, detail map[string]any)
 // life that has just begun. It grades the change by where it went: into Failed serious, into Refused
 // notable, and anything else routine.
 func StateChanged(unitID string, incarnation uint64, from, to unit.State) Event {
+	return StateChangedOf(unitID, "", incarnation, from, to)
+}
+
+// StateChangedOf is StateChanged for a unit that is a copy of plugin, which its detail names, so that the
+// event carries all three names. A unit of no plugin passes none.
+func StateChangedOf(unitID, plugin string, incarnation uint64, from, to unit.State) Event {
 	severity := Routine
 	switch to {
 	case unit.Failed:
@@ -186,6 +192,9 @@ func StateChanged(unitID string, incarnation uint64, from, to unit.State) Event 
 	detail := map[string]any{"to": to}
 	if from != "" {
 		detail["from"] = from
+	}
+	if plugin != "" {
+		detail["plugin"] = plugin
 	}
 	return concluded("unit.state.changed", UnitSubject(unitID, incarnation), severity, detail)
 }

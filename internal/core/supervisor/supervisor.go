@@ -432,7 +432,7 @@ func (s *Supervisor) attempt(m *managed) {
 
 	m.incarnation, m.running, m.exited = incarnation, hostProcess{command.Process.Pid}, make(chan struct{})
 	m.status.Incarnation, m.status.PID, m.status.Token = incarnation, command.Process.Pid, token
-	s.publish(event.StateChanged(m.decl.ID, uint64(incarnation), "", unit.Starting))
+	s.publish(event.StateChangedOf(m.decl.ID, pluginOf(m.decl), uint64(incarnation), "", unit.Starting))
 	m.status.Since = time.Now()
 	s.apply(m, unit.ProcessStarted{})
 
@@ -512,11 +512,19 @@ func (s *Supervisor) ended(m *managed, incarnation, status int) {
 	s.settle(m)
 }
 
+// pluginOf is the plugin a unit is a copy of, which its lifecycle events name; none for another kind.
+func pluginOf(u Unit) string {
+	if u.Kind == unit.Plugin {
+		return u.Plugin
+	}
+	return ""
+}
+
 // apply gives the machine one input and records what it concluded. Lock held.
 func (s *Supervisor) apply(m *managed, in unit.Input) {
 	t, moved := m.machine.Apply(in)
 	if moved {
-		s.publish(event.StateChanged(m.decl.ID, uint64(m.incarnation), t.From, t.To))
+		s.publish(event.StateChangedOf(m.decl.ID, pluginOf(m.decl), uint64(m.incarnation), t.From, t.To))
 		m.status.Since = time.Now()
 	}
 	m.status.State = m.machine.State()
