@@ -107,8 +107,12 @@ func (s *Supervisor) launchContainer(m *managed, attempt int, l engine.Launch, t
 		return
 	}
 	w := &watched{m: m, incarnation: l.Incarnation, recorded: make(chan struct{}), exited: make(chan struct{}),
-		stdout: &lineWriter{emit: func(line string) { s.cfg.Output.Line(l.Unit, l.Incarnation, "stdout", line) }},
-		stderr: &lineWriter{emit: func(line string) { s.cfg.Output.Line(l.Unit, l.Incarnation, "stderr", line) }}}
+		stdout: heldUntilOpened(func(line string) { s.cfg.Output.Line(l.Unit, l.Incarnation, "stdout", line) }),
+		stderr: heldUntilOpened(func(line string) { s.cfg.Output.Line(l.Unit, l.Incarnation, "stderr", line) })}
+	// Opened however the launch ends: once Starting is told, and before its end is concluded, which waits
+	// on recorded.
+	opened := func() { w.stdout.open(); w.stderr.open() }
+	defer opened()
 	attached, err := c.Attach(ctx, id, w.stdout, w.stderr)
 	w.attached = attached
 	if err != nil {
@@ -124,6 +128,7 @@ func (s *Supervisor) launchContainer(m *managed, attempt int, l engine.Launch, t
 		s.ev.Lock()
 		delete(s.watching, id)
 		s.ev.Unlock()
+		opened()
 		close(w.recorded)
 		s.remove(id)
 		fail(fmt.Sprintf("the container could not be started: %v", err))
@@ -134,6 +139,7 @@ func (s *Supervisor) launchContainer(m *managed, attempt int, l engine.Launch, t
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	defer close(w.recorded)
+	defer opened()
 	r := container{c, id}
 	if m.launching != attempt || s.stopping {
 		// Superseded while the engine was asked: what it started is ended, and its end removes it.
