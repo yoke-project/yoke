@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/yoke-project/yoke/internal/core/engine"
+	"github.com/yoke-project/yoke/internal/core/engine/enginetest"
 )
 
 // fake is an engine's API as each case scripts it: what /version and /info answer, and every path it
@@ -193,6 +194,7 @@ func TestAnEngineThatDoesNotAnswerIsUnreachable(t *testing.T) {
 
 // std: yoke:the-engine.05
 func TestTheReferenceEngineIsReachedAndRecognised(t *testing.T) {
+	enginetest.Not(t, enginetest.Docker)
 	stated, err := exec.Command("podman", "version", "--format", "{{.Server.Version}}").Output()
 	if err != nil {
 		t.Fatalf("the environment declares rootless Podman, and podman cannot be run: %v", err)
@@ -219,5 +221,21 @@ func TestTheReferenceEngineIsReachedAndRecognised(t *testing.T) {
 	}
 	if e.Kind != engine.Podman || !e.Rootless || e.Version != strings.TrimSpace(string(stated)) {
 		t.Errorf("reached as %s rootless=%v %s, and podman states %s", e.Kind, e.Rootless, e.Version, stated)
+	}
+}
+
+// std: yoke:the-engine.06
+func TestDockerRunAsRootIsReachedAndRecognised(t *testing.T) {
+	enginetest.Not(t, enginetest.Podman)
+	stated, err := exec.Command("docker", "version", "--format", "{{.Server.Version}}").Output()
+	if err != nil {
+		t.Fatalf("the environment declares Docker, and docker cannot be run: %v", err)
+	}
+	e, err := engine.Reach(patient(t), "unix://"+enginetest.Serve(t).Socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e.Kind != engine.Docker || e.Rootless || e.Version != strings.TrimSpace(string(stated)) {
+		t.Errorf("reached as %s rootless=%v %s, and docker states %s", e.Kind, e.Rootless, e.Version, stated)
 	}
 }

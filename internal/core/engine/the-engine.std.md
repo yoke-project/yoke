@@ -69,3 +69,16 @@
 | **Precondition** | Podman, run rootless by the account running the test, serving its API on a socket in a directory of the test's |
 | **Action** | reach it |
 | **Expected** | it is `podman`, rootless, at the version `podman version` states |
+
+## yoke:the-engine.06 — Docker, run as root by the host, is reached and recognised as not rootless
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/45.30 · specs/45.31 · arch/35-units/05 §Driving the engine · arch/35-units/05 §The engine, and why it is a security question |
+| **Level** | L3 |
+| **Method** | test |
+| **Not applicable in** | container engine: podman |
+| **Label** | blocking |
+| **Precondition** | the Docker daemon the host runs as root, serving its API on its socket |
+| **Action** | reach it |
+| **Expected** | it is `docker`, not rootless, at the version `docker version` states |

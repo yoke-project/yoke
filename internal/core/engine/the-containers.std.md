@@ -96,15 +96,15 @@
 | **Action** | name each one's slice |
 | **Expected** | `yoke-yoke.slice`, `yoke-bench\x2da.slice` and `yoke-lab.2.slice`: a `-` in the identity escaped, so every instance's slice sits directly under `yoke.slice` |
 
-## yoke:the-containers.08 — under rootless Podman, a container runs with the launching identity, no network, and ends with its status
+## yoke:the-containers.08 — under the environment's engine, a container runs with the launching identity, no network, and ends with its status
 
 | Field | Value |
 | --- | --- |
 | **Cites** | specs/45.8 · specs/45.6 · arch/35-units/05 §Identity across the boundary · arch/35-units/05 §No network by default · arch/35-units/05 §Driving the engine |
 | **Level** | L3 |
 | **Method** | test |
-| **Not applicable in** | container engine: docker |
+| **Not applicable in** | — |
 | **Label** | blocking |
-| **Precondition** | rootless Podman serving its API on a socket of the test's; a fixture image, built by the test over `scratch` and referenced by its digest, whose process writes its identity, its network interfaces and a file in the directory it is handed, and exits 3 |
+| **Precondition** | the environment's engine serving its API — rootless Podman on a socket of the test's, or the Docker daemon; a fixture image, built by the test over `scratch` and referenced by its digest, whose process writes its identity, its network interfaces and a file in the directory it is handed, and exits 3 |
 | **Action** | follow this instance's events; create a container for the fixture with a directory of the test's; attach; start; wait for its end; remove it |
 | **Expected** | the output says the launching user and group, and no interface but loopback; the file it wrote is owned by the launching user on the host; the end arrives with status 3; after removal the engine holds no container under the instance's label |

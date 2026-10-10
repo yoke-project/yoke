@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/yoke-project/yoke/internal/core/engine"
+	"github.com/yoke-project/yoke/internal/core/engine/enginetest"
 )
 
 // role says which part a copy of this test binary plays; the fixture image runs it as the probe.
@@ -295,9 +296,9 @@ func TestAnInstancesSliceIsNamedAfterIt(t *testing.T) {
 }
 
 // std: yoke:the-containers.08
-func TestUnderRootlessPodmanAContainerRunsAsTheLauncher(t *testing.T) {
+func TestUnderTheEnvironmentsEngineAContainerRunsAsTheLauncher(t *testing.T) {
 	image := fixtureImage(t)
-	e := podmanService(t)
+	e := underTest(t)
 	instance := "l3-" + strconv.Itoa(os.Getpid())
 	events, err := e.Events(patient(t), instance)
 	if err != nil {
@@ -338,13 +339,13 @@ func TestUnderRootlessPodmanAContainerRunsAsTheLauncher(t *testing.T) {
 	if status != 3 {
 		t.Errorf("the container ended with %d", status)
 	}
-	if left, _ := exec.Command("podman", "ps", "-aq", "--filter", "label=dev.yoke-project.instance="+instance).Output(); len(bytes.TrimSpace(left)) != 0 {
+	if left := enginetest.Labelled("dev.yoke-project.instance=" + instance); len(left) != 0 {
 		t.Errorf("containers are left under the label: %s", left)
 	}
 }
 
 // fixtureImage builds, over scratch, a static copy of this test binary whose role is the probe, and returns
-// it referenced by its digest.
+// it referenced by its digest, held by the engine under test.
 func fixtureImage(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -354,36 +355,13 @@ func fixtureImage(t *testing.T) string {
 		t.Fatalf("the probe does not build: %v\n%s", err, said)
 	}
 	os.WriteFile(filepath.Join(dir, "Containerfile"), []byte("FROM scratch\nCOPY probe /probe\nENV "+role+"=probe\nENTRYPOINT [\"/probe\"]\n"), 0o644)
-	tag := "localhost/yoke-l3-probe:" + strconv.Itoa(os.Getpid())
-	if said, err := exec.Command("podman", "build", "-q", "-t", tag, dir).CombinedOutput(); err != nil {
-		t.Fatalf("the fixture image does not build: %v\n%s", err, said)
-	}
-	t.Cleanup(func() { exec.Command("podman", "rmi", "-f", tag).Run() })
-	digest, err := exec.Command("podman", "images", "--digests", "--format", "{{.Digest}}", tag).Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-	return "localhost/yoke-l3-probe@" + strings.TrimSpace(string(digest))
+	return enginetest.Image(t, dir, "yoke-l3-probe")
 }
 
-// podmanService starts rootless Podman's API on a socket of the test's, and reaches it.
-func podmanService(t *testing.T) *engine.Engine {
+// underTest reaches the environment's engine.
+func underTest(t *testing.T) *engine.Engine {
 	t.Helper()
-	socket := filepath.Join(short(t), "podman.sock")
-	service := exec.Command("podman", "system", "service", "--time=0", "unix://"+socket)
-	if err := service.Start(); err != nil {
-		t.Fatalf("the environment declares rootless Podman, and it cannot be run: %v", err)
-	}
-	t.Cleanup(func() { service.Process.Kill(); service.Wait() })
-	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(50 * time.Millisecond) {
-		if _, err := os.Stat(socket); err == nil {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("Podman's API never appeared")
-		}
-	}
-	e, err := engine.Reach(patient(t), "unix://"+socket)
+	e, err := engine.Reach(patient(t), "unix://"+enginetest.Serve(t).Socket)
 	if err != nil {
 		t.Fatal(err)
 	}
