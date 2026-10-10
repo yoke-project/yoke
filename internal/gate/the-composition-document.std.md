@@ -108,3 +108,16 @@
 | **Precondition** | the composition of `arch/97-trace/07` — four copies of `acquire` on four heads, `pipeline` depending on them, `archive`, the panel and two channels under one arbitration rule — with its three Manifests, `acquire` needing `device:instrument`, and a host holding the executables and the four heads |
 | **Action** | check it at the start |
 | **Expected** | the report is not refused and holds one finding, `channel.address.loopback`; the deployment has the seven units, the two channels and the rule |
+
+## yoke:the-composition-document.09 — a Plugin's needs other than a device are not bound by the composing document
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/12.35 · specs/40.13 · specs/14.16 · specs/14.17 · specs/14.18 · arch/15-gate/06 §Phase 3 — cross-document |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a Manifest needing `device:instrument`, `storage:cache` and `display`; units of it binding, in turn: `instrument` with an argument naming `${bind.cache}`; `instrument` and `cache`; and `instrument` and `display` |
+| **Action** | check each |
+| **Expected** | the first passes; then `bind.class` naming `cache`, and `bind.class` naming `display` |

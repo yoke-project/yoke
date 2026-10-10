@@ -275,3 +275,29 @@ arbitration:
 		t.Errorf("the deployment has %d units, %d channels and %d rules", len(d.Units), len(d.Channels), len(d.Arbitration))
 	}
 }
+
+// std: yoke:the-composition-document.09
+func TestAPluginsNeedsOtherThanADeviceAreNotBound(t *testing.T) {
+	dir := scanned(t, map[string]string{"com.example.acq": plain("com.example.acq", "device:instrument", "storage:cache", "display")})
+	unit := func(bind, args string) string {
+		return "units:\n  acq:\n    kind: plugin\n    plugin: com.example.acq\n    bind: { " + bind + " }\n    args: [ " + args + " ]\n"
+	}
+	for _, c := range []struct {
+		document, code, names string
+	}{
+		{unit("instrument: /dev/a", `"${bind.cache}"`), "", ""},
+		{unit("instrument: /dev/a, cache: /srv/cache", `"x"`), "bind.class", "cache"},
+		{unit("instrument: /dev/a, display: \":0\"", `"x"`), "bind.class", "display"},
+	} {
+		r, _ := gate.Check(gate.Input{Document: gate.Document{Path: "bench.yaml", Kind: gate.Composition, Bytes: []byte(c.document)}, Manifests: dir})
+		if c.code == "" {
+			if len(r.Findings) != 0 {
+				t.Errorf("%s\n  gives %v, want nothing", c.document, codes(r))
+			}
+			continue
+		}
+		if got := codes(r); !slices.Equal(got, []string{c.code}) || !strings.Contains(r.Findings[0].Message, c.names) {
+			t.Errorf("%s\n  gives %v (%v), want [%s] naming %s", c.document, got, r.Findings, c.code, c.names)
+		}
+	}
+}

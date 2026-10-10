@@ -447,3 +447,29 @@ func TestTheHeartbeatsToleranceIsAWholeNumber(t *testing.T) {
 		t.Errorf("a tolerance of 5 gives %v and %v", codes(r), d)
 	}
 }
+
+// std: yoke:the-gate.18
+func TestADeviceIsTheOneClassADocumentBinds(t *testing.T) {
+	for _, c := range []struct {
+		units string
+		want  []string
+		names string
+	}{
+		{`{ kind: interface, exec: /usr/bin/a, needs: [ "storage:datasets" ], bind: { datasets: /srv/data } }`, []string{"bind.class"}, "datasets"},
+		{`{ kind: interface, exec: /usr/bin/a, needs: [ display ], bind: { display: ":0" } }`, []string{"bind.class"}, "display"},
+		{`{ kind: interface, exec: /usr/bin/a, needs: [ audio, network ], bind: { audio: x, network: y } }`, []string{"bind.class", "bind.class"}, "audio"},
+		{`{ kind: oneshot, exec: /usr/bin/a, needs: [ "device:head-a" ] }`, []string{"unit.needs.unbound"}, "head-a"},
+		{`{ kind: oneshot, exec: /usr/bin/a, needs: [ "storage:datasets" ], args: [ "${bind.datasets}" ] }`, nil, ""},
+		{`{ kind: interface, exec: /usr/bin/a, needs: [ display ], args: [ "${bind.display}" ] }`, []string{"substitution.unresolved"}, "${bind.display}"},
+	} {
+		r, _ := composition(t, "units:\n  a: "+c.units+"\n")
+		got := codes(r)
+		if !slices.Equal(got, c.want) || (len(got) > 0 && !strings.Contains(r.Findings[0].Message, c.names)) {
+			t.Errorf("%s\n  gives %v (%v), want %v naming %s", c.units, got, r.Findings, c.want, c.names)
+		}
+	}
+	r, _ := composition(t, "units:\n  a: { kind: interface, exec: /usr/bin/a, needs: [ audio, network ], bind: { audio: x, network: y } }\n")
+	if ms := found(r, "bind.class"); len(ms) != 2 || !strings.Contains(ms[0].Message+ms[1].Message, "network") {
+		t.Errorf("the network binding is not named: %v", r.Findings)
+	}
+}
