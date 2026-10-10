@@ -54,7 +54,9 @@ check_the_record_is_assembled_from_them() {
   local tmp written
   tmp="$(mktemp -d)"
   record_fixture "$tmp" pass "yoke:verbs-and-licence.01"
-  if ! written="$("$record_script" L1 "$tmp" 2>&1)"; then
+  # The record a run makes when the environment declares nothing: the complete tier's own variables
+  # would otherwise reach the script from the job this check runs in.
+  if ! written="$(env -u YOKE_TIER -u YOKE_TEST_ENGINE "$record_script" L1 "$tmp" 2>&1)"; then
     echo "the script refused the results: $written"; rm -rf "$tmp"; return 1
   fi
   rm -rf "$tmp"
