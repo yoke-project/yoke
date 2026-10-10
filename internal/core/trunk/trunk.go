@@ -433,6 +433,12 @@ func declarations(st *State) error {
 	sum := sha256.Sum256(composition.Bytes)
 	st.compositionSum = "sha256:" + hex.EncodeToString(sum[:])
 	st.publish(event.DocumentResolved(st.Composition, fmt.Sprintf("%d units", len(dep.Units)), st.compositionSum))
+	// What the log store may occupy, said rather than enforced; unbounded is said as such, never as a figure.
+	if bytes, bounded := dep.WorstCase(); bounded {
+		st.Log.Info("retention", "worst case", bytes)
+	} else {
+		st.Log.Info("retention", "worst case", "unbounded")
+	}
 	st.mu.Lock()
 	st.Deployment = dep
 	st.mu.Unlock()
