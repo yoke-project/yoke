@@ -2,6 +2,7 @@ package supervisor_test
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,6 +12,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/yoke-project/yoke/internal/core/engine"
 )
 
 // std: yoke:the-container-backend.06
@@ -216,7 +219,9 @@ func podmanService(t *testing.T) *service {
 	return s
 }
 
-// start serves the API on the socket, and returns once the socket is there.
+// start serves the API on the socket, and returns once the API answers. A socket that exists is not yet
+// an engine that answers: on a loaded runner Podman's first answer can take longer than the Core waits
+// at its start, and a case about a container would then be about a cold engine.
 func (s *service) start() {
 	s.t.Helper()
 	s.running = exec.Command("podman", "system", "service", "--time=0", "unix://"+s.socket)
@@ -225,11 +230,16 @@ func (s *service) start() {
 	}
 	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(50 * time.Millisecond) {
 		if _, err := os.Stat(s.socket); err == nil {
-			return
+			break
 		}
 		if time.Now().After(deadline) {
 			s.t.Fatal("Podman's API never appeared")
 		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	if _, err := engine.Reach(ctx, "unix://"+s.socket); err != nil {
+		s.t.Fatalf("Podman's API never answered: %v", err)
 	}
 }
 
