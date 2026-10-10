@@ -438,3 +438,21 @@ func saidArgs(lines []string, id string) bool {
 	}
 	return false
 }
+
+// std: yoke:the-supervisor.18
+func TestALaunchThatFailsIsToldWithWhy(t *testing.T) {
+	told := make(chan [2]string, 1)
+	s := supervisor.New(supervisor.Config{Root: t.TempDir(), Policy: fast(), Incarnations: supervisor.NewCounter(),
+		Tokens: supervisor.NewTokens(), Output: &output{}, LaunchFailed: func(id, why string) { told <- [2]string{id, why} }})
+	t.Cleanup(func() { s.Stop() })
+	missing := filepath.Join(t.TempDir(), "absent")
+	s.Launch(supervisor.Unit{ID: "ghost", Kind: unit.Oneshot, Exec: missing})
+	select {
+	case got := <-told:
+		if got[0] != "ghost" || !strings.Contains(got[1], missing) || got[1] != s.Status("ghost").Failure {
+			t.Errorf("told %q, and the status says %q", got, s.Status("ghost").Failure)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("nothing was told of the failed launch")
+	}
+}

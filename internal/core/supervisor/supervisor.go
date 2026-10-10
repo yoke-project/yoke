@@ -94,6 +94,8 @@ type Config struct {
 	Ended func(unitID string)
 	// NotStarted is told of a unit whose dependency never arrived, with the chain that caused it. Optional.
 	NotStarted func(unitID, cause string)
+	// LaunchFailed is told of a launch that produced nothing, with why. It never waits. Optional.
+	LaunchFailed func(unitID, why string)
 	// Publish is told each state a unit's life enters, as the event the Core concluded. It never waits.
 	// Optional.
 	Publish func(event.Event)
