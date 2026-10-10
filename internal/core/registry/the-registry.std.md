@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/30.3 · specs/30.5 · specs/30.6 · specs/30.7 · specs/30.8 · arch/40-state/02 §The tables · arch/40-state/02 §The three classes, applied |
+| **Cites** | specs/28.51 · specs/30.3 · specs/30.5 · specs/30.6 · specs/30.7 · specs/30.8 · arch/40-state/02 §The tables · arch/40-state/02 §The three classes, applied |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

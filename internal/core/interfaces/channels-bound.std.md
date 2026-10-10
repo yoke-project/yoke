@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.19 · specs/70.20 · arch/70-interface-surface/01 §Managed and attached · arch/35-units/04 §What the Core hands the process |
+| **Cites** | specs/28.26 · specs/70.19 · specs/70.20 · arch/70-interface-surface/01 §Managed and attached · arch/35-units/04 §What the Core hands the process |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.2 · specs/70.20 · arch/70-interface-surface/01 §Managed and attached · arch/30-core/03 |
+| **Cites** | specs/28.6 · specs/70.2 · specs/70.20 · arch/70-interface-surface/01 §Managed and attached · arch/30-core/03 |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | — |

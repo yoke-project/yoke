@@ -126,7 +126,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/14.11 · specs/14.14 · specs/14.20 · arch/15-gate/03 §`units` · arch/35-units/04 §What the Core hands the process |
+| **Cites** | specs/14.11 · specs/14.14 · specs/14.20 · specs/28.14 · arch/15-gate/03 §`units` · arch/35-units/04 §What the Core hands the process |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -191,7 +191,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/14.19 · specs/14.24 · specs/14.26 · specs/14.29 · specs/14.33 · specs/14.51 · arch/15-gate/06 §Phase 2 — internal joins |
+| **Cites** | specs/14.19 · specs/14.24 · specs/14.26 · specs/14.29 · specs/14.33 · specs/14.51 · specs/28.20 · arch/15-gate/06 §Phase 2 — internal joins |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/28.38 · specs/28.40 · arch/35-units/03 §The kind decides which of the seven a unit can reach |
+| **Cites** | specs/28.1 · specs/28.4 · specs/28.29 · specs/28.38 · specs/28.40 · arch/35-units/03 §The kind decides which of the seven a unit can reach |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/28.39 · specs/20.28 · arch/35-units/03 §The seven states |
+| **Cites** | specs/20.28 · specs/28.8 · specs/28.31 · specs/28.39 · arch/35-units/03 §The seven states |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/28.42 · arch/35-units/03 §The terminal states say who ended it |
+| **Cites** | specs/28.31 · specs/28.42 · arch/35-units/03 §The terminal states say who ended it |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/28.36 · specs/28.37 · arch/35-units/03 §Three things that look like states and are not |
+| **Cites** | specs/28.30 · specs/28.36 · specs/28.37 · arch/35-units/03 §Three things that look like states and are not |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -87,7 +87,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/28.46 · specs/28.47 · specs/20.24 · arch/35-units/03 §The restart policy reads the state and is not part of it |
+| **Cites** | specs/20.24 · specs/28.9 · specs/28.46 · specs/28.47 · arch/35-units/03 §The restart policy reads the state and is not part of it |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -113,7 +113,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/35-units/04 §What the Core hands the process · arch/50-plugin-surface/01 §What the launch supplies |
+| **Cites** | specs/28.7 · arch/35-units/04 §What the Core hands the process · arch/50-plugin-surface/01 §What the launch supplies |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -126,7 +126,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/20.13 · arch/35-units/04 §Capturing output |
+| **Cites** | specs/20.13 · specs/28.11 · arch/35-units/04 §Capturing output |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -152,7 +152,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/20.25 · specs/20.27 · arch/30-core/05 §The restart policy |
+| **Cites** | specs/20.25 · specs/20.27 · specs/28.48 · arch/30-core/05 §The restart policy |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -165,7 +165,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/20.29 · arch/30-core/05 §The restart policy |
+| **Cites** | specs/20.29 · specs/28.35 · arch/30-core/05 §The restart policy |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

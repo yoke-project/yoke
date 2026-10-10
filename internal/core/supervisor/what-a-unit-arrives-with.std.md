@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.3 · specs/50.4 · specs/50.5 · specs/40.22 · arch/50-plugin-surface/01 §What the launch supplies · arch/50-plugin-surface/01 §What it is not given |
+| **Cites** | specs/28.25 · specs/28.27 · specs/40.22 · specs/50.3 · specs/50.4 · specs/50.5 · arch/50-plugin-surface/01 §What the launch supplies · arch/50-plugin-surface/01 §What it is not given |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

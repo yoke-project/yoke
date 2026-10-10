@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/32.4 · specs/32.5 · specs/32.6 · specs/32.7 · arch/40-state/04 §The group is the unit |
+| **Cites** | specs/28.1 · specs/28.54 · specs/32.4 · specs/32.5 · specs/32.6 · specs/32.7 · arch/40-state/04 §The group is the unit |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

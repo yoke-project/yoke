@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/20.46 · arch/30-core/07 §Availability and composition are two questions |
+| **Cites** | specs/20.46 · specs/28.23 · arch/30-core/07 §Availability and composition are two questions |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/20.47 · specs/20.45 · specs/14.18 · specs/14.44 · arch/30-core/07 §One identifier becomes two · arch/35-units/04 §The plan |
+| **Cites** | specs/14.18 · specs/14.44 · specs/20.45 · specs/20.47 · specs/28.2 · specs/28.3 · specs/28.10 · specs/28.13 · arch/30-core/07 §One identifier becomes two · arch/35-units/04 §The plan |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/20.42 · specs/20.44 · specs/20.45 · arch/30-core/07 §What it reads · arch/30-core/03 §The eleven steps |
+| **Cites** | specs/20.42 · specs/20.44 · specs/20.45 · specs/28.5 · arch/30-core/07 §What it reads · arch/30-core/03 §The eleven steps |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | — |

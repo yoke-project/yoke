@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.20 · arch/50-plugin-surface/03 §The nine stages |
+| **Cites** | specs/28.23 · specs/50.20 · arch/50-plugin-surface/03 §The nine stages |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.12 · specs/50.13 · specs/50.7 · arch/50-plugin-surface/03 §The four inputs · arch/50-plugin-surface/01 §The startup window, and its three uses |
+| **Cites** | specs/28.24 · specs/50.7 · specs/50.12 · specs/50.13 · arch/50-plugin-surface/03 §The four inputs · arch/50-plugin-surface/01 §The startup window, and its three uses |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.21 · specs/50.33 · arch/50-plugin-surface/03 §The nine stages · arch/50-plugin-surface/03 §The grant is an intersection, computed once |
+| **Cites** | specs/28.3 · specs/28.22 · specs/28.28 · specs/50.21 · specs/50.33 · arch/50-plugin-surface/03 §The nine stages · arch/50-plugin-surface/03 §The grant is an intersection, computed once |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

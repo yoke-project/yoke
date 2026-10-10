@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/30.35 · specs/30.36 · specs/30.42 · arch/40-state/03 §What an entry belongs to |
+| **Cites** | specs/28.53 · specs/30.35 · specs/30.36 · specs/30.42 · arch/40-state/03 §What an entry belongs to |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -87,7 +87,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/30.35 · specs/30.40 · specs/31.21 · arch/40-state/03 §What is in it |
+| **Cites** | specs/28.49 · specs/30.35 · specs/30.40 · specs/31.21 · arch/40-state/03 §What is in it |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | — |
