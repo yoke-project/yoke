@@ -3,6 +3,7 @@ package supervisor_test
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -454,5 +455,43 @@ func TestALaunchThatFailsIsToldWithWhy(t *testing.T) {
 		}
 	case <-time.After(3 * time.Second):
 		t.Fatal("nothing was told of the failed launch")
+	}
+}
+
+// std: yoke:the-supervisor.19
+func TestALifecycleEventCarriesAllThreeNames(t *testing.T) {
+	p := &published{}
+	s := supervisor.New(supervisor.Config{Root: t.TempDir(), Policy: fast(), Incarnations: supervisor.NewCounter(),
+		Tokens: supervisor.NewTokens(), Output: &output{}, Publish: p.publish})
+	t.Cleanup(func() { s.Stop() })
+	s.Launch(declared(t, "acquire", unit.Plugin, "serve"))
+	s.Launch(declared(t, "provision", unit.Oneshot, "exit-0"))
+	until(t, "the oneshot to complete", 3*time.Second, func() bool { return s.Status("provision").State == unit.Completed })
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	seen := map[string]int{}
+	for _, e := range p.events {
+		if e.Type != "unit.state.changed" {
+			continue
+		}
+		var detail map[string]any
+		json.Unmarshal(e.Detail, &detail)
+		seen[e.Subject.ID]++
+		if e.Subject.Incarnation == 0 {
+			t.Errorf("%s's change names no incarnation", e.Subject.ID)
+		}
+		switch plugin, has := detail["plugin"]; e.Subject.ID {
+		case "acquire":
+			if plugin != "com.yoke.test" {
+				t.Errorf("acquire's change carries the plugin %v", plugin)
+			}
+		case "provision":
+			if has {
+				t.Errorf("the oneshot's change carries a plugin, %v", plugin)
+			}
+		}
+	}
+	if seen["acquire"] == 0 || seen["provision"] == 0 {
+		t.Errorf("changes seen: %v", seen)
 	}
 }
