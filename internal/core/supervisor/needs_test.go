@@ -222,3 +222,34 @@ func TestInAContainerEachNeedIsMountedOrMappedAtItsPath(t *testing.T) {
 		t.Errorf("the oneshot needing nothing was created with %+v", bare)
 	}
 }
+
+// std: yoke:what-a-need-expands-into.07
+func TestADevicesGroupIsCarriedOnlyWhereTheAccountReachesItThroughIt(t *testing.T) {
+	grouped := touch(t, filepath.Join(t.TempDir(), "grouped"))
+	os.Chmod(grouped, 0o660)
+	open := touch(t, filepath.Join(t.TempDir(), "open"))
+	os.Chmod(open, 0o666)
+	c := newContainers()
+	s, _ := underHost(t, newHost(t), c)
+	for id, path := range map[string]string{"grouped": grouped, "open": open, "null": "/dev/null"} {
+		u := imaged(id, unit.Oneshot)
+		u.Needs = []supervisor.Need{{Class: "device", Path: path}}
+		s.Launch(u)
+	}
+	until(t, "the three to be created", 3*time.Second, func() bool {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		return len(c.launched) == 3
+	})
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, l := range c.launched {
+		want := []int(nil)
+		if l.Unit == "grouped" {
+			want = []int{os.Getgid()}
+		}
+		if !slices.Equal(l.Groups, want) {
+			t.Errorf("%s was created with the groups %v, want %v", l.Unit, l.Groups, want)
+		}
+	}
+}

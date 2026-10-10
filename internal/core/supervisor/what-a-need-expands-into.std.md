@@ -82,3 +82,16 @@
 | **Precondition** | the environment's engine serving its API; a composition with two containerised oneshots, each needing `storage:data` and `device:sink` bound to `/dev/null`, the second also needing `network` |
 | **Action** | start the Core and let both complete |
 | **Expected** | each writes a file into its storage directory, which the host then finds under `<state>/storage/data` owned by the launching account, and opens the device for writing; the first sees only the loopback interface, the second at least one other |
+
+## yoke:what-a-need-expands-into.07 — a device's group is carried only where the account reaches the node through it
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/45.11 · arch/35-units/05 §What each declared need expands into · arch/35-units/05 §Identity across the boundary |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | three containerised units, each needing one device: a node of the account's group that only its owner and group may use; a node any account may read and write; and `/dev/null` |
+| **Action** | launch them |
+| **Expected** | the first is created with the node's group; the second and the third with none, every account already reaching them |
