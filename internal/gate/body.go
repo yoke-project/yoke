@@ -2,6 +2,7 @@ package gate
 
 import (
 	"fmt"
+	"github.com/yoke-project/yoke/internal/version"
 	"regexp"
 	"slices"
 	"strconv"
@@ -11,11 +12,22 @@ import (
 
 // Deployment is what a document that passed describes: the shared body, with every figure resolved.
 type Deployment struct {
+	Head        Head // a descriptor's identity; empty for a composition document
 	Units       map[string]Unit
 	Order       []string // the unit names, as written
 	Channels    map[string]Channel
 	Arbitration []Rule
 	Policy      Policy // the deployment's scope, defaults applied
+}
+
+// Head is a descriptor's identity, as written.
+type Head struct {
+	Model   int
+	ID      string
+	Version string
+	Arch    string
+	Core    string
+	Data    string
 }
 
 // Unit is one declared unit.
@@ -160,6 +172,7 @@ func (c *checker) shape() bool {
 		return true
 	}
 	var units, channels, arbitration, policy *node
+	head := map[string]*node{}
 	for _, e := range root.entries() {
 		switch {
 		case e.key == "units":
@@ -171,6 +184,7 @@ func (c *checker) shape() bool {
 		case e.key == "policy":
 			policy = e.value
 		case c.doc.Kind == Descriptor && slices.Contains(headKeys, e.key):
+			head[e.key] = e.value
 		case e.key == "parameters":
 			c.refuse("parameters.present", e.key, "a composition document declares no parameters: whoever writes it also runs it")
 		case slices.Contains(headKeys, e.key):
@@ -178,6 +192,9 @@ func (c *checker) shape() bool {
 		default:
 			c.refuse("key.unknown", e.key, "the key %s is not part of the document", e.key)
 		}
+	}
+	if c.doc.Kind == Descriptor {
+		d.Head = c.head(head)
 	}
 	outer := overrides{}
 	if policy != nil {
@@ -857,3 +874,53 @@ func (d *Deployment) WorstCase() (bytes uint64, bounded bool) {
 	}
 	return bytes, true
 }
+
+// head reads a descriptor's identity: `model` was read first, and the rest is required but `data`. The
+// two ranges are read as ranges, and `version` as a semantic version.
+func (c *checker) head(fields map[string]*node) Head {
+	h := Head{Model: DescriptionModel}
+	text := func(key string, required bool) (string, bool) {
+		n, there := fields[key]
+		if !there {
+			if required {
+				c.refuse("field.required", key, "the descriptor does not state its %s", key)
+			}
+			return "", false
+		}
+		return c.str(n, key, false)
+	}
+	if id, ok := text("id", true); ok {
+		if !identifier.MatchString(id) {
+			c.refuse("field.value", "id", "the id %q is not a namespaced identifier of dot-separated lowercase labels", id)
+		}
+		h.ID = id
+	}
+	if v, ok := text("version", true); ok {
+		if _, err := version.Parse(v); err != nil {
+			c.refuse("version.not_semver", "version", "the version %q does not parse as a semantic version", v)
+		}
+		h.Version = v
+	}
+	if a, ok := text("arch", true); ok {
+		if a == "" {
+			c.refuse("field.value", "arch", "arch is empty: a package is built for one architecture and says which")
+		}
+		h.Arch = a
+	}
+	for _, r := range []struct {
+		key      string
+		required bool
+		into     *string
+	}{{"core", true, &h.Core}, {"data", false, &h.Data}} {
+		if v, ok := text(r.key, r.required); ok {
+			if _, err := version.ParseRange(v); err != nil {
+				c.refuse("field.value", r.key, "%s %q is not a range expression over versions: %v", r.key, v, err)
+			}
+			*r.into = v
+		}
+	}
+	return h
+}
+
+// IsIdentifier says whether id is a namespaced identifier: dot-separated lowercase labels.
+func IsIdentifier(id string) bool { return identifier.MatchString(id) }

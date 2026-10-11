@@ -13,6 +13,9 @@ import (
 
 func check(t *testing.T, kind gate.Kind, document string) (gate.Report, *gate.Deployment) {
 	t.Helper()
+	if kind == gate.Descriptor {
+		document = identity + document // a descriptor's body is read after its head
+	}
 	return gate.Check(gate.Input{Document: gate.Document{Path: "deployment.yaml", Kind: kind, Bytes: []byte(document)}})
 }
 
