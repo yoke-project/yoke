@@ -175,19 +175,12 @@ func TestAnEngineThatCannotBeReachedIsARefusal(t *testing.T) {
 // std: yoke:the-installation.12
 func TestAPackageCarryingAnImageInstallsWithTheEngine(t *testing.T) {
 	enginetest.Not(t, enginetest.Docker)
-	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "Containerfile"), []byte("FROM scratch\nCOPY hello /hello\n"), 0o644)
-	os.WriteFile(filepath.Join(dir, "hello"), []byte("hi\n"), 0o644)
-	ref := enginetest.Image(t, dir, "yoke-install")
+	ref, written := enginetest.OCIArchive(t, "yoke-install")
 	proj := imaged(t, map[string]string{"panel": ref}, nil)
 	archive := filepath.Join(proj, "components", "images", strings.Replace(ref[strings.Index(ref, "@")+1:], ":", "-", 1)+".tar")
 	os.MkdirAll(filepath.Dir(archive), 0o755)
-	if said, err := exec.Command("podman", "save", "-q", "--format", "oci-archive", "-o", archive, ref).CombinedOutput(); err != nil {
-		t.Fatalf("the archive was not saved: %v\n%s", err, said)
-	}
-	if id, err := exec.Command("podman", "image", "inspect", "--format", "{{.Id}}", ref).Output(); err == nil {
-		exec.Command("podman", "rmi", "-f", strings.TrimSpace(string(id))).Run()
-	}
+	data, _ := os.ReadFile(written)
+	os.WriteFile(archive, data, 0o644)
 	t.Cleanup(func() { exec.Command("podman", "rmi", "-f", "yoke/com.yoke.station:2.1.0").Run() })
 	s := enginetest.Serve(t)
 	pkg := build(t, proj, compose.BuildOptions{Sign: priv})

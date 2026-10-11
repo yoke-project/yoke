@@ -5,10 +5,15 @@
 package enginetest
 
 import (
+	"archive/tar"
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -212,3 +217,53 @@ func run(t *testing.T, name string, args ...string) string {
 	}
 	return strings.TrimSpace(string(out))
 }
+
+// OCIArchive writes an OCI image archive of one layer holding one file, named in its index by the digest
+// of its manifest, and returns the reference it carries — `localhost/<name>@sha256:…` — and its path. It
+// is written here rather than saved by an engine, since an engine may re-encode an image as it saves it
+// and so break the digest the archive names.
+func OCIArchive(t *testing.T, name string) (string, string) {
+	t.Helper()
+	var layer bytes.Buffer
+	tw := tar.NewWriter(&layer)
+	body := []byte("hi " + name + "\n")
+	tw.WriteHeader(&tar.Header{Name: "hello", Mode: 0o644, Size: int64(len(body)), Typeflag: tar.TypeReg})
+	tw.Write(body)
+	tw.Close()
+	layerDigest := sum(layer.Bytes())
+	config := []byte(fmt.Sprintf(`{"architecture":%q,"os":"linux","config":{},"rootfs":{"type":"layers","diff_ids":[%q]}}`, runtime.GOARCH, layerDigest))
+	manifest := []byte(fmt.Sprintf(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json",`+
+		`"config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":%q,"size":%d},`+
+		`"layers":[{"mediaType":"application/vnd.oci.image.layer.v1.tar","digest":%q,"size":%d}]}`,
+		sum(config), len(config), layerDigest, layer.Len()))
+	ref := "localhost/" + name + "@" + sum(manifest)
+	index := []byte(fmt.Sprintf(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json",`+
+		`"manifests":[{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":%q,"size":%d,`+
+		`"annotations":{"org.opencontainers.image.ref.name":%q}}]}`, sum(manifest), len(manifest), ref))
+	path := filepath.Join(t.TempDir(), name+".tar")
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	out := tar.NewWriter(f)
+	for _, e := range []struct {
+		name string
+		data []byte
+	}{
+		{"oci-layout", []byte(`{"imageLayoutVersion":"1.0.0"}`)}, {"index.json", index},
+		{"blobs/sha256/" + strings.TrimPrefix(sum(manifest), "sha256:"), manifest},
+		{"blobs/sha256/" + strings.TrimPrefix(sum(config), "sha256:"), config},
+		{"blobs/sha256/" + strings.TrimPrefix(layerDigest, "sha256:"), layer.Bytes()},
+	} {
+		out.WriteHeader(&tar.Header{Name: e.name, Mode: 0o644, Size: int64(len(e.data)), Typeflag: tar.TypeReg})
+		out.Write(e.data)
+	}
+	if err := out.Close(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { CLI("rmi", "-f", ref).Run() })
+	return ref, path
+}
+
+func sum(data []byte) string { return fmt.Sprintf("sha256:%x", sha256.Sum256(data)) }

@@ -57,7 +57,7 @@
 | **Action** | tag it for `com.yoke.station` at `2.1.0` |
 | **Expected** | the engine is asked to tag that reference as `yoke/com.yoke.station:2.1.0` |
 
-## yoke:the-engine-images.05 — an OCI archive saved by digest loads, and the image is present by that reference
+## yoke:the-engine-images.05 — an OCI archive named by its digest loads, and the image is present by that reference
 
 | Field | Value |
 | --- | --- |
@@ -66,6 +66,6 @@
 | **Method** | test |
 | **Not applicable in** | container engine: docker |
 | **Label** | blocking |
-| **Precondition** | an image built and held by digest; saved as an OCI archive; then removed |
+| **Precondition** | an OCI archive of one layer, written by the test and named in its index by its manifest's digest — not saved by an engine, which may re-encode the image and break the digest — and no image under that reference |
 | **Action** | load the archive through the engine's API, and ask for the reference |
-| **Expected** | the image is present under the name and digest it was saved by. Not applicable under Docker, whose classic store loads an archive with no digest — which installing refuses as `image.undigested` |
+| **Expected** | the image is present under the name and digest the archive names. Not applicable under Docker, whose classic store loads an archive with no digest — which installing refuses as `image.undigested` |
