@@ -3,6 +3,7 @@ package gate
 import (
 	"fmt"
 	"github.com/yoke-project/yoke/internal/version"
+	"os"
 	"regexp"
 	"slices"
 	"strconv"
@@ -12,12 +13,26 @@ import (
 
 // Deployment is what a document that passed describes: the shared body, with every figure resolved.
 type Deployment struct {
-	Head        Head // a descriptor's identity; empty for a composition document
+	Head Head // a descriptor's identity; empty for a composition document
+	// Parameters are a descriptor's declarations, by group and name.
+	Parameters  map[string]map[string]Parameter
 	Units       map[string]Unit
 	Order       []string // the unit names, as written
 	Channels    map[string]Channel
 	Arbitration []Rule
 	Policy      Policy // the deployment's scope, defaults applied
+}
+
+// Parameter is one declaration of what a site may supply.
+type Parameter struct {
+	Type       string
+	Min, Max   *int64
+	Pattern    string
+	Values     []string
+	Required   bool
+	HasDefault bool
+	Default    string
+	Label      string
 }
 
 // Head is a descriptor's identity, as written.
@@ -225,6 +240,9 @@ func (c *checker) shape() bool {
 				d.Arbitration = append(d.Arbitration, c.rule(item, fmt.Sprintf("arbitration.%d", i)))
 			}
 		}
+	}
+	if n, there := head["parameters"]; there && c.doc.Kind == Descriptor {
+		d.Parameters = c.parameters(n, d)
 	}
 	return true
 }
@@ -939,4 +957,205 @@ func ParseSize(s string) (int64, bool) {
 	}
 	count, _ := strconv.ParseInt(m[1], 10, 64)
 	return count * map[string]int64{"KB": 1_000, "MB": 1_000_000, "GB": 1_000_000_000}[m[2]], true
+}
+
+// The types a parameter may be declared of.
+var parameterTypes = []string{"string", "integer", "boolean", "enum", "path", "address"}
+
+// parameters reads a descriptor's declarations: groups named after a unit, a channel or `shared`, each
+// declaration what its type allows, with exactly one arrangement of `required` and `default`.
+func (c *checker) parameters(n *node, d *Deployment) map[string]map[string]Parameter {
+	out := map[string]map[string]Parameter{}
+	if !c.mapping(n, "parameters") {
+		return out
+	}
+	for _, g := range n.entries() {
+		at := joined("parameters", g.key)
+		_, unit := d.Units[g.key]
+		_, channel := d.Channels[g.key]
+		if g.key != "shared" && !unit && !channel {
+			c.refuse("field.value", at, "the group %s names no unit and no channel, and is not shared", g.key)
+			continue
+		}
+		if !c.mapping(g.value, at) {
+			continue
+		}
+		out[g.key] = map[string]Parameter{}
+		for _, e := range g.value.entries() {
+			if !nameOK(e.key) {
+				c.refuse("name.not_a_path_component", joined(at, e.key), "the parameter name %q is not a path component", e.key)
+				continue
+			}
+			if p, ok := c.parameter(e.value, joined(at, e.key)); ok {
+				out[g.key][e.key] = p
+			}
+		}
+	}
+	return out
+}
+
+func (c *checker) parameter(n *node, at string) (Parameter, bool) {
+	var p Parameter
+	if !c.mapping(n, at) {
+		return p, false
+	}
+	fields := map[string]*node{}
+	for _, e := range n.entries() {
+		if !slices.Contains([]string{"type", "range", "pattern", "values", "required", "default", "label"}, e.key) {
+			c.refuse("key.unknown", joined(at, e.key), "the key %s is not part of a parameter's declaration", e.key)
+			continue
+		}
+		fields[e.key] = e.value
+	}
+	ok := true
+	need := func(key string) *node {
+		v, there := fields[key]
+		if !there {
+			c.refuse("field.required", joined(at, key), "the parameter at %s declares no %s", at, key)
+			ok = false
+		}
+		return v
+	}
+	if v := need("type"); v != nil {
+		if t, good := c.enum(v, joined(at, "type"), parameterTypes...); good {
+			p.Type = t
+		} else {
+			ok = false
+		}
+	}
+	if v := need("label"); v != nil {
+		p.Label, _ = c.str(v, joined(at, "label"), false)
+	}
+	if v := need("required"); v != nil {
+		p.Required, _ = c.boolean(v, joined(at, "required"))
+	}
+	only := func(key, kind string) bool {
+		if _, there := fields[key]; there && p.Type != kind && p.Type != "" {
+			c.refuse("field.value", joined(at, key), "%s belongs to a parameter of type %s, and this one is %s", key, kind, p.Type)
+			ok = false
+			return false
+		}
+		return true
+	}
+	if v, there := fields["range"]; there && only("range", "integer") {
+		items := v.items()
+		if !v.isSequence() || len(items) != 2 || !isInteger(items[0].n.Value) || !isInteger(items[1].n.Value) {
+			c.refuse("field.type", joined(at, "range"), "range is %s, not [min, max]", v.text())
+			ok = false
+		} else {
+			lo, _ := strconv.ParseInt(items[0].n.Value, 10, 64)
+			hi, _ := strconv.ParseInt(items[1].n.Value, 10, 64)
+			p.Min, p.Max = &lo, &hi
+		}
+	}
+	if v, there := fields["pattern"]; there && only("pattern", "string") {
+		if s, good := c.str(v, joined(at, "pattern"), false); good {
+			if _, err := regexp.Compile(s); err != nil {
+				c.refuse("field.value", joined(at, "pattern"), "the pattern %q is not a regular expression: %v", s, err)
+				ok = false
+			}
+			p.Pattern = s
+		}
+	}
+	if v, there := fields["values"]; there && only("values", "enum") {
+		p.Values, _ = c.strings(v, joined(at, "values"), false)
+	} else if p.Type == "enum" && !there {
+		c.refuse("field.required", joined(at, "values"), "the parameter at %s is an enum and declares no values", at)
+		ok = false
+	}
+	if v, there := fields["default"]; there {
+		if !v.isScalar() {
+			c.refuse("field.type", joined(at, "default"), "default is %s, not a value", v.text())
+			ok = false
+		} else {
+			p.HasDefault, p.Default = true, v.n.Value
+		}
+	}
+	if _, there := fields["required"]; there && p.Required == p.HasDefault {
+		c.refuse("parameter.arrangement", at, "the parameter at %s is required and has a default, or is neither: exactly one of the two is legal", at)
+		ok = false
+	}
+	if ok && p.HasDefault && p.Type != "path" {
+		if err := p.accepts(p.Default); err != nil {
+			c.refuse("field.value", joined(at, "default"), "the default %q fails its own declaration: %v", p.Default, err)
+			ok = false
+		}
+	}
+	return p, ok
+}
+
+// accepts says why a value fails the declaration, or nothing where it satisfies it. A path is checked
+// to exist; existence is not accessibility.
+func (p Parameter) accepts(v string) error {
+	switch p.Type {
+	case "string":
+		if p.Pattern != "" {
+			if re, err := regexp.Compile(p.Pattern); err == nil && !re.MatchString(v) {
+				return fmt.Errorf("it does not match the pattern %s", p.Pattern)
+			}
+		}
+	case "integer":
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			return fmt.Errorf("it is not an integer")
+		}
+		if p.Min != nil && (n < *p.Min || n > *p.Max) {
+			return fmt.Errorf("it is outside the range [%d, %d]", *p.Min, *p.Max)
+		}
+	case "boolean":
+		if v != "true" && v != "false" {
+			return fmt.Errorf("it is neither true nor false")
+		}
+	case "enum":
+		if !slices.Contains(p.Values, v) {
+			return fmt.Errorf("it is none of %s", strings.Join(p.Values, ", "))
+		}
+	case "path":
+		if _, err := os.Stat(v); err != nil {
+			return fmt.Errorf("the path does not exist on this host")
+		}
+	case "address":
+		if v == "" {
+			return fmt.Errorf("it is empty")
+		}
+	}
+	return nil
+}
+
+// Values checks what a site supplied against the declarations and returns the values resolved, the
+// defaults filling what was not supplied: a value failing its declaration is refused `parameter.value`,
+// a required parameter with none `parameter.missing`, and a value nobody declared `key.unknown`.
+func Values(d *Deployment, supplied map[string]map[string]string) (map[string]map[string]string, []Finding) {
+	var findings []Finding
+	refuse := func(code, location, format string, args ...any) {
+		findings = append(findings, Finding{Code: code, Class: Refusal, Location: location, Message: fmt.Sprintf(format, args...)})
+	}
+	for _, group := range sortedKeys(supplied) {
+		for _, name := range sortedKeys(supplied[group]) {
+			if _, declared := d.Parameters[group][name]; !declared {
+				refuse("key.unknown", joined(joined("parameters", group), name), "a value is supplied for %s.%s, which the description does not declare", group, name)
+			}
+		}
+	}
+	out := map[string]map[string]string{}
+	for _, group := range sortedKeys(d.Parameters) {
+		out[group] = map[string]string{}
+		for _, name := range sortedKeys(d.Parameters[group]) {
+			p, at := d.Parameters[group][name], joined(joined("parameters", group), name)
+			v, given := supplied[group][name]
+			switch {
+			case !given && p.HasDefault:
+				v = p.Default
+			case !given:
+				refuse("parameter.missing", at, "the required parameter %s.%s has no value", group, name)
+				continue
+			}
+			if err := p.accepts(v); err != nil {
+				refuse("parameter.value", at, "the value %q of %s.%s fails its declaration as %s: %v", v, group, name, p.Type, err)
+				continue
+			}
+			out[group][name] = v
+		}
+	}
+	return out, findings
 }
