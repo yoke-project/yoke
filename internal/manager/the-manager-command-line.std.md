@@ -56,3 +56,16 @@
 | **Precondition** | a configuration naming an install root and a Core built from this tree, no trust store on the host, and an unsigned package built by the composer |
 | **Action** | run `yoke app install` with the package, then again; then `yoke app list` and `yoke app show com.yoke.station`; then `yoke app install` with a file that is not a package |
 | **Expected** | the first install exits 0 and names where it installed; the second exits 0 saying the version is already there and that nothing was done; the list names the application, its version and `complete`; the show names the version, `unsigned` and the payload's digest; the file that is not a package exits 2 |
+
+## yoke:the-manager-command-line.05 — `yoke instance` creates, lists, shows and re-points instances
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/15.67 · specs/15.68 · arch/10-manager/01 §`yoke instance` — records · arch/10-manager/07 §Creating an instance, and naming it |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a configuration naming an install root holding `com.yoke.station` at `2.1.0` and `2.2.0`, the account's state directory empty, and a values file |
+| **Action** | run `yoke instance create com.yoke.station --name bench-a --params <file>`, then `yoke instance list`, `yoke instance show bench-a`, `yoke instance set-param bench-a setup.retries 5`, `yoke instance set-version bench-a 2.2.0`; then `yoke instance create` of an application not installed |
+| **Expected** | each exits 0: the create names the instance and its version, the list names `bench-a`, its application, its version and that it is stopped, the show prints the record with its values; after the last two the record holds the new value and `2.2.0`; the create of an application not installed exits 2 |

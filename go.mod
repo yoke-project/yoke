@@ -3,6 +3,7 @@ module github.com/yoke-project/yoke
 go 1.26.0
 
 require (
+	github.com/BurntSushi/toml v1.5.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/yoke-project/yoke-sdk-go v0.4.0
 	github.com/yoke-project/yoke/proto v0.3.1-0.20261011164235-877de27e0f27
