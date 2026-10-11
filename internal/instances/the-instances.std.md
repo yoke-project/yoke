@@ -69,3 +69,42 @@
 | **Precondition** | an instance with recorded values |
 | **Action** | set one value that satisfies its declaration, then one that fails it, then one nobody declared |
 | **Expected** | the first replaces that value and nothing else; the other two are refused, naming them, and the record is unchanged |
+
+## yoke:the-instances.06 — a copy is the state whole and where it came from, and only a stopped instance is copied
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/15.62 · specs/15.64 · arch/10-manager/07 §Copying an instance's state |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an instance whose state holds both stores, the version stamp, a secret and a storage need's directory; another process holding its claim, then none |
+| **Action** | copy it while the claim is held; then copy it; then copy it again to the same path |
+| **Expected** | the first is refused as running and writes nothing; the second writes `state/`, every file the state held with its mode, and `origin` naming the instance; the third is refused, naming the path that exists |
+
+## yoke:the-instances.07 — a restore into the same instance keeps the Registry and the secrets, into another strips them
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/15.63 · specs/15.64 · specs/15.65 · arch/10-manager/07 §Copying an instance's state |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a copy of `bench-a`; `bench-a` and `bench-b` stopped, `bench-c` with its claim held by another process |
+| **Action** | restore the copy into `bench-a`, into `bench-b`, and into `bench-c` |
+| **Expected** | `bench-a`'s state is the copy's, Registry, secrets and stamp included; `bench-b`'s is the copy's without the Registry and without secrets, the stamp kept; `bench-c` is refused as running and its state is untouched |
+
+## yoke:the-instances.08 — reading an instance reports what its state occupies, per store and per storage need
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/15.66 · arch/10-manager/07 §Reading an instance |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an instance whose state holds a Registry of 3 bytes, a log store of 5, and two storage needs of 7 and 11 |
+| **Action** | ask what its state occupies |
+| **Expected** | the Registry 3, the log store 5, `storage/datasets` 7 and `storage/cache` 11 — read from the filesystem, nothing written |

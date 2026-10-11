@@ -15,7 +15,9 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"golang.org/x/sys/unix"
 
+	"github.com/yoke-project/yoke/internal/core/instance"
 	"github.com/yoke-project/yoke/internal/gate"
 	"github.com/yoke-project/yoke/internal/installroot"
 	"github.com/yoke-project/yoke/internal/instancerecord"
@@ -29,6 +31,8 @@ type Options struct {
 	Now         func() time.Time
 	// User is the account acting, by name; empty is the account running this.
 	User string
+	// Runtime is where the account's instances keep their sockets and claims: `$XDG_RUNTIME_DIR/yoke`.
+	Runtime string
 }
 
 func (o Options) me() string {
@@ -270,4 +274,168 @@ func SetParam(o Options, name, param, value string) error {
 		r.Parameters = resolved
 		return nil
 	})
+}
+
+// running says whether an instance's claim is held, asking without taking it: a record lock another
+// process holds on its file. No file is no claim.
+func (o Options) running(name string) (bool, error) {
+	f, err := os.Open(filepath.Join(o.Runtime, name, instance.LockName))
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+	lock := unix.Flock_t{Type: unix.F_WRLCK, Whence: 0, Start: 0, Len: 0}
+	if err := unix.FcntlFlock(f.Fd(), unix.F_GETLK, &lock); err != nil {
+		return false, err
+	}
+	return lock.Type != unix.F_UNLCK, nil
+}
+
+func (o Options) stopped(name string) error {
+	if _, err := instancerecord.Read(o.Instances, name); err != nil {
+		return err
+	}
+	up, err := o.running(name)
+	if err != nil {
+		return err
+	}
+	if up {
+		return fmt.Errorf("the instance %s is running, and its state is copied or restored only while it is stopped", name)
+	}
+	return nil
+}
+
+// Copy writes a stopped instance's state, whole, to a path that does not exist: `state/`, and `origin`
+// naming the instance.
+func Copy(o Options, name, path string) error {
+	if err := o.stopped(name); err != nil {
+		return err
+	}
+	if _, err := os.Lstat(path); err == nil {
+		return fmt.Errorf("%s exists, and a copy is written only where nothing is", path)
+	}
+	if err := os.MkdirAll(path, 0o700); err != nil {
+		return err
+	}
+	if err := tree(instancerecord.StateDir(o.Instances, name), filepath.Join(path, instancerecord.State), nil); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(path, "origin"), []byte(name+"\n"), 0o600)
+}
+
+// Restore replaces a stopped instance's state with a copy's: whole where the copy is the same
+// instance's, and without its Registry and its secrets where it is another's or says nothing of where it
+// came from. The version stamp travels either way.
+func Restore(o Options, path, name string) error {
+	if err := o.stopped(name); err != nil {
+		return err
+	}
+	from := filepath.Join(path, instancerecord.State)
+	if info, err := os.Stat(from); err != nil || !info.IsDir() {
+		return fmt.Errorf("%s holds no copied state", path)
+	}
+	var skip map[string]bool
+	if origin, err := os.ReadFile(filepath.Join(path, "origin")); err != nil || strings.TrimSpace(string(origin)) != name {
+		skip = map[string]bool{"registry.db": true, "registry.db-wal": true, "registry.db-shm": true, "secrets": true}
+	}
+	state := instancerecord.StateDir(o.Instances, name)
+	staged := state + ".restoring"
+	os.RemoveAll(staged)
+	if err := tree(from, staged, skip); err != nil {
+		os.RemoveAll(staged)
+		return err
+	}
+	former := state + ".former"
+	os.RemoveAll(former)
+	if err := os.Rename(state, former); err != nil && !errors.Is(err, os.ErrNotExist) {
+		os.RemoveAll(staged)
+		return err
+	}
+	if err := os.Rename(staged, state); err != nil {
+		os.Rename(former, state)
+		return err
+	}
+	return os.RemoveAll(former)
+}
+
+// tree copies a directory, its modes kept, leaving out the top-level entries named in skip.
+func tree(from, to string, skip map[string]bool) error {
+	return filepath.WalkDir(from, func(p string, e os.DirEntry, err error) error {
+		if err != nil {
+			if p == from && errors.Is(err, os.ErrNotExist) {
+				return os.MkdirAll(to, 0o700)
+			}
+			return err
+		}
+		rel, _ := filepath.Rel(from, p)
+		if top := strings.Split(rel, string(filepath.Separator))[0]; skip[top] {
+			if e.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		target := filepath.Join(to, rel)
+		info, err := e.Info()
+		if err != nil {
+			return err
+		}
+		switch {
+		case e.IsDir():
+			return os.MkdirAll(target, info.Mode().Perm())
+		case info.Mode().IsRegular():
+			data, err := os.ReadFile(p)
+			if err != nil {
+				return err
+			}
+			if err := os.WriteFile(target, data, info.Mode().Perm()); err != nil {
+				return err
+			}
+			return os.Chmod(target, info.Mode().Perm())
+		case info.Mode()&os.ModeSymlink != 0:
+			link, err := os.Readlink(p)
+			if err != nil {
+				return err
+			}
+			return os.Symlink(link, target)
+		}
+		return nil // a socket or a pipe belongs to a running instance and is not state
+	})
+}
+
+// Occupies is what an instance's state occupies, read from the filesystem: each store, with the files
+// beside it, and each storage need's directory.
+func Occupies(o Options, name string) (map[string]int64, error) {
+	if _, err := instancerecord.Read(o.Instances, name); err != nil {
+		return nil, err
+	}
+	state := instancerecord.StateDir(o.Instances, name)
+	out := map[string]int64{}
+	for store, file := range map[string]string{"registry": "registry.db", "logs": "logs.db"} {
+		matches, _ := filepath.Glob(filepath.Join(state, file+"*"))
+		for _, m := range matches {
+			if info, err := os.Stat(m); err == nil && info.Mode().IsRegular() {
+				out[store] += info.Size()
+			}
+		}
+	}
+	needs, _ := os.ReadDir(filepath.Join(state, "storage"))
+	for _, n := range needs {
+		if !n.IsDir() {
+			continue
+		}
+		var size int64
+		filepath.WalkDir(filepath.Join(state, "storage", n.Name()), func(_ string, e os.DirEntry, err error) error {
+			if err == nil && !e.IsDir() {
+				if info, err := e.Info(); err == nil && info.Mode().IsRegular() {
+					size += info.Size()
+				}
+			}
+			return nil
+		})
+		out["storage/"+n.Name()] = size
+	}
+	return out, nil
 }

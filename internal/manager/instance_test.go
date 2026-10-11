@@ -46,3 +46,37 @@ func TestYokeInstanceCreatesListsShowsAndRePoints(t *testing.T) {
 		t.Errorf("an application not installed exited %d:\n%s", code, out)
 	}
 }
+
+// std: yoke:the-manager-command-line.06
+func TestYokeInstanceCopiesRestoresAndShowsWhatItOccupies(t *testing.T) {
+	apps := filepath.Join(t.TempDir(), "apps")
+	dir := filepath.Join(apps, "com.yoke.station", "2.1.0")
+	os.MkdirAll(filepath.Join(dir, "bundle"), 0o775)
+	os.WriteFile(filepath.Join(dir, "bundle", "yoke.yaml"), []byte("model: 1\nid: com.yoke.station\nversion: 2.1.0\narch: aarch64\ncore: \">=0.1\"\n"+
+		"units:\n  setup: { kind: oneshot, exec: components/setup, digest: \"sha256:"+strings.Repeat("ab", 32)+"\" }\n"), 0o644)
+	os.WriteFile(filepath.Join(dir, "install.yaml"), []byte("state: complete\nsealed: false\nshared: true\n"), 0o664)
+	vars := conf(t, "install_root: "+apps+"\n")
+	vars["XDG_STATE_HOME"] = t.TempDir()
+	vars["XDG_RUNTIME_DIR"] = t.TempDir()
+	for _, n := range []string{"bench-a", "bench-b"} {
+		if code, out := yoke(vars, "instance", "create", "com.yoke.station", "--name", n); code != Done {
+			t.Fatalf("create %s: %s", n, out)
+		}
+	}
+	logs := filepath.Join(vars["XDG_STATE_HOME"], "yoke", "instances", "bench-a", "state", "logs.db")
+	os.MkdirAll(filepath.Dir(logs), 0o700)
+	os.WriteFile(logs, []byte("12345"), 0o600)
+	if code, out := yoke(vars, "instance", "show", "bench-a"); code != Done || !strings.Contains(squash(out), "logs 5") {
+		t.Errorf("show exited %d:\n%s", code, out)
+	}
+	copied := filepath.Join(t.TempDir(), "copy")
+	if code, out := yoke(vars, "instance", "copy", "bench-a", copied); code != Done || !strings.Contains(out, copied) {
+		t.Errorf("copy exited %d:\n%s", code, out)
+	}
+	if code, out := yoke(vars, "instance", "restore", copied, "bench-b"); code != Done {
+		t.Errorf("restore exited %d:\n%s", code, out)
+	}
+	if _, err := os.Stat(filepath.Join(vars["XDG_STATE_HOME"], "yoke", "instances", "bench-b", "state", "logs.db")); err != nil {
+		t.Errorf("bench-b holds no log store after the restore: %v", err)
+	}
+}

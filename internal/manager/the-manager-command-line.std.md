@@ -69,3 +69,16 @@
 | **Precondition** | a configuration naming an install root holding `com.yoke.station` at `2.1.0` and `2.2.0`, the account's state directory empty, and a values file |
 | **Action** | run `yoke instance create com.yoke.station --name bench-a --params <file>`, then `yoke instance list`, `yoke instance show bench-a`, `yoke instance set-param bench-a setup.retries 5`, `yoke instance set-version bench-a 2.2.0`; then `yoke instance create` of an application not installed |
 | **Expected** | each exits 0: the create names the instance and its version, the list names `bench-a`, its application, its version and that it is stopped, the show prints the record with its values; after the last two the record holds the new value and `2.2.0`; the create of an application not installed exits 2 |
+
+## yoke:the-manager-command-line.06 — `yoke instance` copies and restores state, and shows what it occupies
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/15.62 · specs/15.65 · specs/15.66 · arch/10-manager/01 §`yoke instance` — records · arch/10-manager/07 §Copying an instance's state · arch/10-manager/07 §Reading an instance |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a stopped instance `bench-a` whose state holds a log store, and a stopped instance `bench-b` |
+| **Action** | run `yoke instance show bench-a`, `yoke instance copy bench-a <path>`, then `yoke instance restore <path> bench-b` |
+| **Expected** | each exits 0; the show reports what the log store occupies; the copy names where it wrote; after the restore `bench-b`'s state holds the log store |
