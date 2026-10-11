@@ -56,7 +56,7 @@ func Init(dir, id string, o InitOptions) error {
 		return fmt.Errorf("the id %q is not a namespaced identifier of dot-separated lowercase labels", id)
 	}
 	if o.Arch == "" {
-		o.Arch = hostArch()
+		o.Arch = HostArch()
 	}
 	if o.Version == "" {
 		o.Version = "0.1.0"
@@ -85,8 +85,8 @@ func Init(dir, id string, o InitOptions) error {
 	return f.Close()
 }
 
-// hostArch is this host's machine name, as `uname -m` reports it.
-func hostArch() string {
+// HostArch is this host's machine name, as `uname -m` reports it.
+func HostArch() string {
 	var u unix.Utsname
 	if err := unix.Uname(&u); err != nil {
 		return ""
