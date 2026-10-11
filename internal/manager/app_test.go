@@ -26,7 +26,7 @@ func TestYokeAppInstallsListsAndShows(t *testing.T) {
 	project := t.TempDir()
 	program := "#!/bin/sh\n"
 	for name, body := range map[string]string{
-		"yoke.yaml": fmt.Sprintf("model: 1\nid: com.yoke.station\nversion: 2.1.0\narch: %s\ncore: \">=0.0.1-0\"\n"+
+		"yoke.yaml": fmt.Sprintf("model: 1\nid: com.yoke.station\nversion: 2.1.0\narch: %s\ncore: \">=0.0.0-0\"\n"+
 			"units:\n  setup: { kind: oneshot, exec: components/setup, digest: \"sha256:%x\" }\n", compose.HostArch(), sha256.Sum256([]byte(program))),
 		"components/setup": program, "manifests/.keep": "",
 	} {
