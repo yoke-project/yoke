@@ -162,7 +162,10 @@ type RegisterRequest struct {
 	Language        string `protobuf:"bytes,6,opt,name=language,proto3" json:"language,omitempty"`
 	SdkLine         string `protobuf:"bytes,7,opt,name=sdk_line,json=sdkLine,proto3" json:"sdk_line,omitempty"`
 	// The declared surface.
-	Declared      *Surface `protobuf:"bytes,8,opt,name=declared,proto3" json:"declared,omitempty"`
+	Declared *Surface `protobuf:"bytes,8,opt,name=declared,proto3" json:"declared,omitempty"`
+	// The transports this library offers beyond the ordered and the framed, which every library speaks.
+	// The Core activates a stream that tolerates loss on the shared object only for a library that names it.
+	Transports    []Control_Activate_Transport `protobuf:"varint,9,rep,packed,name=transports,proto3,enum=yoke.plugin.v1.Control_Activate_Transport" json:"transports,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -249,6 +252,13 @@ func (x *RegisterRequest) GetSdkLine() string {
 func (x *RegisterRequest) GetDeclared() *Surface {
 	if x != nil {
 		return x.Declared
+	}
+	return nil
+}
+
+func (x *RegisterRequest) GetTransports() []Control_Activate_Transport {
+	if x != nil {
+		return x.Transports
 	}
 	return nil
 }
@@ -493,7 +503,7 @@ var File_yoke_plugin_v1_register_proto protoreflect.FileDescriptor
 
 const file_yoke_plugin_v1_register_proto_rawDesc = "" +
 	"\n" +
-	"\x1dyoke/plugin/v1/register.proto\x12\x0eyoke.plugin.v1\x1a\x1egoogle/protobuf/duration.proto\"\x86\x02\n" +
+	"\x1dyoke/plugin/v1/register.proto\x12\x0eyoke.plugin.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1dyoke/plugin/v1/families.proto\"\xd2\x02\n" +
 	"\x0fRegisterRequest\x12\x16\n" +
 	"\x06plugin\x18\x01 \x01(\tR\x06plugin\x12\x12\n" +
 	"\x04unit\x18\x02 \x01(\tR\x04unit\x12\x14\n" +
@@ -502,7 +512,10 @@ const file_yoke_plugin_v1_register_proto_rawDesc = "" +
 	"\x10artifact_version\x18\x05 \x01(\tR\x0fartifactVersion\x12\x1a\n" +
 	"\blanguage\x18\x06 \x01(\tR\blanguage\x12\x19\n" +
 	"\bsdk_line\x18\a \x01(\tR\asdkLine\x123\n" +
-	"\bdeclared\x18\b \x01(\v2\x17.yoke.plugin.v1.SurfaceR\bdeclared\"\x9f\x01\n" +
+	"\bdeclared\x18\b \x01(\v2\x17.yoke.plugin.v1.SurfaceR\bdeclared\x12J\n" +
+	"\n" +
+	"transports\x18\t \x03(\x0e2*.yoke.plugin.v1.Control.Activate.TransportR\n" +
+	"transports\"\x9f\x01\n" +
 	"\aSurface\x12\"\n" +
 	"\fcapabilities\x18\x01 \x03(\tR\fcapabilities\x12\x18\n" +
 	"\astreams\x18\x02 \x03(\tR\astreams\x12\x1a\n" +
@@ -556,29 +569,31 @@ func file_yoke_plugin_v1_register_proto_rawDescGZIP() []byte {
 var file_yoke_plugin_v1_register_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_yoke_plugin_v1_register_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_yoke_plugin_v1_register_proto_goTypes = []any{
-	(Stage)(0),                    // 0: yoke.plugin.v1.Stage
-	(RegisterResponse_Outcome)(0), // 1: yoke.plugin.v1.RegisterResponse.Outcome
-	(*RegisterRequest)(nil),       // 2: yoke.plugin.v1.RegisterRequest
-	(*Surface)(nil),               // 3: yoke.plugin.v1.Surface
-	(*RegisterResponse)(nil),      // 4: yoke.plugin.v1.RegisterResponse
-	(*HeartbeatTerms)(nil),        // 5: yoke.plugin.v1.HeartbeatTerms
-	(*durationpb.Duration)(nil),   // 6: google.protobuf.Duration
+	(Stage)(0),                      // 0: yoke.plugin.v1.Stage
+	(RegisterResponse_Outcome)(0),   // 1: yoke.plugin.v1.RegisterResponse.Outcome
+	(*RegisterRequest)(nil),         // 2: yoke.plugin.v1.RegisterRequest
+	(*Surface)(nil),                 // 3: yoke.plugin.v1.Surface
+	(*RegisterResponse)(nil),        // 4: yoke.plugin.v1.RegisterResponse
+	(*HeartbeatTerms)(nil),          // 5: yoke.plugin.v1.HeartbeatTerms
+	(Control_Activate_Transport)(0), // 6: yoke.plugin.v1.Control.Activate.Transport
+	(*durationpb.Duration)(nil),     // 7: google.protobuf.Duration
 }
 var file_yoke_plugin_v1_register_proto_depIdxs = []int32{
 	3, // 0: yoke.plugin.v1.RegisterRequest.declared:type_name -> yoke.plugin.v1.Surface
-	1, // 1: yoke.plugin.v1.RegisterResponse.outcome:type_name -> yoke.plugin.v1.RegisterResponse.Outcome
-	0, // 2: yoke.plugin.v1.RegisterResponse.stage:type_name -> yoke.plugin.v1.Stage
-	3, // 3: yoke.plugin.v1.RegisterResponse.granted:type_name -> yoke.plugin.v1.Surface
-	3, // 4: yoke.plugin.v1.RegisterResponse.withheld:type_name -> yoke.plugin.v1.Surface
-	5, // 5: yoke.plugin.v1.RegisterResponse.heartbeat:type_name -> yoke.plugin.v1.HeartbeatTerms
-	6, // 6: yoke.plugin.v1.HeartbeatTerms.interval:type_name -> google.protobuf.Duration
-	2, // 7: yoke.plugin.v1.Register.Register:input_type -> yoke.plugin.v1.RegisterRequest
-	4, // 8: yoke.plugin.v1.Register.Register:output_type -> yoke.plugin.v1.RegisterResponse
-	8, // [8:9] is the sub-list for method output_type
-	7, // [7:8] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	6, // 1: yoke.plugin.v1.RegisterRequest.transports:type_name -> yoke.plugin.v1.Control.Activate.Transport
+	1, // 2: yoke.plugin.v1.RegisterResponse.outcome:type_name -> yoke.plugin.v1.RegisterResponse.Outcome
+	0, // 3: yoke.plugin.v1.RegisterResponse.stage:type_name -> yoke.plugin.v1.Stage
+	3, // 4: yoke.plugin.v1.RegisterResponse.granted:type_name -> yoke.plugin.v1.Surface
+	3, // 5: yoke.plugin.v1.RegisterResponse.withheld:type_name -> yoke.plugin.v1.Surface
+	5, // 6: yoke.plugin.v1.RegisterResponse.heartbeat:type_name -> yoke.plugin.v1.HeartbeatTerms
+	7, // 7: yoke.plugin.v1.HeartbeatTerms.interval:type_name -> google.protobuf.Duration
+	2, // 8: yoke.plugin.v1.Register.Register:input_type -> yoke.plugin.v1.RegisterRequest
+	4, // 9: yoke.plugin.v1.Register.Register:output_type -> yoke.plugin.v1.RegisterResponse
+	9, // [9:10] is the sub-list for method output_type
+	8, // [8:9] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_yoke_plugin_v1_register_proto_init() }
@@ -586,6 +601,7 @@ func file_yoke_plugin_v1_register_proto_init() {
 	if File_yoke_plugin_v1_register_proto != nil {
 		return
 	}
+	file_yoke_plugin_v1_families_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
