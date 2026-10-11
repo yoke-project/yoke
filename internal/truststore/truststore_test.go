@@ -136,7 +136,7 @@ func TestAKeyWhoseIDIsNotItsOwnDigestIsRefused(t *testing.T) {
 }
 
 // std: yoke:the-trust-store.04
-func TestAnUnknownKeyIsRefusedAtAnyLevel(t *testing.T) {
+func TestAnUnknownKeyInThePolicyFileIsRefused(t *testing.T) {
 	for _, c := range []struct{ body, names string }{
 		{"keys: []\nallow_unsigned: true\n", "allow_unsigned"},
 		{"keys:\n" + row(t, "vendor", "ed25519", edPub) + "    expires: 2030-01-01\n", "expires"},
