@@ -141,6 +141,9 @@ func Build(dir string, o BuildOptions) (string, gate.Report, error) {
 			}
 		}
 	}
+	if err := pinnedArchives(dir, d); err != nil {
+		return "", report, err
+	}
 	payload, err := archive(dir)
 	if err != nil {
 		return "", report, err
@@ -173,6 +176,30 @@ func Build(dir string, o BuildOptions) (string, gate.Report, error) {
 		return "", report, err
 	}
 	return out, report, os.Rename(tmp.Name(), out)
+}
+
+// pinnedArchives refuses an image archive under components/images/ that no image of the descriptor pins:
+// an archive is named by the digest it carries, and one nothing names would travel for nothing.
+func pinnedArchives(dir string, d *gate.Deployment) error {
+	entries, err := os.ReadDir(filepath.Join(dir, Components, "images"))
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	pinned := map[string]bool{}
+	for _, name := range d.Order {
+		if ref := d.Units[name].Image; strings.Contains(ref, "@") {
+			pinned[strings.Replace(ref[strings.LastIndex(ref, "@")+1:], ":", "-", 1)+".tar"] = true
+		}
+	}
+	for _, e := range entries {
+		if !pinned[e.Name()] {
+			return fmt.Errorf("%s/images/%s is an image archive no image of the descriptor pins", Components, e.Name())
+		}
+	}
+	return nil
 }
 
 // inBundle requires a unit's program to be a file under `components/`, named by a clean relative path.

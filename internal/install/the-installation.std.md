@@ -108,3 +108,55 @@
 | **Precondition** | a Core binary built from this tree, and a file that is not a Go program |
 | **Action** | read the version of each |
 | **Expected** | the first is a semantic version, read without running the binary; the second is refused, naming the file |
+
+## yoke:the-installation.09 — every image is obtained by its digest: loaded where carried, pulled where not, and tagged
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/15.51 · specs/45.40 · arch/10-manager/05 §Obtaining images |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an engine that holds one image already; a package whose descriptor names that image, one it carries as `components/images/<algorithm>-<hex>.tar`, and one it does not carry |
+| **Action** | install it |
+| **Expected** | the held image is left as it is; the carried one is loaded and not pulled; the other is pulled by its digest; each is tagged `yoke/com.yoke.station:2.1.0`; what was obtained is reported per image; the record is complete |
+
+## yoke:the-installation.10 — an archive that loads with no digest is refused
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/45.42 · arch/10-manager/05 §Obtaining images · arch/15-gate/06 §Phase 4 — host facts |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an engine that loads an archive and then holds no image under the reference loaded, as Docker's classic store does |
+| **Action** | install a package carrying that image's archive |
+| **Expected** | it is refused `image.undigested`, naming the image; the record stays incomplete |
+
+## yoke:the-installation.11 — an engine that cannot be reached is a refusal, and none is looked for where no unit names an image
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/45.38 · specs/45.39 · arch/10-manager/05 §Obtaining images |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | no engine at the configured address |
+| **Action** | install a package whose descriptor names an image, then one whose descriptor names none |
+| **Expected** | the first is refused `engine.unreachable`, naming the engine; the second installs and the engine is never asked for |
+
+## yoke:the-installation.12 — a package the composer built, carrying an image, installs with the engine
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/15.51 · specs/45.40 · specs/13.30 · arch/10-manager/05 §Obtaining images · arch/20-composer/02 §Building a package |
+| **Level** | L3 |
+| **Method** | test |
+| **Not applicable in** | container engine: docker |
+| **Label** | blocking |
+| **Precondition** | an image built and held by digest, saved as an OCI archive into a project's `components/images/`, then removed from the engine; the project's descriptor naming it |
+| **Action** | build a signed package with the composer, and install it with the engine |
+| **Expected** | the installation completes; the engine holds the image under its pinned reference, loaded from the package and not pulled, and tagged `yoke/com.yoke.station:2.1.0`. Not applicable under Docker, whose classic store loads an archive with no digest |

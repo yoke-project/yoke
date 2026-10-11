@@ -121,3 +121,16 @@
 | **Precondition** | an empty directory, an Ed25519 key in a PEM file, and a seal credential in a file of one base64 line |
 | **Action** | run `yoke-compose init com.yoke.station --dir <d>`, then `check --dir <d>`, then `build --dir <d> --out <o> --sign <key> --seal <credential>` once a unit is added; then a verb it does not have |
 | **Expected** | `init` exits zero; `check` on a project with no unit exits non-zero, printing the refusal's code; `build` exits zero and prints the package's path, signed and sealed; an unknown verb exits non-zero, naming it and the verbs there are |
+
+## yoke:the-composer.10 — an image's archive is packaged as any component, and one no image pins is refused
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/20-composer/02 §Building a package · arch/10-manager/05 §Obtaining images |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a project whose unit names an image pinned by digest, carrying its archive at `components/images/<algorithm>-<hex>.tar`; then the same project carrying a second archive no image pins |
+| **Action** | `build` each |
+| **Expected** | the first package's payload holds the archive under `components/images/` and nothing was fetched; the second is refused, naming the archive no image pins |

@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"path/filepath"
 
 	"github.com/yoke-project/yoke/internal/compose"
+	"github.com/yoke-project/yoke/internal/core/engine"
 	"github.com/yoke-project/yoke/internal/gate"
 	"github.com/yoke-project/yoke/internal/install"
 	"github.com/yoke-project/yoke/internal/installroot"
@@ -76,7 +78,8 @@ func (c *call) appInstall() error {
 		return refusal{err}
 	}
 	res, err := install.Install(install.Options{Package: c.args[0], Root: cfg.InstallRoot, Keys: store, Policy: store.Policy(),
-		Credential: credential, Host: pkgfile.Host{Arch: compose.HostArch(), Models: []uint16{gate.DescriptionModel}, Core: core}})
+		Credential: credential, Host: pkgfile.Host{Arch: compose.HostArch(), Models: []uint16{gate.DescriptionModel}, Core: core},
+		Engine: func(ctx context.Context) (*engine.Engine, error) { return engine.Reach(ctx, cfg.Engine) }, Out: c.out})
 	var refused *install.Refusal
 	switch {
 	case errors.As(err, &refused):

@@ -267,3 +267,29 @@ func TestBuildRunsNothingTheProjectContains(t *testing.T) {
 		t.Error("the component was run")
 	}
 }
+
+// std: yoke:the-composer.10
+func TestAnImagesArchiveIsPackagedAndOneNoImagePinsIsRefused(t *testing.T) {
+	digest := fmt.Sprintf("sha256:%x", sha256.Sum256([]byte("an image")))
+	archive := "components/images/" + strings.Replace(digest, ":", "-", 1) + ".tar"
+	dir := project(t, "components/acquire", map[string]string{archive: "an OCI archive"})
+	descriptor, _ := os.ReadFile(filepath.Join(dir, "yoke.yaml"))
+	os.WriteFile(filepath.Join(dir, "yoke.yaml"), append(descriptor, []byte("  panel: { kind: interface, image: \"localhost/panel@"+digest+"\" }\n")...), 0o644)
+	_, payload := read(t, build(t, dir, BuildOptions{}))
+	z, err := zip.NewReader(bytes.NewReader(payload), int64(len(payload)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, e := range z.File {
+		found = found || e.Name == archive
+	}
+	if !found {
+		t.Errorf("the archive %s is not in the payload", archive)
+	}
+	stray := "components/images/sha256-" + strings.Repeat("0", 64) + ".tar"
+	os.WriteFile(filepath.Join(dir, filepath.FromSlash(stray)), []byte("x"), 0o644)
+	if _, _, err := Build(dir, BuildOptions{Out: t.TempDir()}); err == nil || !strings.Contains(err.Error(), stray) {
+		t.Errorf("an archive no image pins: %v", err)
+	}
+}
