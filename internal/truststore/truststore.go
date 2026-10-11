@@ -143,6 +143,12 @@ func owned(path string, forbidden os.FileMode, says string) error {
 	return nil
 }
 
+// Empty is the store of a host that keeps no file: no key trusted, no signature required unless the
+// environment tightens it, and the credential supplied per invocation.
+func Empty(getenv func(string) string) *Store {
+	return &Store{require: getenv(Tighten) == "1", keys: map[[32]byte]Key{}}
+}
+
 // Key returns the trusted key whose digest is id.
 func (s *Store) Key(id [32]byte) (crypto.PublicKey, bool) {
 	k, ok := s.keys[id]
