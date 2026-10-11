@@ -506,13 +506,11 @@ func (c *checker) policy(n *node, location, kind string) overrides {
 			zero := time.Duration(0)
 			return &zero
 		}
-		m := duration.FindStringSubmatch(s)
-		if m == nil {
+		d, ok := ParseDuration(s)
+		if !ok {
 			c.refuse("format.duration", at, "%s is %q, not an integer followed by s, m, h or d", at, s)
 			return nil
 		}
-		count, _ := strconv.ParseInt(m[1], 10, 64)
-		d := time.Duration(count) * map[string]time.Duration{"s": time.Second, "m": time.Minute, "h": time.Hour, "d": 24 * time.Hour}[m[2]]
 		return &d
 	}
 	block := func(v *node, at string, keys []string, read func(key string, v *node, at string)) {
@@ -583,15 +581,10 @@ func (c *checker) policy(n *node, location, kind string) overrides {
 					if !ok {
 						return
 					}
-					var b int64
-					if s != "0" {
-						m := size.FindStringSubmatch(s)
-						if m == nil {
-							c.refuse("format.size", at, "%s is %q, not an integer followed by KB, MB or GB", at, s)
-							return
-						}
-						count, _ := strconv.ParseInt(m[1], 10, 64)
-						b = count * map[string]int64{"KB": 1_000, "MB": 1_000_000, "GB": 1_000_000_000}[m[2]]
+					b, ok := ParseSize(s)
+					if !ok {
+						c.refuse("format.size", at, "%s is %q, not an integer followed by KB, MB or GB", at, s)
+						return
 					}
 					o.bytes = &b
 				case "entries":
@@ -924,3 +917,26 @@ func (c *checker) head(fields map[string]*node) Head {
 
 // IsIdentifier says whether id is a namespaced identifier: dot-separated lowercase labels.
 func IsIdentifier(id string) bool { return identifier.MatchString(id) }
+
+// ParseDuration reads a duration in its written form: an integer followed by s, m, h or d.
+func ParseDuration(s string) (time.Duration, bool) {
+	m := duration.FindStringSubmatch(s)
+	if m == nil {
+		return 0, false
+	}
+	count, _ := strconv.ParseInt(m[1], 10, 64)
+	return time.Duration(count) * map[string]time.Duration{"s": time.Second, "m": time.Minute, "h": time.Hour, "d": 24 * time.Hour}[m[2]], true
+}
+
+// ParseSize reads a size in its written form: an integer followed by KB, MB or GB, or 0.
+func ParseSize(s string) (int64, bool) {
+	if s == "0" {
+		return 0, true
+	}
+	m := size.FindStringSubmatch(s)
+	if m == nil {
+		return 0, false
+	}
+	count, _ := strconv.ParseInt(m[1], 10, 64)
+	return count * map[string]int64{"KB": 1_000, "MB": 1_000_000, "GB": 1_000_000_000}[m[2]], true
+}

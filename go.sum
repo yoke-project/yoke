@@ -18,8 +18,10 @@ github.com/ncruces/go-strftime v1.0.0 h1:HMFp8mLCTPp341M/ZnA4qaf7ZlsbTc+miZjCLOF
 github.com/ncruces/go-strftime v1.0.0/go.mod h1:Fwc5htZGVVkseilnfgOVb9mKy6w1naJmn9CehxcKcls=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
-github.com/yoke-project/yoke/proto v0.2.1-0.20261004094304-51f59c922eca h1:mK8p/BSMY8+IVLVM29D9wO+Yjke+D0nH2fXfN4P9wf8=
-github.com/yoke-project/yoke/proto v0.2.1-0.20261004094304-51f59c922eca/go.mod h1:05vmHgz6Ng2GjbfPp0HdITHPlygSbZoWdAXhdJSYbKo=
+github.com/yoke-project/yoke-sdk-go v0.4.0 h1:DXj5te/2nXQ77AQfuZc9qrcWOeL8VpIxh9jUHOItbw8=
+github.com/yoke-project/yoke-sdk-go v0.4.0/go.mod h1:JmjaqSe4YMT4NoyK91qpnjQHU21QL8+MzisGIeMhmL0=
+github.com/yoke-project/yoke/proto v0.3.0 h1:o37BRUGieMvtFxM/VdBYbf7TGIELBfkXz9zHwAAl8NE=
+github.com/yoke-project/yoke/proto v0.3.0/go.mod h1:05vmHgz6Ng2GjbfPp0HdITHPlygSbZoWdAXhdJSYbKo=
 go.yaml.in/yaml/v3 v3.0.5 h1:N6y/pJk8buWs9NY5ERU2HSMfm+IuD/OtfdAnq6kESPw=
 go.yaml.in/yaml/v3 v3.0.5/go.mod h1:HVTZu1O7/Vkt2N+BFy8Zza+lnLsABggaTM2ZpNIGuKg=
 golang.org/x/mod v0.41.0 h1:qJmnOUb4YB+FsEuM3HcWucdZASCPGhsX6uljO6pog0c=
