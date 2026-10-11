@@ -486,6 +486,10 @@ pub struct RegisterRequest {
     /// The declared surface.
     #[prost(message, optional, tag = "8")]
     pub declared: ::core::option::Option<Surface>,
+    /// The transports this library offers beyond the ordered and the framed, which every library speaks.
+    /// The Core activates a stream that tolerates loss on the shared object only for a library that names it.
+    #[prost(enumeration = "control::activate::Transport", repeated, tag = "9")]
+    pub transports: ::prost::alloc::vec::Vec<i32>,
 }
 /// Five lists of identifiers: a declared surface, a granted scope, or what was withheld from one.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]

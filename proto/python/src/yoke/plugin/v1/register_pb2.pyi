@@ -1,6 +1,7 @@
 import datetime
 
 from google.protobuf import duration_pb2 as _duration_pb2
+from yoke.plugin.v1 import families_pb2 as _families_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
@@ -34,7 +35,7 @@ STAGE_UNIT_CONFLICT: Stage
 STAGE_SESSION_PREPARATION: Stage
 
 class RegisterRequest(_message.Message):
-    __slots__ = ("plugin", "unit", "token", "protocol", "artifact_version", "language", "sdk_line", "declared")
+    __slots__ = ("plugin", "unit", "token", "protocol", "artifact_version", "language", "sdk_line", "declared", "transports")
     PLUGIN_FIELD_NUMBER: _ClassVar[int]
     UNIT_FIELD_NUMBER: _ClassVar[int]
     TOKEN_FIELD_NUMBER: _ClassVar[int]
@@ -43,6 +44,7 @@ class RegisterRequest(_message.Message):
     LANGUAGE_FIELD_NUMBER: _ClassVar[int]
     SDK_LINE_FIELD_NUMBER: _ClassVar[int]
     DECLARED_FIELD_NUMBER: _ClassVar[int]
+    TRANSPORTS_FIELD_NUMBER: _ClassVar[int]
     plugin: str
     unit: str
     token: str
@@ -51,7 +53,8 @@ class RegisterRequest(_message.Message):
     language: str
     sdk_line: str
     declared: Surface
-    def __init__(self, plugin: _Optional[str] = ..., unit: _Optional[str] = ..., token: _Optional[str] = ..., protocol: _Optional[int] = ..., artifact_version: _Optional[str] = ..., language: _Optional[str] = ..., sdk_line: _Optional[str] = ..., declared: _Optional[_Union[Surface, _Mapping]] = ...) -> None: ...
+    transports: _containers.RepeatedScalarFieldContainer[_families_pb2.Control.Activate.Transport]
+    def __init__(self, plugin: _Optional[str] = ..., unit: _Optional[str] = ..., token: _Optional[str] = ..., protocol: _Optional[int] = ..., artifact_version: _Optional[str] = ..., language: _Optional[str] = ..., sdk_line: _Optional[str] = ..., declared: _Optional[_Union[Surface, _Mapping]] = ..., transports: _Optional[_Iterable[_Union[_families_pb2.Control.Activate.Transport, str]]] = ...) -> None: ...
 
 class Surface(_message.Message):
     __slots__ = ("capabilities", "streams", "commands", "queries", "occurrences")

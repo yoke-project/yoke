@@ -4,6 +4,7 @@ syntax = "proto3";
 package yoke.plugin.v1;
 
 import "google/protobuf/duration.proto";
+import "yoke/plugin/v1/families.proto";
 
 option go_package = "github.com/yoke-project/yoke/proto/yoke/plugin/v1;pluginv1";
 
@@ -26,6 +27,9 @@ message RegisterRequest {
   string sdk_line = 7;
   // The declared surface.
   Surface declared = 8;
+  // The transports this library offers beyond the ordered and the framed, which every library speaks.
+  // The Core activates a stream that tolerates loss on the shared object only for a library that names it.
+  repeated Control.Activate.Transport transports = 9;
 }
 
 // Five lists of identifiers: a declared surface, a granted scope, or what was withheld from one.

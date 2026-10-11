@@ -251,9 +251,13 @@ func TestTheRegistrationRequestCarriesTheClaim(t *testing.T) {
 	files := definitions(t)
 	request := message(t, files, "RegisterRequest")
 	same(t, "the request", fields(request),
-		[]string{"plugin", "unit", "token", "protocol", "artifact_version", "language", "sdk_line", "declared"})
+		[]string{"plugin", "unit", "token", "protocol", "artifact_version", "language", "sdk_line", "declared", "transports"})
 	if kind := request.Fields().ByName("protocol").Kind(); kind != protoreflect.Uint32Kind {
 		t.Errorf("the protocol version is %v, want an integer", kind)
+	}
+	if offered := request.Fields().ByName("transports"); offered == nil || !offered.IsList() || offered.Enum() == nil ||
+		offered.Enum().FullName() != "yoke.plugin.v1.Control.Activate.Transport" {
+		t.Errorf("the transports offered are not a list of the activation's transport values")
 	}
 	same(t, "the declared surface", fields(message(t, files, "Surface")),
 		[]string{"capabilities", "streams", "commands", "queries", "occurrences"})
