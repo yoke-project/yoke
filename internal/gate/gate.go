@@ -12,8 +12,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
+
+// DescriptionModel is the version of the description model this host implements.
+const DescriptionModel = 1
 
 // Kind says which of the two documents a document is: they are two schemas over one body.
 type Kind int
@@ -120,7 +124,7 @@ type Input struct {
 func Check(in Input) (Report, *Deployment) {
 	c := &checker{doc: in.Document, in: in}
 	c.run([]phase{
-		{PhaseReading, c.reading},
+		{PhaseReading, c.readingDocument},
 		{PhaseShape, c.shape},
 		{PhaseInternalJoins, c.joins},
 		{PhaseCrossDocument, c.crossDocument},
@@ -191,6 +195,38 @@ func (c *checker) reading() bool {
 	}
 	c.root = root
 	return true
+}
+
+// readingDocument is phase 0 for a descriptor or a composition document: a descriptor's model is read
+// before anything else is interpreted.
+func (c *checker) readingDocument() bool {
+	c.reading()
+	if c.doc.Kind == Descriptor && !c.report.Refused() {
+		c.descriptorModel()
+	}
+	return true
+}
+
+// descriptorModel reads a descriptor's `model` before anything else: a model this host does not
+// implement ends the read, since a later model may give an absent field a different meaning.
+func (c *checker) descriptorModel() {
+	if !c.root.isMapping() {
+		return // the shape phase says what the document is
+	}
+	for _, e := range c.root.entries() {
+		if e.key != "model" {
+			continue
+		}
+		if !e.value.isScalar() || !isInteger(e.value.n.Value) {
+			c.refuse("field.type", "model", "model is %q, not an integer", e.value.text())
+			return
+		}
+		if n, _ := strconv.Atoi(e.value.n.Value); n != DescriptionModel {
+			c.refuse("model.unknown", "model", "the descriptor is written against model %d, and this host implements %d: it is refused rather than interpreted", n, DescriptionModel)
+		}
+		return
+	}
+	c.refuse("field.required", "model", "the descriptor does not say which model it is written against")
 }
 
 // joined is a location with one more step.

@@ -19,6 +19,9 @@ const SubscriberWidth = 20
 // ManifestPath is where the service form finds a plugin's Manifest in the scanned directory.
 func ManifestPath(dir, plugin string) string { return filepath.Join(dir, plugin, "manifest.yaml") }
 
+// BundleManifestPath is where a bundle holds a plugin's Manifest: `manifests/<plugin>.yaml`.
+func BundleManifestPath(dir, plugin string) string { return filepath.Join(dir, plugin+".yaml") }
+
 // crossDocument is phase 3: each plugin unit against its Manifest, needs against bindings in both
 // directions. A Manifest the document names is checked, and what it refuses refuses the deployment.
 func (c *checker) crossDocument() bool {
@@ -33,6 +36,9 @@ func (c *checker) crossDocument() bool {
 			continue
 		}
 		path := ManifestPath(c.in.Manifests, u.Plugin)
+		if c.doc.Kind == Descriptor {
+			path = BundleManifestPath(c.in.Manifests, u.Plugin)
+		}
 		if !checked[u.Plugin] {
 			checked[u.Plugin] = true
 			if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
