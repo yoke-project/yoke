@@ -60,6 +60,9 @@ type Config struct {
 	// Family is a family publishing its package: its `vX.Y.Z` tags publish the packages, and nothing
 	// else is published.
 	Family bool
+	// SourceRelease is a family consumed as its source: its `vX.Y.Z` tags hand over the source archive,
+	// named for Source, to the tag's release, and nothing else is published.
+	SourceRelease bool
 }
 
 // Artifact is one archive of programs, built from the packages named.
@@ -115,7 +118,7 @@ func Run(cfg Config) int {
 	for _, tag := range strings.Fields(listed) {
 		version, subdir := tag, ""
 		if rest, isDefinitions := strings.CutPrefix(tag, "proto/"); isDefinitions {
-			if cfg.Family {
+			if cfg.Family || cfg.SourceRelease {
 				continue
 			}
 			version, subdir = rest, "proto"
@@ -138,7 +141,7 @@ func Run(cfg Config) int {
 
 	var lines []Line
 	for _, m := range modules {
-		if cfg.PackagesOnly || cfg.Family {
+		if cfg.PackagesOnly || cfg.Family || cfg.SourceRelease {
 			continue
 		}
 		path, err := modulePath(filepath.Join(cfg.Root, m.subdir, "go.mod"))
