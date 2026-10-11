@@ -195,14 +195,11 @@ func (s *Surface) streamStart(ctx context.Context, r *interfacev1.Request) (*int
 	if slices.Contains(s.cfg.Transports.Active(id), stream) {
 		return answer(done()), nil
 	}
-	transport, address, err := s.cfg.Transports.Open(id, incarnation, stream, tolerates)
+	transport, address, err := s.cfg.Transports.Open(id, incarnation, stream, tolerates, s.cfg.Sessions.OffersShared(id))
 	if err != nil {
 		return nil, aboutUnit("unit.no_session", id, fmt.Sprintf("the transport of %s could not be created: %v", stream, err))
 	}
-	kind := pluginv1.Control_Activate_TRANSPORT_ORDERED
-	if transport == streams.Framed {
-		kind = pluginv1.Control_Activate_TRANSPORT_FRAMED
-	}
+	kind := transport.Activation()
 	wait, cancel := s.waiting(ctx)
 	defer cancel()
 	ack, err := s.cfg.Sessions.Instruct(wait, id, &pluginv1.Control{Kind: &pluginv1.Control_Activate_{Activate: &pluginv1.Control_Activate{Stream: stream, Transport: kind, Address: address}}})

@@ -12,6 +12,9 @@ import (
 // SocketCeiling is the longest Unix domain socket path the kernel binds: 108 bytes with the terminator.
 const SocketCeiling = 107
 
+// ObjectNameCeiling is the longest name a host-wide object may carry: a filename's limit.
+const ObjectNameCeiling = 255
+
 // SubscriberWidth bounds the one path component nobody declares, a subscriber's identity: the digits of
 // a 64-bit counter. A counter can be budgeted for, and a name a client chose cannot.
 const SubscriberWidth = 20
@@ -120,6 +123,7 @@ func (c *checker) hostFacts() bool {
 	}
 	at := func(marks ...Moment) bool { return slices.Contains(marks, c.in.Moment) }
 	longest, longestPath := 0, ""
+	longestLabel := ""
 	fits := func(path string) {
 		if len(path) > longest {
 			longest, longestPath = len(path), path
@@ -138,6 +142,11 @@ func (c *checker) hostFacts() bool {
 			if m := c.manifests[u.Plugin]; m != nil {
 				needs = m.Needs
 				for _, s := range m.Streams {
+					// A stream that tolerates loss may be carried on a ring, whose label derives from the
+					// instance, the unit and the stream.
+					if label := "yoke-" + h.Instance + "-" + name + "-" + s.ID; s.ToleratesLoss && len(label) > len(longestLabel) {
+						longestLabel = label
+					}
 					fits(filepath.Join(h.RuntimeRoot, "plugins", name, "streams", s.ID+".sock"))
 					fits(filepath.Join(h.RuntimeRoot, "plugins", name, "subscribers", s.ID, strings.Repeat("0", SubscriberWidth)))
 				}
@@ -183,6 +192,9 @@ func (c *checker) hostFacts() bool {
 	}
 	if longest > SocketCeiling && at(Installing, Creating, Starting) {
 		c.refuse("socket.path.ceiling", "", "the longest socket path this deployment can produce is %d characters, %s, and the ceiling is %d", longest, longestPath, SocketCeiling)
+	}
+	if len(longestLabel) > ObjectNameCeiling && at(Installing, Creating, Starting) {
+		c.refuse("object.name.ceiling", "", "the longest name of a ring this deployment can create is %d characters, %s, and the ceiling is %d", len(longestLabel), longestLabel, ObjectNameCeiling)
 	}
 	return true
 }

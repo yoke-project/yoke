@@ -173,3 +173,16 @@
 | **Precondition** | `yoke-core` built, with a Plugin directory holding one Manifest, its executable a program that registers on `YOKE_SOCKET` with `YOKE_TOKEN` and writes the answer, and a composition running one unit of it |
 | **Action** | start the Core |
 | **Expected** | the plugin channel is bound at the root with the form's mode; the unit's output says it was accepted with restrictions, with a Session identity of 43 characters; the Core's output says the unit was admitted |
+
+## yoke:admission.14 — the transports a library offers are kept with its Session
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/50-plugin-surface/07 §The shared ring · arch/50-plugin-surface/08 §The registration exchange |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | two units of one plugin, each composed |
+| **Action** | admit the first with a request naming the shared object among the transports it offers, and the second with one naming none |
+| **Expected** | both are accepted alike; the first's Session says its library offers the shared object, and the second's that it does not |

@@ -100,6 +100,7 @@ type Host struct {
 	Executables string // where a Plugin's executable is found by its identity
 	StateDir    string // the instance's state directory, holding secrets/
 	RuntimeRoot string // the instance root, under which every socket path is derived
+	Instance    string // the instance's name, from which every ring's label is derived
 	// Engine reaches the container engine. It is asked only where a unit names an image, and at most
 	// once a pass; nil looks for none.
 	Engine func() (EngineFacts, error)

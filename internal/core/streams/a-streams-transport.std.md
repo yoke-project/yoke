@@ -108,3 +108,42 @@
 | **Precondition** | `yoke-core` built, with a composition running one unit of a program that registers, opens its Session, reports its health, accepts an activation by connecting to the address it names and sending three data messages, and accepts a stop |
 | **Action** | on the operator projection, grant the plugin its stream's capability and restart the unit; then `unit.stream.start` for its stream, and `unit.stream.stop` |
 | **Expected** | the start is answered as a change and `unit.stream.activated` is published; the stop is answered, the stream's socket is gone, and the Core's output records the stream stopped as asked, with three data messages read |
+
+## yoke:a-streams-transport.09 — a stream that tolerates loss is carried on the shared ring where the unit's library offers it
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/50.94 · specs/50.97 · specs/50.98 · arch/50-plugin-surface/07 §The shared ring · arch/50-plugin-surface/07 §Objects that are not sockets |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an instance `bench`, and a unit whose library offers the shared object |
+| **Action** | open a stream that tolerates loss, one that tolerates reorder only, and one that tolerates nothing; connect to the first's path as its producer, and publish three frames into the ring it is handed |
+| **Expected** | the first is opened on the shared ring, the other two as before — framed and ordered; the producer connects to a packet socket and receives one byte carrying a descriptor that maps for writing, labelled `yoke-bench-acquire-<stream>`; the three frames are delivered in order with their clocks and payloads, as from any transport; where the library offers nothing, the stream that tolerates loss is framed |
+
+## yoke:a-streams-transport.10 — the ring's descriptor goes to one producer, and closing its socket ends the stream
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/50.97 · arch/50-plugin-surface/07 §The shared ring · arch/50-plugin-surface/07 §Three routes end a stream, and the transport goes in all three |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a stream opened on the shared ring, its producer connected |
+| **Action** | connect a second time; then stop the stream |
+| **Expected** | the second connection is closed with no descriptor; on the stop the producer's connection ends, the path is removed, and the stop is published with its reason |
+
+## yoke:a-streams-transport.11 — through the Core, a stream flows on the ring where the unit's library offers it
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/50.94 · specs/50.98 · arch/50-plugin-surface/07 §The shared ring · arch/50-plugin-surface/08 §The registration exchange |
+| **Level** | L3 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a Core running one Plugin unit whose stream tolerates loss and whose library names the shared object at registration |
+| **Action** | grant the stream, start it, let the unit publish three frames into the ring it is handed, and stop it |
+| **Expected** | the stream is opened on the shared ring; the stop is as asked, with three frames read; the ring's socket is gone |

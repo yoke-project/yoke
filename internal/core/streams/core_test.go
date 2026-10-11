@@ -13,27 +13,35 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/sys/unix"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
 
 	administrativev1 "github.com/yoke-project/yoke/proto/yoke/administrative/v1"
 	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
+
+	"github.com/yoke-project/yoke/internal/core/ring"
 )
 
 // The test binary is also the Plugin the Core launches: this variable, declared in the composition, says so.
 const role = "TEST_UNIT_ROLE"
 
 func TestMain(m *testing.M) {
-	if os.Getenv(role) == "stream" {
-		os.Exit(emitWhenActivated())
+	switch os.Getenv(role) {
+	case "stream":
+		os.Exit(emitWhenActivated(false))
+	case "ring":
+		os.Exit(emitWhenActivated(true))
 	}
 	os.Exit(m.Run())
 }
 
 // emitWhenActivated registers, opens its Session and reports its health; told to activate its stream, it
 // accepts, connects to the address it was given and sends three data messages; told to stop, it is done.
-func emitWhenActivated() int {
+// Offering the ring, it names the shared object at registration and, activated on it, publishes the three
+// into the ring it is handed.
+func emitWhenActivated(offersRing bool) int {
 	conn, err := grpc.NewClient("unix://"+os.Getenv("YOKE_SOCKET"), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		fmt.Println("no channel:", err)
@@ -42,7 +50,8 @@ func emitWhenActivated() int {
 	defer conn.Close()
 	resp, err := pluginv1.NewRegisterClient(conn).Register(context.Background(), &pluginv1.RegisterRequest{
 		Plugin: os.Getenv("YOKE_PLUGIN"), Unit: os.Getenv("YOKE_UNIT"), Token: os.Getenv("YOKE_TOKEN"), Protocol: 1,
-		Declared: &pluginv1.Surface{Capabilities: []string{"stream.data.publish"}, Streams: []string{"station.data"}},
+		Declared:   &pluginv1.Surface{Capabilities: []string{"stream.data.publish"}, Streams: []string{"station.data"}},
+		Transports: offered(offersRing),
 	})
 	if err != nil || resp.SessionId == "" {
 		fmt.Println("not admitted:", err, resp)
@@ -86,6 +95,11 @@ func emitWhenActivated() int {
 			return 0
 		}
 		switch c := e.GetControl(); {
+		case c.GetActivate() != nil && c.GetActivate().GetTransport() == pluginv1.Control_Activate_TRANSPORT_SHARED_OBJECT:
+			acknowledge(e.MessageId)
+			if err := publishOnTheRing(c.GetActivate().GetAddress()); err != nil {
+				fmt.Println("no ring:", err)
+			}
 		case c.GetActivate() != nil:
 			acknowledge(e.MessageId)
 			data, err := net.Dial("unixpacket", c.GetActivate().GetAddress())
@@ -104,8 +118,61 @@ func emitWhenActivated() int {
 	}
 }
 
+func offered(ring bool) []pluginv1.Control_Activate_Transport {
+	if ring {
+		return []pluginv1.Control_Activate_Transport{pluginv1.Control_Activate_TRANSPORT_SHARED_OBJECT}
+	}
+	return nil
+}
+
+// publishOnTheRing connects to a ring's socket, takes the descriptor it is handed and publishes three frames.
+func publishOnTheRing(address string) error {
+	c, err := net.DialUnix("unixpacket", nil, &net.UnixAddr{Name: address, Net: "unixpacket"})
+	if err != nil {
+		return err
+	}
+	buf, oob := make([]byte, 1), make([]byte, unix.CmsgSpace(4))
+	_, oobn, _, _, err := c.ReadMsgUnix(buf, oob)
+	if err != nil {
+		return err
+	}
+	messages, err := unix.ParseSocketControlMessage(oob[:oobn])
+	if err != nil || len(messages) != 1 {
+		return fmt.Errorf("no descriptor: %v", err)
+	}
+	fds, err := unix.ParseUnixRights(&messages[0])
+	if err != nil || len(fds) != 1 {
+		return fmt.Errorf("no descriptor: %v", err)
+	}
+	w, err := ring.OpenWriter(os.NewFile(uintptr(fds[0]), "ring"))
+	if err != nil {
+		return err
+	}
+	for i := 0; i < 3; i++ {
+		if err := w.Publish(uint64(time.Now().UnixNano()), []byte("sample")); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // std: yoke:a-streams-transport.08
 func TestThroughTheCoreAStreamStartedFlowsAndStops(t *testing.T) {
+	flowThroughTheCore(t, "stream", "{ id: station.data }")
+}
+
+// std: yoke:a-streams-transport.11
+func TestThroughTheCoreAStreamFlowsOnTheRingWhereTheLibraryOffersIt(t *testing.T) {
+	said := flowThroughTheCore(t, "ring", "{ id: station.data, tolerates_loss: true }")
+	if !strings.Contains(strings.Join(said, "\n"), "transport=shared") {
+		t.Errorf("the stream was not opened on the ring; the Core said:\n%s", strings.Join(said, "\n"))
+	}
+}
+
+// flowThroughTheCore runs a Core composing one unit of this binary in the role given, whose Manifest
+// declares the stream given; grants the stream, starts it, stops it, and returns what the Core said.
+func flowThroughTheCore(t *testing.T, as, declared string) []string {
+	t.Helper()
 	binary := filepath.Join(t.TempDir(), "yoke-core")
 	if said, err := exec.Command("go", "build", "-o", binary, "github.com/yoke-project/yoke/cmd/yoke-core").CombinedOutput(); err != nil {
 		t.Fatalf("yoke-core does not build: %v\n%s", err, said)
@@ -117,13 +184,13 @@ func TestThroughTheCoreAStreamStartedFlowsAndStops(t *testing.T) {
 	os.MkdirAll(filepath.Join(manifests, "com.example.station"), 0o755)
 	os.MkdirAll(executables, 0o755)
 	os.WriteFile(filepath.Join(manifests, "com.example.station", "manifest.yaml"), []byte("manifest: 1\nid: com.example.station\nprotocol: 1\n"+
-		"streams: [ { id: station.data } ]\ncapabilities: [ { name: stream.data.publish, governs: { stream: station.data } } ]\n"), 0o644)
+		"streams: [ "+declared+" ]\ncapabilities: [ { name: stream.data.publish, governs: { stream: station.data } } ]\n"), 0o644)
 	self, _ := os.Executable()
 	if err := os.Symlink(self, filepath.Join(executables, "com.example.station")); err != nil {
 		t.Fatal(err)
 	}
 	composition := filepath.Join(dir, "bench.yaml")
-	os.WriteFile(composition, []byte("units:\n  acquire: { kind: plugin, plugin: com.example.station, env: { "+role+": stream } }\n"), 0o644)
+	os.WriteFile(composition, []byte("units:\n  acquire: { kind: plugin, plugin: com.example.station, env: { "+role+": "+as+" } }\n"), 0o644)
 	core := filepath.Join(dir, "core.yaml")
 	os.WriteFile(core, []byte(fmt.Sprintf("state_dir: %s/state\nruntime_dir: %s\nplugins:\n  manifests: %s\n  executables: %s\n", dir, run, manifests, executables)), 0o644)
 	command := exec.Command(binary)
@@ -212,4 +279,5 @@ func TestThroughTheCoreAStreamStartedFlowsAndStops(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(run, "plugins", "acquire", "streams", "station.data.sock")); err == nil {
 		t.Error("the stream's socket is still there")
 	}
+	return said
 }

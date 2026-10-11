@@ -68,7 +68,7 @@ func deliveringWith(t *testing.T, queue int, channels ...gate.Channel) *deliveri
 // flow opens the stream's transport as an activation would, and returns what writes to it as its unit.
 func (d *delivering) flow(t *testing.T) func(sequence uint64, payload []byte) {
 	t.Helper()
-	_, address, err := d.transports.Open("acquire", 3, "station.spectra", streams.Tolerances{})
+	_, address, err := d.transports.Open("acquire", 3, "station.spectra", streams.Tolerances{}, false)
 	if err != nil {
 		t.Fatal(err)
 	}

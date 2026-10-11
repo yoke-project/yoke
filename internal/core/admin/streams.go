@@ -93,14 +93,11 @@ func (c *Core) streamStart(ctx context.Context, actor event.Actor, r *administra
 	if c.flows(id, stream) {
 		return answer(flowing(streamActivated)), nil
 	}
-	transport, address, err := c.Streams.Open(id, incarnation, stream, tolerates)
+	transport, address, err := c.Streams.Open(id, incarnation, stream, tolerates, c.Sessions.OffersShared(id))
 	if err != nil {
 		return nil, about("unit.no_session", "unit", id, fmt.Sprintf("the transport of %s could not be created: %v", stream, err))
 	}
-	kind := pluginv1.Control_Activate_TRANSPORT_ORDERED
-	if transport == streams.Framed {
-		kind = pluginv1.Control_Activate_TRANSPORT_FRAMED
-	}
+	kind := transport.Activation()
 	ack, ref := c.instruct(ctx, id, stream, &pluginv1.Control{Kind: &pluginv1.Control_Activate_{Activate: &pluginv1.Control_Activate{
 		Stream: stream, Transport: kind, Address: address}}})
 	if ref != nil {
