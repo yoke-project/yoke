@@ -6,6 +6,7 @@ package install
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"debug/buildinfo"
 	"encoding/hex"
@@ -15,9 +16,11 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
+	"github.com/yoke-project/yoke/internal/core/engine"
 	"github.com/yoke-project/yoke/internal/gate"
 	"github.com/yoke-project/yoke/internal/installroot"
 	"github.com/yoke-project/yoke/internal/pkgfile"
@@ -33,6 +36,10 @@ type Options struct {
 	Credential []byte // the seal credential, where there is one
 	Host       pkgfile.Host
 	Now        func() time.Time
+	// Engine reaches the container engine; it is asked for only where a unit names an image.
+	Engine func(ctx context.Context) (*engine.Engine, error)
+	// Out is where obtaining images reports its progress.
+	Out io.Writer
 }
 
 // Result is where an installation is, and whether the version was there already.
@@ -130,11 +137,9 @@ func Install(o Options) (Result, error) {
 		return res, refuse("the descriptor says it is %s %s for %s, Core %s, model %d, and the footer that was checked says %s %s for %s, Core %s, model %d",
 			h.ID, h.Version, h.Arch, h.Core, h.Model, m.ID, m.Version, m.Arch, m.Core, m.Model)
 	}
-	// 9 · images, by digest.
-	for _, name := range d.Order {
-		if d.Units[name].Image != "" {
-			return res, fmt.Errorf("the unit %s names an image, and obtaining images is not built into this manager yet", name)
-		}
+	// 9 · images, by digest: loaded where the package carries them, pulled where it does not.
+	if err := obtain(o, bundle, d, m); err != nil {
+		return res, err
 	}
 	// 10 · every component the descriptor names, against the digest it states; executables made so.
 	if err := components(bundle, d); err != nil {
@@ -148,6 +153,86 @@ func Install(o Options) (Result, error) {
 	err = inst.Write(installroot.Record{State: installroot.Complete, InstalledBy: begun.InstalledBy, InstalledAt: now().UTC(),
 		VerifiedBy: verified, Sealed: m.SealID != pkgfile.SealNone, Digest: "sha256:" + hex.EncodeToString(m.Digest[:]), Shared: true})
 	return res, err
+}
+
+// obtain holds every image the descriptor names under its pinned reference, tagged in the reserved
+// namespace. The engine is reached only where a unit names an image, and once.
+func obtain(o Options, bundle string, d *gate.Deployment, m pkgfile.Meta) error {
+	var refs []string
+	for _, name := range d.Order {
+		if ref := d.Units[name].Image; ref != "" && !slices.Contains(refs, ref) {
+			refs = append(refs, ref)
+		}
+	}
+	if len(refs) == 0 {
+		return nil
+	}
+	out := o.Out
+	if out == nil {
+		out = io.Discard
+	}
+	ctx := context.Background()
+	if o.Engine == nil {
+		return refuse("engine.unreachable: the descriptor names containerised units, and no engine is configured")
+	}
+	e, err := o.Engine(ctx)
+	if err != nil {
+		return refuse("engine.unreachable: the descriptor names containerised units, and the engine cannot be reached: %v", err)
+	}
+	for _, ref := range refs {
+		held, err := e.HasImage(ctx, ref)
+		if err != nil {
+			return err
+		}
+		switch archive := carried(bundle, ref); {
+		case held:
+			fmt.Fprintf(out, "%s: already held\n", ref)
+		case archive != "":
+			f, err := os.Open(archive)
+			if err != nil {
+				return err
+			}
+			err = e.Load(ctx, f, func(line string) { fmt.Fprintf(out, "%s: %s\n", ref, line) })
+			f.Close()
+			if err != nil {
+				return err
+			}
+			if held, err := e.HasImage(ctx, ref); err != nil {
+				return err
+			} else if !held {
+				return refuse("image.undigested: the engine loaded the archive of %s and holds no image under its digest: its store keeps no digest for an image loaded from an archive", ref)
+			}
+			fmt.Fprintf(out, "%s: loaded from the package\n", ref)
+		default:
+			if err := e.Pull(ctx, ref, func(line string) { fmt.Fprintf(out, "%s: %s\n", ref, line) }); err != nil {
+				return err
+			}
+			if held, err := e.HasImage(ctx, ref); err != nil {
+				return err
+			} else if !held {
+				return refuse("image.unavailable: %s was pulled and the engine holds no image under it", ref)
+			}
+			fmt.Fprintf(out, "%s: pulled\n", ref)
+		}
+		if err := e.Tag(ctx, ref, m.ID, m.Version); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// carried is the archive the bundle carries for an image, `components/images/<algorithm>-<hex>.tar`, or
+// nothing where it carries none.
+func carried(bundle, ref string) string {
+	at := strings.LastIndex(ref, "@")
+	if at < 0 {
+		return ""
+	}
+	p := filepath.Join(bundle, "components", "images", strings.Replace(ref[at+1:], ":", "-", 1)+".tar")
+	if info, err := os.Stat(p); err == nil && info.Mode().IsRegular() {
+		return p
+	}
+	return ""
 }
 
 // expand writes the bundle's entries under dir, refusing one that would leave it, that is not a regular
