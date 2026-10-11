@@ -3,7 +3,9 @@ package instances
 import (
 	"crypto/sha256"
 	"fmt"
+	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -182,5 +184,145 @@ func TestReplacingOneValueIsCheckedAsAtCreation(t *testing.T) {
 	}
 	if r, _ := instancerecord.Read(instances, "bench-a"); r.Parameters["setup"]["retries"] != "5" {
 		t.Errorf("a refused value changed the record: %v", r.Parameters)
+	}
+}
+
+// holdClaim runs this test binary as another process holding an instance's claim, until the test ends.
+func holdClaim(t *testing.T, root string) (release func()) {
+	t.Helper()
+	self, _ := os.Executable()
+	cmd := exec.Command(self, "-test.run=^$")
+	cmd.Env = append(os.Environ(), claimRole+"="+root)
+	out, _ := cmd.StdoutPipe()
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	release = func() { cmd.Process.Kill(); cmd.Wait() }
+	t.Cleanup(release)
+	buf := make([]byte, 5)
+	if _, err := io.ReadFull(out, buf); err != nil || string(buf) != "held\n" {
+		t.Fatalf("the claim was not taken: %q %v", buf, err)
+	}
+	return release
+}
+
+// stateOf fills an instance's state as the Core and its units would.
+func stateOf(t *testing.T, instances, name string, files map[string]string) {
+	t.Helper()
+	for path, body := range files {
+		p := filepath.Join(instancerecord.StateDir(instances, name), path)
+		os.MkdirAll(filepath.Dir(p), 0o700)
+		os.WriteFile(p, []byte(body), 0o600)
+	}
+}
+
+func created(t *testing.T, o Options, names ...string) {
+	t.Helper()
+	for _, n := range names {
+		if _, err := Create(o, "com.yoke.station", n, "", values(t, "[shared]\nsite_label = \"A\"\n")); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func runtimeOf(t *testing.T) (Options, string) {
+	t.Helper()
+	apps, instances := roots(t)
+	installed(t, apps, "2.1.0", installroot.Complete, true, "")
+	run, _ := os.MkdirTemp("", "yr")
+	t.Cleanup(func() { os.RemoveAll(run) })
+	o := opts(apps, instances)
+	o.Runtime = run
+	return o, run
+}
+
+var full = map[string]string{"registry.db": "reg", "logs.db": "logs", "version": "2.1.0\n", "secrets/token": "s3cret", "storage/datasets/a": "data"}
+
+// std: yoke:the-instances.06
+func TestACopyIsTheStateWholeAndWhereItCameFrom(t *testing.T) {
+	o, run := runtimeOf(t)
+	created(t, o, "bench-a")
+	stateOf(t, o.Instances, "bench-a", full)
+	dest := filepath.Join(t.TempDir(), "copy")
+	release := holdClaim(t, filepath.Join(run, "bench-a"))
+	if err := Copy(o, "bench-a", dest); err == nil || !strings.Contains(err.Error(), "running") {
+		t.Errorf("a running instance was copied: %v", err)
+	}
+	if _, err := os.Stat(dest); err == nil {
+		t.Error("a refused copy wrote something")
+	}
+	release()
+	if err := Copy(o, "bench-a", dest); err != nil {
+		t.Fatal(err)
+	}
+	for path, body := range full {
+		got, err := os.ReadFile(filepath.Join(dest, "state", path))
+		info, _ := os.Stat(filepath.Join(dest, "state", path))
+		if err != nil || string(got) != body || info.Mode().Perm() != 0o600 {
+			t.Errorf("%s: %q %v", path, got, err)
+		}
+	}
+	if origin, _ := os.ReadFile(filepath.Join(dest, "origin")); strings.TrimSpace(string(origin)) != "bench-a" {
+		t.Errorf("origin is %q", origin)
+	}
+	if err := Copy(o, "bench-a", dest); err == nil || !strings.Contains(err.Error(), dest) {
+		t.Errorf("a copy onto a path that exists: %v", err)
+	}
+}
+
+// std: yoke:the-instances.07
+func TestARestoreKeepsOrStripsByWhereTheCopyCameFrom(t *testing.T) {
+	o, run := runtimeOf(t)
+	created(t, o, "bench-a", "bench-b", "bench-c")
+	stateOf(t, o.Instances, "bench-a", full)
+	stateOf(t, o.Instances, "bench-c", map[string]string{"logs.db": "mine"})
+	dest := filepath.Join(t.TempDir(), "copy")
+	if err := Copy(o, "bench-a", dest); err != nil {
+		t.Fatal(err)
+	}
+	if err := Restore(o, dest, "bench-a"); err != nil {
+		t.Fatal(err)
+	}
+	for path := range full {
+		if _, err := os.Stat(filepath.Join(instancerecord.StateDir(o.Instances, "bench-a"), path)); err != nil {
+			t.Errorf("bench-a lost %s", path)
+		}
+	}
+	if err := Restore(o, dest, "bench-b"); err != nil {
+		t.Fatal(err)
+	}
+	b := instancerecord.StateDir(o.Instances, "bench-b")
+	for _, gone := range []string{"registry.db", "secrets"} {
+		if _, err := os.Stat(filepath.Join(b, gone)); err == nil {
+			t.Errorf("bench-b was given %s", gone)
+		}
+	}
+	for _, kept := range []string{"version", "logs.db", "storage/datasets/a"} {
+		if _, err := os.Stat(filepath.Join(b, kept)); err != nil {
+			t.Errorf("bench-b was not given %s", kept)
+		}
+	}
+	holdClaim(t, filepath.Join(run, "bench-c"))
+	if err := Restore(o, dest, "bench-c"); err == nil || !strings.Contains(err.Error(), "running") {
+		t.Errorf("a restore into a running instance: %v", err)
+	}
+	if got, _ := os.ReadFile(filepath.Join(instancerecord.StateDir(o.Instances, "bench-c"), "logs.db")); string(got) != "mine" {
+		t.Errorf("bench-c's state was touched: %q", got)
+	}
+}
+
+// std: yoke:the-instances.08
+func TestReadingAnInstanceReportsWhatItsStateOccupies(t *testing.T) {
+	o, _ := runtimeOf(t)
+	created(t, o, "bench-a")
+	stateOf(t, o.Instances, "bench-a", map[string]string{"registry.db": "abc", "logs.db": "abcde",
+		"storage/datasets/x": "abcdefg", "storage/cache/y": "abcdefghijk"})
+	got, err := Occupies(o, "bench-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]int64{"registry": 3, "logs": 5, "storage/datasets": 7, "storage/cache": 11}
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("the state occupies %v, want %v", got, want)
 	}
 }

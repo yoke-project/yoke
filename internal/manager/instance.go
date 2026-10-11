@@ -3,7 +3,10 @@ package manager
 import (
 	"flag"
 	"fmt"
+	"maps"
 	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/yoke-project/yoke/internal/instancerecord"
@@ -17,6 +20,8 @@ func init() {
 	register("instance", "show", verb{"<name>", (*call).instanceShow})
 	register("instance", "set-version", verb{"<name> <version>", (*call).instanceSetVersion})
 	register("instance", "set-param", verb{"<name> <group>.<key> <value>", (*call).instanceSetParam})
+	register("instance", "copy", verb{"<name> <path>", (*call).instanceCopy})
+	register("instance", "restore", verb{"<path> <name>", (*call).instanceRestore})
 }
 
 func (c *call) instances() (instances.Options, error) {
@@ -24,7 +29,8 @@ func (c *call) instances() (instances.Options, error) {
 	if err != nil {
 		return instances.Options{}, refusal{err}
 	}
-	return instances.Options{InstallRoot: cfg.InstallRoot, Instances: instancerecord.Root(c.getenv)}, nil
+	return instances.Options{InstallRoot: cfg.InstallRoot, Instances: instancerecord.Root(c.getenv),
+		Runtime: filepath.Join(c.getenv("XDG_RUNTIME_DIR"), "yoke")}, nil
 }
 
 // refused is a refusal where the answer will not change until something is: everything these verbs
@@ -113,6 +119,50 @@ func (c *call) instanceShow() error {
 		return err
 	}
 	fmt.Fprint(c.out, strings.TrimRight(string(data), "\n")+"\n")
+	occupies, err := instances.Occupies(o, c.args[0])
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(c.out, "occupies:")
+	for _, what := range slices.Sorted(maps.Keys(occupies)) {
+		fmt.Fprintf(c.out, "  %s %d\n", what, occupies[what])
+	}
+	return nil
+}
+
+func (c *call) instanceCopy() error {
+	if _, _, _, err := c.flags(nil); err != nil {
+		return err
+	}
+	if err := c.positional(2, "an instance's name and a path"); err != nil {
+		return err
+	}
+	o, err := c.instances()
+	if err != nil {
+		return err
+	}
+	if err := instances.Copy(o, c.args[0], c.args[1]); err != nil {
+		return refused(err)
+	}
+	fmt.Fprintf(c.out, "copied the state of %s to %s\n", c.args[0], c.args[1])
+	return nil
+}
+
+func (c *call) instanceRestore() error {
+	if _, _, _, err := c.flags(nil); err != nil {
+		return err
+	}
+	if err := c.positional(2, "a path and an instance's name"); err != nil {
+		return err
+	}
+	o, err := c.instances()
+	if err != nil {
+		return err
+	}
+	if err := instances.Restore(o, c.args[0], c.args[1]); err != nil {
+		return refused(err)
+	}
+	fmt.Fprintf(c.out, "restored %s from %s\n", c.args[1], c.args[0])
 	return nil
 }
 
