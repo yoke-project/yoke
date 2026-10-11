@@ -64,6 +64,8 @@ type fakeSessions struct {
 	present []bool
 }
 
+func (f *fakeSessions) OffersShared(string) bool { return false }
+
 func (f *fakeSessions) Open(id string) bool { return id == "acquire" || id == "mute" || id == "broken" }
 
 func (f *fakeSessions) failure(ctx context.Context, id, named string) error {

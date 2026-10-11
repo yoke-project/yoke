@@ -46,6 +46,8 @@ var ErrUnreachable = supervisor.ErrUnreachable
 type Sessions interface {
 	// Open says whether a unit holds a Session now.
 	Open(unit string) bool
+	// OffersShared says the library of a unit's Session offered the shared object at registration.
+	OffersShared(unit string) bool
 	Ask(ctx context.Context, unit string, q *pluginv1.Query_Question) (*pluginv1.Query_Answer, error)
 	Revoke(unit string, cause pluginv1.SessionMessage_Revoked_Cause, line string) error
 	// Instruct hands a unit a control instruction on its Session, and returns its acknowledgement.
@@ -54,7 +56,7 @@ type Sessions interface {
 
 // Transports are the streams' own transports.
 type Transports interface {
-	Open(unit string, incarnation uint64, stream string, t streams.Tolerances) (streams.Transport, string, error)
+	Open(unit string, incarnation uint64, stream string, t streams.Tolerances, shared bool) (streams.Transport, string, error)
 	Close(unit, stream, reason string) bool
 	Discard(unit, stream string)
 	Active(unit string) []string

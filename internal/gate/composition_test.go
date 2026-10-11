@@ -202,6 +202,31 @@ func TestTheLongestSocketPathMustFit(t *testing.T) {
 	}
 }
 
+// std: yoke:the-composition-document.10
+func TestTheLongestRingLabelMustFit(t *testing.T) {
+	unitName, stream := "acq", "station.preview"
+	for _, c := range []struct {
+		total int
+		loss  string
+		want  []string
+	}{{255, "true", nil}, {256, "true", []string{"object.name.ceiling"}}, {256, "false", nil}} {
+		h := host(t, "com.example.acq")
+		h.RuntimeRoot = "/run/y" // short, so that only the label is long
+		h.Instance = strings.Repeat("i", c.total-len("yoke-")-len("-"+unitName+"-"+stream))
+		manifest := "manifest: 1\nid: com.example.acq\nprotocol: 1\nstreams: [ { id: " + stream + ", tolerates_loss: " + c.loss +
+			" } ]\ncapabilities: [ { name: a, governs: { stream: " + stream + " } } ]\n"
+		dir := scanned(t, map[string]string{"com.example.acq": manifest})
+		r, _ := started(t, "units:\n  "+unitName+": { kind: plugin, plugin: com.example.acq }\n", dir, h)
+		if got := codes(r); !slices.Equal(got, c.want) {
+			t.Errorf("a label of %d, loss %s, gives %v, want %v", c.total, c.loss, r.Findings, c.want)
+			continue
+		}
+		if c.want != nil && (!strings.Contains(r.Findings[0].Message, "256") || !strings.Contains(r.Findings[0].Message, "255")) {
+			t.Errorf("the refusal does not name 256 and 255: %s", r.Findings[0].Message)
+		}
+	}
+}
+
 // std: yoke:the-composition-document.07
 func TestEachCheckRunsAtTheMomentsThatCanReachIt(t *testing.T) {
 	document, dir, h := hostCase(t)

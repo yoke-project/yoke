@@ -121,3 +121,16 @@
 | **Precondition** | a Manifest needing `device:instrument`, `storage:cache` and `display`; units of it binding, in turn: `instrument` with an argument naming `${bind.cache}`; `instrument` and `cache`; and `instrument` and `display` |
 | **Action** | check each |
 | **Expected** | the first passes; then `bind.class` naming `cache`, and `bind.class` naming `display` |
+
+## yoke:the-composition-document.10 — the longest ring label must fit
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/50.96 · arch/15-gate/06 §The two ceilings · arch/50-plugin-surface/07 §The shared ring |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a plugin unit whose Manifest declares a stream that tolerates loss, and an instance whose name makes the ring's label, `yoke-<instance>-<unit>-<stream>`, 255 characters long; then 256; then the 256 again with the stream tolerating nothing |
+| **Action** | check each at the start |
+| **Expected** | the first passes; the second gives `object.name.ceiling`, naming 256 and the ceiling of 255; the third passes, since no ring can carry that stream |

@@ -149,6 +149,8 @@ type instruction struct {
 	present bool
 }
 
+func (f *fakeSessions) OffersShared(string) bool { return false }
+
 func (f *fakeSessions) Open(id string) bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()

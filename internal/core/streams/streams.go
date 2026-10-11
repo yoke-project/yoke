@@ -16,12 +16,16 @@ import (
 	"slices"
 	"sync"
 	"sync/atomic"
+	"time"
+
+	"golang.org/x/sys/unix"
 
 	"google.golang.org/protobuf/proto"
 
 	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
 
 	"github.com/yoke-project/yoke/internal/core/event"
+	"github.com/yoke-project/yoke/internal/core/ring"
 )
 
 // Transport is what carries a stream's data.
@@ -33,7 +37,20 @@ const (
 	// Framed is a datagram socket carrying one frame per datagram, for a stream that tolerates loss or
 	// reorder.
 	Framed Transport = "framed"
+	// Shared is the shared ring, for a stream that tolerates loss where the unit's library offers it.
+	Shared Transport = "shared"
 )
+
+// Activation is the transport as an activation names it to the unit.
+func (t Transport) Activation() pluginv1.Control_Activate_Transport {
+	switch t {
+	case Framed:
+		return pluginv1.Control_Activate_TRANSPORT_FRAMED
+	case Shared:
+		return pluginv1.Control_Activate_TRANSPORT_SHARED_OBJECT
+	}
+	return pluginv1.Control_Activate_TRANSPORT_ORDERED
+}
 
 // Tolerances are what a stream's data tolerates, as its Manifest declares them.
 type Tolerances struct{ Loss, Reorder bool }
@@ -63,7 +80,9 @@ type Frame struct {
 type Config struct {
 	// Root is the instance root: every transport is at plugins/<unit>/streams/<stream>.sock under it.
 	Root string
-	Log  *slog.Logger
+	// Instance is the instance's name, which a ring's label derives from.
+	Instance string
+	Log      *slog.Logger
 	// Deliver is handed every message read. Optional.
 	Deliver func(Frame)
 	// Publish is told that a stream stopped, and why. Optional.
@@ -114,7 +133,7 @@ func (s *Service) Path(unitID, stream string) string {
 
 // Open creates a stream's transport and listens on it, returning what it is and where. A stream already
 // open is refused: activation is once per flow.
-func (s *Service) Open(unitID string, incarnation uint64, stream string, t Tolerances) (Transport, string, error) {
+func (s *Service) Open(unitID string, incarnation uint64, stream string, t Tolerances, shared bool) (Transport, string, error) {
 	k := key{unitID, stream}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -127,7 +146,11 @@ func (s *Service) Open(unitID string, incarnation uint64, stream string, t Toler
 	}
 	os.Remove(address)
 	f := &flow{key: k, incarnation: incarnation, tolerates: t, address: address}
-	if t.Loss || t.Reorder {
+	if t.Loss && shared {
+		if err := s.openShared(f); err != nil {
+			return "", "", err
+		}
+	} else if t.Loss || t.Reorder {
 		f.transport = Framed
 		conn, err := net.ListenUnixgram("unixgram", &net.UnixAddr{Name: address, Net: "unixgram"})
 		if err != nil {
@@ -165,6 +188,103 @@ func (s *Service) Open(unitID string, incarnation uint64, stream string, t Toler
 	s.cfg.Log.Info("stream", "unit", unitID, "stream", stream, "event", "opened", "transport", string(f.transport))
 	return f.transport, address, nil
 }
+
+// openShared carries a stream on a shared ring: the Core creates the ring and a packet socket at the
+// stream's path, hands the ring's descriptor that writes to the first connection — one byte carrying it —
+// and keeps that connection for the life of the stream; it reads the ring itself and delivers what it
+// reads. Closing the socket ends the stream, and the memory goes when the last descriptor on it closes.
+func (s *Service) openShared(f *flow) error {
+	r, err := ring.Create(fmt.Sprintf("yoke-%s-%s-%s", s.cfg.Instance, f.unit, f.stream))
+	if err != nil {
+		return err
+	}
+	readable, err := r.ReaderFile()
+	if err != nil {
+		r.Close()
+		return err
+	}
+	reader, err := ring.OpenReader(readable)
+	readable.Close()
+	if err != nil {
+		r.Close()
+		return err
+	}
+	listener, err := net.ListenUnix("unixpacket", &net.UnixAddr{Name: f.address, Net: "unixpacket"})
+	if err != nil {
+		reader.Close()
+		r.Close()
+		return err
+	}
+	f.transport = Shared
+	done := make(chan struct{})
+	var mu sync.Mutex
+	var held net.Conn
+	var once sync.Once
+	f.closer = func() {
+		once.Do(func() {
+			close(done)
+			listener.Close()
+			mu.Lock()
+			if held != nil {
+				held.Close()
+			}
+			mu.Unlock()
+			r.Close()
+		})
+	}
+	go func() {
+		for {
+			conn, err := listener.AcceptUnix()
+			if err != nil {
+				return
+			}
+			mu.Lock()
+			first := held == nil
+			if first {
+				held = conn
+			}
+			mu.Unlock()
+			if !first {
+				s.cfg.Log.Warn("stream", "unit", f.unit, "stream", f.stream, "refused", "a second connection")
+				conn.Close()
+				continue
+			}
+			writable, err := r.ProducerFile()
+			if err != nil {
+				conn.Close()
+				continue
+			}
+			_, _, err = conn.WriteMsgUnix([]byte{0}, unix.UnixRights(int(writable.Fd())), nil)
+			writable.Close()
+			if err != nil {
+				s.cfg.Log.Warn("stream", "unit", f.unit, "stream", f.stream, "fault", "the ring's descriptor was not handed over", "error", err)
+			}
+		}
+	}()
+	go s.readRing(f, reader, done)
+	return nil
+}
+
+// readRing reads a ring frame by frame until the stream ends, delivering each frame read; a gap is what a
+// stream that tolerates loss tolerates.
+func (s *Service) readRing(f *flow, r *ring.Reader, done <-chan struct{}) {
+	defer r.Close()
+	for {
+		select {
+		case <-done:
+			return
+		default:
+		}
+		frame, _, err := r.Next(ringInterval)
+		if err != nil {
+			continue
+		}
+		s.deliver(f, frame.Sequence, frame.Clock, frame.Payload)
+	}
+}
+
+// ringInterval bounds a wait on a ring's wake word, so that a stream's end is noticed.
+const ringInterval = 100 * time.Millisecond
 
 // acceptOrdered reads the first connection to an ordered transport and closes every later one: one
 // stream has one producer, and a second connection would be a second claim to it.

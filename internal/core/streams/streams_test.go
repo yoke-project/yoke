@@ -50,8 +50,9 @@ func newBench(t *testing.T) *bench {
 	t.Cleanup(func() { os.RemoveAll(root) })
 	b := &bench{root: root, log: &syncBuffer{}}
 	b.svc = streams.New(streams.Config{
-		Root: root,
-		Log:  slog.New(slog.NewTextHandler(b.log, nil)),
+		Root:     root,
+		Instance: "bench",
+		Log:      slog.New(slog.NewTextHandler(b.log, nil)),
 		Deliver: func(f streams.Frame) {
 			b.mu.Lock()
 			defer b.mu.Unlock()
@@ -120,7 +121,7 @@ func TestTheTransportIsChosenByTheTwoTolerances(t *testing.T) {
 		{"station.preview", streams.Tolerances{Loss: true}, streams.Framed, "unixgram"},
 		{"station.events", streams.Tolerances{Reorder: true}, streams.Framed, "unixgram"},
 	} {
-		transport, address, err := b.svc.Open("acquire", 1, c.stream, c.tolerates)
+		transport, address, err := b.svc.Open("acquire", 1, c.stream, c.tolerates, false)
 		if err != nil {
 			t.Fatalf("%s did not open: %v", c.stream, err)
 		}
@@ -132,7 +133,7 @@ func TestTheTransportIsChosenByTheTwoTolerances(t *testing.T) {
 			t.Errorf("%s is a %s socket, want %s", c.stream, got, c.network)
 		}
 	}
-	if _, _, err := b.svc.Open("acquire", 1, "station.spectra", streams.Tolerances{}); err == nil {
+	if _, _, err := b.svc.Open("acquire", 1, "station.spectra", streams.Tolerances{}, false); err == nil {
 		t.Error("an open stream opened again")
 	}
 	if got := b.svc.Active("acquire"); !slices.Equal(got, []string{"station.events", "station.preview", "station.spectra"}) {
@@ -152,7 +153,7 @@ func envelope(t *testing.T, e *pluginv1.Envelope) []byte {
 // std: yoke:a-streams-transport.02
 func TestTheOrderedPathCarriesOneDataEnvelopePerPacket(t *testing.T) {
 	b := newBench(t)
-	_, address, err := b.svc.Open("acquire", 1, "station.spectra", streams.Tolerances{})
+	_, address, err := b.svc.Open("acquire", 1, "station.spectra", streams.Tolerances{}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +208,7 @@ func TestTheFramedPathReadsTheHeaderAndAGapIsAFaultOnlyWhereLossIsNotTolerated(t
 		stream    string
 		tolerates streams.Tolerances
 	}{{"station.preview", streams.Tolerances{Loss: true}}, {"station.events", streams.Tolerances{Reorder: true}}} {
-		_, address, err := b.svc.Open("acquire", 1, c.stream, c.tolerates)
+		_, address, err := b.svc.Open("acquire", 1, c.stream, c.tolerates, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -252,7 +253,7 @@ func TestTheFramedPathReadsTheHeaderAndAGapIsAFaultOnlyWhereLossIsNotTolerated(t
 func TestEachRouteThatEndsAStreamRemovesItsTransport(t *testing.T) {
 	b := newBench(t)
 	open := func(unitID, stream string, incarnation uint64) string {
-		_, address, err := b.svc.Open(unitID, incarnation, stream, streams.Tolerances{})
+		_, address, err := b.svc.Open(unitID, incarnation, stream, streams.Tolerances{}, false)
 		if err != nil {
 			t.Fatal(err)
 		}

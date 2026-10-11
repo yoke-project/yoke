@@ -152,7 +152,7 @@ func (st *State) transports() *streams.Service {
 	st.mu.Lock()
 	defer st.mu.Unlock()
 	if st.Streams == nil {
-		st.Streams = streams.New(streams.Config{Root: st.Paths.Root, Log: st.Log, Publish: st.publish})
+		st.Streams = streams.New(streams.Config{Root: st.Paths.Root, Instance: st.Paths.Name, Log: st.Log, Publish: st.publish})
 	}
 	return st.Streams
 }
@@ -467,7 +467,7 @@ func (st *State) composition() *composed {
 			Document:  doc,
 			Moment:    gate.Starting,
 			Manifests: plugins.Manifests,
-			Host: &gate.Host{Executables: plugins.Executables, StateDir: st.Paths.State, RuntimeRoot: st.Paths.Root,
+			Host: &gate.Host{Executables: plugins.Executables, StateDir: st.Paths.State, RuntimeRoot: st.Paths.Root, Instance: st.Paths.Name,
 				Engine: st.reachEngine},
 		})
 		st.composed = &composed{doc, report, dep}
@@ -826,6 +826,19 @@ func (u supervised) RestartUnit(id string) error { return u.st.Supervisor.Restar
 
 // held are the Sessions as the administrative operations reach them, by the unit that holds one.
 type held struct{ st *State }
+
+// OffersShared says the library of the unit's Session offered the shared object at its registration.
+func (s held) OffersShared(unitID string) bool {
+	if s.st.Session == nil || s.st.Admission == nil {
+		return false
+	}
+	id, ok := s.st.Session.Of(unitID)
+	if !ok {
+		return false
+	}
+	admitted, ok := s.st.Admission.Lookup(id)
+	return ok && admitted.Shared
+}
 
 func (s held) Open(unitID string) bool {
 	if s.st.Session == nil {

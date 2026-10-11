@@ -531,3 +531,20 @@ func TestTheGrantAndTheWithheldCarryOccurrences(t *testing.T) {
 		t.Errorf("the withheld capabilities are %v", resp.Withheld.GetCapabilities())
 	}
 }
+
+// std: yoke:admission.14
+func TestTheTransportsALibraryOffersAreKeptWithItsSession(t *testing.T) {
+	b := newBench(t, false)
+	offering := request("a", b.compose("a", plugin))
+	offering.Transports = []pluginv1.Control_Activate_Transport{pluginv1.Control_Activate_TRANSPORT_SHARED_OBJECT}
+	first := b.register(t, offering)
+	accepted(t, first)
+	second := b.register(t, request("b", b.compose("b", plugin)))
+	accepted(t, second)
+	if s, _ := b.a.Lookup(first.SessionId); s == nil || !s.Shared {
+		t.Errorf("the Session of a library that offers the shared object says it does not")
+	}
+	if s, _ := b.a.Lookup(second.SessionId); s == nil || s.Shared {
+		t.Errorf("the Session of a library that offers nothing says it offers the shared object")
+	}
+}
