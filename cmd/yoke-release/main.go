@@ -29,12 +29,20 @@ func main() {
 	// that package alone, made and published by the family's ci/package.sh.
 	crate := flag.String("crate", "", "publish the family's crate of this name at its release tag, and nothing else")
 	wheel := flag.String("wheel", "", "publish the family's wheel of this name at its release tag, and nothing else")
+	// A family consumed as its source — C, C++ — names the archive, and the verb hands that over alone.
+	source := flag.String("source", "", "hand over the family's source archive of this name at its release tag, and nothing else")
 	flag.Parse()
 	cfg := release.Config{Root: ".", Proxy: release.FromProxy, Today: time.Now, Out: os.Stdout, Err: os.Stderr}
 	switch {
 	case *crate != "" && *wheel != "":
 		fmt.Fprintln(os.Stderr, "release: a family publishes one package: -crate or -wheel, not both")
 		os.Exit(2)
+	case *source != "" && (*crate != "" || *wheel != ""):
+		fmt.Fprintln(os.Stderr, "release: a family is published one way: -source, -crate or -wheel")
+		os.Exit(2)
+	case *source != "":
+		cfg.SourceRelease, cfg.Source, cfg.Upload = true, *source, release.ToForge
+		cfg.Releases = "https://github.com/" + os.Getenv("GITHUB_REPOSITORY") + "/releases/tag/"
 	case *crate != "":
 		cfg.Family, cfg.Settle, cfg.Pause = true, 30, 10*time.Second
 		cfg.Packages = release.Scripted(".", packages.Rust, *crate)
