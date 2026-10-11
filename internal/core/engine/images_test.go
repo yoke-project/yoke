@@ -7,8 +7,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -152,18 +150,7 @@ func TestAnImageIsTaggedInTheReservedNamespace(t *testing.T) {
 // std: yoke:the-engine-images.05
 func TestAnOCIArchiveSavedByDigestLoads(t *testing.T) {
 	enginetest.Not(t, enginetest.Docker)
-	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "Containerfile"), []byte("FROM scratch\nCOPY hello /hello\n"), 0o644)
-	os.WriteFile(filepath.Join(dir, "hello"), []byte("hi\n"), 0o644)
-	ref := enginetest.Image(t, dir, "yoke-load")
-	archive := filepath.Join(t.TempDir(), "image.tar")
-	if said, err := exec.Command("podman", "save", "-q", "--format", "oci-archive", "-o", archive, ref).CombinedOutput(); err != nil {
-		t.Fatalf("the archive was not saved: %v\n%s", err, said)
-	}
-	// The fixture also tags the image; removing it by its identity takes every name it has.
-	if id, err := exec.Command("podman", "image", "inspect", "--format", "{{.Id}}", ref).Output(); err == nil {
-		exec.Command("podman", "rmi", "-f", strings.TrimSpace(string(id))).Run()
-	}
+	ref, archive := enginetest.OCIArchive(t, "yoke-load")
 	s := enginetest.Serve(t)
 	e, err := engine.Reach(context.Background(), "unix://"+s.Socket)
 	if err != nil {

@@ -157,6 +157,6 @@
 | **Method** | test |
 | **Not applicable in** | container engine: docker |
 | **Label** | blocking |
-| **Precondition** | an image built and held by digest, saved as an OCI archive into a project's `components/images/`, then removed from the engine; the project's descriptor naming it |
+| **Precondition** | an OCI archive written by the test and named by its manifest's digest, placed in a project's `components/images/`; no image under that reference in the engine; the project's descriptor naming it |
 | **Action** | build a signed package with the composer, and install it with the engine |
 | **Expected** | the installation completes; the engine holds the image under its pinned reference, loaded from the package and not pulled, and tagged `yoke/com.yoke.station:2.1.0`. Not applicable under Docker, whose classic store loads an archive with no digest |
