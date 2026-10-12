@@ -121,5 +121,15 @@ func TestAClientVerbReachesARunningInstance(t *testing.T) {
 	expect([]string{"nothing changed"}, "plugin", "disable", bench.ID)
 	expect([]string{"previously disabled"}, "plugin", "enable", bench.ID)
 	expect([]string{"consequence bench"}, "unit", "restart", "bench")
-	expect([]string{"bench/"}, "log", "query", "--unit", "bench")
+	// The log store is written behind the operations that produce its entries, so what a unit printed is
+	// found there shortly after, and the query is asked until it is.
+	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(100 * time.Millisecond) {
+		if _, out := yoke(vars, "log", "query", "--unit", "bench"); strings.Contains(squash(out), "bench/") {
+			break
+		}
+		if time.Now().After(deadline) {
+			expect([]string{"bench/"}, "log", "query", "--unit", "bench")
+			break
+		}
+	}
 }
