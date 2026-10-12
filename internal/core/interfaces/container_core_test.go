@@ -63,10 +63,10 @@ func TestFromItsContainerAManagedInterfaceAttachesAndBindsNothing(t *testing.T) 
 	if len(ids) != 1 {
 		t.Fatalf("the interface runs in %v", ids)
 	}
-	network, _ := enginetest.CLI("inspect", "-f", "{{.HostConfig.NetworkMode}}", ids[0]).Output()
-	ports, _ := enginetest.CLI("inspect", "-f", "{{len .HostConfig.PortBindings}}", ids[0]).Output()
-	if strings.TrimSpace(string(network)) != "none" || strings.TrimSpace(string(ports)) != "0" {
-		t.Errorf("the interface's container has the network %q and %s port bindings", network, ports)
+	// Both read in one inspection, so they are of one container at one moment, and a failure says why.
+	said2, err := enginetest.CLI("inspect", "-f", "{{.HostConfig.NetworkMode}} {{len .HostConfig.PortBindings}}", ids[0]).CombinedOutput()
+	if got := strings.Fields(string(said2)); err != nil || len(got) != 2 || got[0] != "none" || got[1] != "0" {
+		t.Errorf("the interface's container, inspected: %q, %v", said2, err)
 	}
 }
 
