@@ -138,7 +138,8 @@ func Image(t *testing.T, dir, name string) string {
 	if Under() == Podman {
 		run(t, "podman", "build", "-q", "-t", tag, dir)
 		t.Cleanup(func() { exec.Command("podman", "rmi", "-f", tag).Run() })
-		digest := run(t, "podman", "images", "--digests", "--format", "{{.Digest}}", tag)
+		// An image can be listed more than once under its tag, each time with the same digest.
+		digest := strings.Fields(run(t, "podman", "images", "--digests", "--format", "{{.Digest}}", tag))[0]
 		return "localhost/" + name + "@" + digest
 	}
 	address := loopbackRegistry(t)
