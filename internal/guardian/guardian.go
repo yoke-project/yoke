@@ -626,7 +626,17 @@ func (s *surface) Subscribe(_ *channel.SubscribeRequest, stream channel.Guardian
 		case <-stream.Context().Done():
 			return nil
 		case <-s.g.done:
-			return nil
+			// What the guardian concluded before it exited is still told: its last changes are queued.
+			for {
+				select {
+				case w := <-sub:
+					if err := stream.Send(w); err != nil {
+						return err
+					}
+				default:
+					return nil
+				}
+			}
 		}
 	}
 }
