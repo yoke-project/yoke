@@ -38,6 +38,9 @@ jobs:
         with:
           go-version: '1.26'
       - run: just build
+      # The service form's unit is verified under the account's own systemd, which a runner starts once
+      # the account lingers.
+      - run: ci/user-systemd.sh
       - run: just test
       - run: ci/record.sh L1 > record-L1.json
         if: always()

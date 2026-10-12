@@ -1,0 +1,21 @@
+# The service form's deployment: one per host, so one unit, named as the instance is.
+#
+# Activation runs the manager, which validates the composition in force and then executes the Core in
+# its own place; nothing starts what the gate refused. `yoke service start`, `stop`, `restart` and
+# `status` ask this unit and start nothing themselves.
+#
+# The account the deployment runs as, and its group, are the site's: a package sets them with a drop-in.
+[Unit]
+Description=Yoke deployment
+Documentation=https://github.com/yoke-project/yoke
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/yoke service exec
+# A refusal will not pass on the next attempt, so it is not restarted; a fault may be.
+Restart=on-failure
+RestartPreventExitStatus=2
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target
