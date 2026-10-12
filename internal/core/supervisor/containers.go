@@ -57,6 +57,12 @@ func (s *Supervisor) inContainer(m *managed, needs expansion) {
 	launch := engine.Launch{Image: m.decl.Image, Args: m.decl.Args, Env: append(s.Environment(m.decl, token), needs.env...),
 		Directory: s.cfg.Root, Instance: s.cfg.Instance, Unit: m.decl.ID, Incarnation: incarnation, UID: os.Getuid(), GID: os.Getgid(),
 		Devices: needs.devices, Mounts: needs.mounts, Groups: needs.groups, Network: needs.network}
+	// The life is counted and named before the engine is asked: what runs inside can register before the
+	// engine says it started it, and what it says then belongs to this incarnation and no other.
+	m.incarnation = incarnation
+	m.status.Incarnation, m.status.PID, m.status.Token = incarnation, 0, token
+	s.publish(event.StateChangedOf(m.decl.ID, pluginOf(m.decl), uint64(incarnation), "", unit.Starting))
+	m.status.Since = time.Now()
 	go s.launchContainer(m, m.launching, launch, token)
 }
 
@@ -146,10 +152,7 @@ func (s *Supervisor) launchContainer(m *managed, attempt int, l engine.Launch, t
 		go r.kill()
 		return
 	}
-	m.incarnation, m.running, m.exited = l.Incarnation, r, w.exited
-	m.status.Incarnation, m.status.PID, m.status.Token = l.Incarnation, 0, token
-	s.publish(event.StateChangedOf(m.decl.ID, pluginOf(m.decl), uint64(l.Incarnation), "", unit.Starting))
-	m.status.Since = time.Now()
+	m.running, m.exited = r, w.exited
 	s.apply(m, unit.ProcessStarted{})
 	w.window = time.AfterFunc(s.policy(m).StartupWindow, func() { s.windowElapsed(m, l.Incarnation) })
 }
