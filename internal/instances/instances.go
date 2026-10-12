@@ -32,6 +32,11 @@ type Options struct {
 	User string
 	// Runtime is where the account's instances keep their sockets and claims: `$XDG_RUNTIME_DIR/yoke`.
 	Runtime string
+	// The host facts an instance is created or re-pointed against: this host's architecture, the Core it
+	// will execute, and the account's runtime directory. Unset is not checked.
+	Arch       string
+	Core       *version.Version
+	RuntimeDir *string
 }
 
 func (o Options) me() string {
@@ -61,7 +66,7 @@ type pinned struct {
 
 // pinnable resolves the version an instance would be pinned to — the one named, or the newest complete
 // release where none is — and refuses one that is absent, not complete, or not offered to this account.
-func (o Options) pinnable(id, ver string) (pinned, error) {
+func (o Options) pinnable(id, ver, name string) (pinned, error) {
 	apps, err := installroot.Root{Path: o.InstallRoot}.List()
 	if err != nil {
 		return pinned{}, err
@@ -105,8 +110,18 @@ func (o Options) pinnable(id, ver string) (pinned, error) {
 	if err != nil {
 		return pinned{}, err
 	}
+	var stamp string
+	if name != "" {
+		data, _ := os.ReadFile(filepath.Join(instancerecord.StateDir(o.Instances, name), "version"))
+		stamp = strings.TrimSpace(string(data))
+	}
+	host := &gate.Host{Bundle: bundle, Instance: name, RuntimeRoot: filepath.Join(o.Runtime, name), Arch: o.Arch, Core: o.Core,
+		RuntimeDir: o.RuntimeDir}
+	if name != "" {
+		host.StateDir = instancerecord.StateDir(o.Instances, name)
+	}
 	report, d := gate.Check(gate.Input{Document: gate.Read(descriptor, gate.Descriptor), Moment: gate.Creating,
-		Manifests: filepath.Join(bundle, "manifests")})
+		Manifests: filepath.Join(bundle, "manifests"), Host: host, Instance: &gate.Instance{Stamp: stamp}})
 	if report.Refused() {
 		return pinned{}, refused("the descriptor of "+id+" "+ver, report.Findings)
 	}
@@ -152,7 +167,7 @@ func readValues(path string) (map[string]map[string]string, error) {
 // generated and unique within the account. The values are checked against the declarations before
 // anything is written, and the descriptor's digest is recorded with the pin.
 func Create(o Options, id, name, ver, valuesFile string) (string, error) {
-	p, err := o.pinnable(id, ver)
+	p, err := o.pinnable(id, ver, name)
 	if err != nil {
 		return "", err
 	}
@@ -200,14 +215,9 @@ func SetVersion(o Options, name, ver string) error {
 	if err != nil {
 		return err
 	}
-	p, err := o.pinnable(current.ID, ver)
+	p, err := o.pinnable(current.ID, ver, name)
 	if err != nil {
 		return err
-	}
-	if stamp, err := os.ReadFile(filepath.Join(instancerecord.StateDir(o.Instances, name), "version")); err == nil {
-		if err := gate.Readable(p.d.Head.Data, strings.TrimSpace(string(stamp)), p.version); err != nil {
-			return err
-		}
 	}
 	return instancerecord.Update(o.Instances, name, func(r *instancerecord.Record) error {
 		r.Version, r.DescriptorDigest = p.version, p.digest
@@ -226,7 +236,7 @@ func SetParam(o Options, name, param, value string) error {
 	if err != nil {
 		return err
 	}
-	p, err := o.pinnable(current.ID, current.Version)
+	p, err := o.pinnable(current.ID, current.Version, name)
 	if err != nil {
 		return err
 	}

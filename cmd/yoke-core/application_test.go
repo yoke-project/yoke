@@ -20,6 +20,7 @@ import (
 
 	"github.com/yoke-project/yoke/internal/core/engine/enginetest"
 	"github.com/yoke-project/yoke/internal/core/peer"
+	"github.com/yoke-project/yoke/internal/gate"
 	"github.com/yoke-project/yoke/internal/guardian/channel"
 )
 
@@ -57,7 +58,7 @@ func bundle(t *testing.T, extra string) string {
 	descriptor := fmt.Sprintf(`model: 1
 id: com.yoke.station
 version: 2.1.0
-arch: aarch64
+arch: {{HOSTARCH}}
 core: ">=0.0.0-0"
 parameters:
   shared:
@@ -74,6 +75,7 @@ units:
     args: [ "${label}", "${site}" ]
     env: { OUT: "${out}" }
 %s`, sha256.Sum256([]byte(probe)), extra)
+	descriptor = strings.Replace(descriptor, "{{HOSTARCH}}", gate.HostArch(), 1)
 	os.WriteFile(filepath.Join(dir, "yoke.yaml"), []byte(descriptor), 0o644)
 	return dir
 }

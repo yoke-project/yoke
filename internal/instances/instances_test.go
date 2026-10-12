@@ -32,7 +32,8 @@ func installed(t *testing.T, apps, ver string, state installroot.State, shared b
 		t.Fatal(err)
 	}
 	bundle := filepath.Join(inst.Dir, "bundle")
-	os.MkdirAll(bundle, 0o775)
+	os.MkdirAll(filepath.Join(bundle, "components"), 0o775)
+	os.WriteFile(filepath.Join(bundle, "components", "setup"), []byte("x"), 0o755)
 	descriptor := fmt.Sprintf("model: 1\nid: com.yoke.station\nversion: %s\narch: aarch64\ncore: \">=0.1\"\n%s%s"+
 		"units:\n  setup: { kind: oneshot, exec: components/setup, digest: \"sha256:%x\" }\n", ver, extra, declarations, sha256.Sum256([]byte("x")))
 	os.WriteFile(filepath.Join(bundle, "yoke.yaml"), []byte(descriptor), 0o644)

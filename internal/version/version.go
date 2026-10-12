@@ -7,8 +7,11 @@
 package version
 
 import (
+	"debug/buildinfo"
+	"errors"
 	"fmt"
 	"regexp"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
@@ -138,4 +141,31 @@ func (r Range) Contains(v Version) bool {
 		}
 	}
 	return len(r.comparators) > 0
+}
+
+// OfBinary is the version a Go program states in the build information stamped into it, read without
+// executing it: what a Core will run as, before it runs.
+func OfBinary(path string) (Version, error) {
+	info, err := buildinfo.ReadFile(path)
+	if err != nil {
+		return Version{}, fmt.Errorf("the program %s states no version: %v", path, err)
+	}
+	return stated(path, info.Main.Version)
+}
+
+// Running is the version this program states of itself.
+func Running() (Version, error) {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return Version{}, errors.New("this program carries no build information")
+	}
+	return stated("this program", info.Main.Version)
+}
+
+func stated(what, v string) (Version, error) {
+	parsed, err := Parse(strings.TrimPrefix(v, "v"))
+	if err != nil {
+		return Version{}, fmt.Errorf("%s states no version a range can hold: %q", what, v)
+	}
+	return parsed, nil
 }

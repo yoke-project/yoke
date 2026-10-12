@@ -9,8 +9,10 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/yoke-project/yoke/internal/compose"
 	"github.com/yoke-project/yoke/internal/instancerecord"
 	"github.com/yoke-project/yoke/internal/instances"
+	"github.com/yoke-project/yoke/internal/version"
 )
 
 // The lifecycle verbs on records: they act on the instance tree and reach no process.
@@ -29,8 +31,18 @@ func (c *call) instances() (instances.Options, error) {
 	if err != nil {
 		return instances.Options{}, refusal{err}
 	}
-	return instances.Options{InstallRoot: cfg.InstallRoot, Instances: instancerecord.Root(c.getenv),
-		Runtime: filepath.Join(c.getenv("XDG_RUNTIME_DIR"), "yoke")}, nil
+	runtime := c.getenv("XDG_RUNTIME_DIR")
+	o := instances.Options{InstallRoot: cfg.InstallRoot, Instances: instancerecord.Root(c.getenv),
+		Runtime: filepath.Join(runtime, "yoke"), Arch: compose.HostArch(), RuntimeDir: &runtime}
+	// The Core this host will execute, where it is there to be read; a range is checked against it.
+	core := cfg.Core
+	if !filepath.IsAbs(core) {
+		core, _ = c.lookPath(core)
+	}
+	if v, err := version.OfBinary(core); core != "" && err == nil {
+		o.Core = &v
+	}
+	return o, nil
 }
 
 // refused is a refusal where the answer will not change until something is: everything these verbs

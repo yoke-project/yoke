@@ -21,8 +21,6 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/sys/unix"
-
 	"github.com/yoke-project/yoke/internal/gate"
 	"github.com/yoke-project/yoke/internal/pkgfile"
 )
@@ -86,13 +84,7 @@ func Init(dir, id string, o InitOptions) error {
 }
 
 // HostArch is this host's machine name, as `uname -m` reports it.
-func HostArch() string {
-	var u unix.Utsname
-	if err := unix.Uname(&u); err != nil {
-		return ""
-	}
-	return unix.ByteSliceToString(u.Machine[:])
-}
+func HostArch() string { return gate.HostArch() }
 
 // Check runs the gate over the project in dir, composing: the descriptor, joined against the Manifests in
 // `manifests/`. Host facts are not checked on a machine that is not the target.

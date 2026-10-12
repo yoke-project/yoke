@@ -39,6 +39,7 @@ import (
 	"github.com/yoke-project/yoke/internal/guardian/channel"
 	"github.com/yoke-project/yoke/internal/instancerecord"
 	"github.com/yoke-project/yoke/internal/managerconf"
+	"github.com/yoke-project/yoke/internal/version"
 )
 
 const (
@@ -418,13 +419,14 @@ func (g *guardian) start(rec instancerecord.Record, w *watch) {
 		bundle = rec.Source
 	}
 	stateDir := instancerecord.StateDir(g.o.Instances, rec.Name)
+	runtimeDir := filepath.Dir(g.o.Runtime)
 	stamp, _ := os.ReadFile(filepath.Join(stateDir, "version"))
 	report, dep := gate.Check(gate.Input{
 		Document:  gate.Read(filepath.Join(bundle, "yoke.yaml"), gate.Descriptor),
 		Moment:    gate.Starting,
 		Manifests: filepath.Join(bundle, "manifests"),
 		Host: &gate.Host{Bundle: bundle, StateDir: stateDir, RuntimeRoot: filepath.Join(g.o.Runtime, rec.Name), Instance: rec.Name,
-			NoDelegation: !g.delegated},
+			NoDelegation: !g.delegated, Arch: gate.HostArch(), Core: g.coreVersion(), RuntimeDir: &runtimeDir},
 		Instance: &gate.Instance{DescriptorDigest: rec.DescriptorDigest, Stamp: strings.TrimSpace(string(stamp))},
 	})
 	findings := report.Findings
@@ -807,4 +809,20 @@ func (g *guardian) empty(name string, pid int) {
 	if err != nil {
 		g.log.Error("the instance's containers cannot all be reaped", "instance", name, "error", err)
 	}
+}
+
+// coreVersion is the version of the Core this guardian will execute, read from the binary without
+// executing it; nil where it cannot be read, which leaves the range to the Core's own pass.
+func (g *guardian) coreVersion() *version.Version {
+	core := g.o.Config.Core
+	if !filepath.IsAbs(core) {
+		if found, err := exec.LookPath(core); err == nil {
+			core = found
+		}
+	}
+	v, err := version.OfBinary(core)
+	if err != nil {
+		return nil
+	}
+	return &v
 }

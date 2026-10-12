@@ -14,6 +14,10 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"golang.org/x/sys/unix"
+
+	"github.com/yoke-project/yoke/internal/version"
 )
 
 // DescriptionModel is the version of the description model this host implements.
@@ -102,6 +106,13 @@ type Host struct {
 	StateDir    string // the instance's state directory, holding secrets/
 	RuntimeRoot string // the instance root, under which every socket path is derived
 	Instance    string // the instance's name, from which every ring's label is derived
+	// Arch is this host's architecture, and Core the version of the Core it will execute; either unset is
+	// not checked.
+	Arch string
+	Core *version.Version
+	// RuntimeDir is the launching account's runtime directory, where an instance's sockets and claim go;
+	// nil is not checked, and empty is an account that has none.
+	RuntimeDir *string
 	// NoDelegation is a host whose session manager delegates no control group to the account, so an
 	// instance is confined by a process group and containers reaped by label.
 	NoDelegation bool
@@ -254,4 +265,13 @@ func joined(location, step string) string {
 // nameOK is the rule for a name that becomes a path component: validated, never transformed.
 func nameOK(name string) bool {
 	return name != "" && !strings.ContainsAny(name, "/\x00")
+}
+
+// HostArch is this host's architecture as the kernel names it — the name a descriptor's arch is written in.
+func HostArch() string {
+	var u unix.Utsname
+	if err := unix.Uname(&u); err != nil {
+		return ""
+	}
+	return unix.ByteSliceToString(u.Machine[:])
 }
