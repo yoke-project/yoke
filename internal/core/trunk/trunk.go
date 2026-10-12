@@ -126,6 +126,8 @@ type State struct {
 
 	stoppers []func() error
 	stopping atomic.Bool
+	// announce tells, before anything is undone, whoever must know the silence that follows is expected.
+	announce []func()
 
 	mu             sync.Mutex
 	readyAt        time.Time
@@ -180,6 +182,9 @@ func (st *State) Stop() error {
 	st.mu.Unlock()
 	st.stopping.Store(true)
 	st.publish(event.InstanceStopping(st.Paths.Name))
+	for _, a := range st.announce {
+		a()
+	}
 	var failed []error
 	for i := len(st.stoppers) - 1; i >= 0; i-- {
 		if err := st.stoppers[i](); err != nil {
@@ -1100,8 +1105,9 @@ func Clamp(ceiling logstore.Limits, policy func(group string) logstore.Limits) f
 }
 
 // alive says, in the application form, that the instance is alive to the account's guardian, on the
-// stream its channel carries for that: the first beat is observability. A Core no guardian executed finds
-// no socket and says nothing. The stream is closed when the Core stops.
+// stream its channel carries for that: the first beat is observability, and one follows at the
+// deployment's interval. When the Core stops it says so first, so the silence is an expected one. A Core
+// no guardian executed finds no socket and says nothing.
 func (st *State) alive() {
 	if st.Form != Application {
 		return
@@ -1116,15 +1122,40 @@ func (st *State) alive() {
 		st.Log.Warn("the guardian cannot be told the instance is alive", "error", err)
 		return
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	st.OnStop(func() error { cancel(); return conn.Close() })
+	interval := gate.Defaults().HeartbeatInterval
+	st.mu.Lock()
+	if st.Deployment != nil {
+		interval = st.Deployment.Policy.HeartbeatInterval
+	}
+	st.mu.Unlock()
+	stopping, said := make(chan struct{}), make(chan struct{})
+	st.announce = append(st.announce, func() { close(stopping) })
+	st.OnStop(func() error {
+		select {
+		case <-said:
+		case <-time.After(time.Second):
+		}
+		return conn.Close()
+	})
 	go func() {
-		stream, err := guardianchannel.NewGuardianClient(conn).Alive(ctx)
+		defer close(said)
+		stream, err := guardianchannel.NewGuardianClient(conn).Alive(context.Background())
 		if err == nil {
 			err = stream.Send(&guardianchannel.Beat{Instance: st.Paths.Name})
 		}
-		if err != nil {
-			st.Log.Warn("the guardian cannot be told the instance is alive", "error", err)
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for err == nil {
+			select {
+			case <-ticker.C:
+				err = stream.Send(&guardianchannel.Beat{Instance: st.Paths.Name})
+			case <-stopping:
+				if err := stream.Send(&guardianchannel.Beat{Instance: st.Paths.Name, Stopping: true}); err == nil {
+					stream.CloseAndRecv()
+				}
+				return
+			}
 		}
+		st.Log.Warn("the guardian cannot be told the instance is alive", "error", err)
 	}()
 }

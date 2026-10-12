@@ -302,7 +302,8 @@ func (x *ReportResponse) GetInstances() []*Watched {
 type Watched struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// What the guardian derived: starting, observable, stopping, waiting, refused, stopped.
+	// What the guardian derived: starting, observable, stopping, waiting, refused, running, stopped,
+	// failed.
 	State string `protobuf:"bytes,2,opt,name=state,proto3" json:"state,omitempty"`
 	// A refusal's findings, as the gate gave them: `<code> at <location>: <message>`.
 	Findings []string `protobuf:"bytes,3,rep,name=findings,proto3" json:"findings,omitempty"`
@@ -311,7 +312,10 @@ type Watched struct {
 	Wait    *durationpb.Duration   `protobuf:"bytes,5,opt,name=wait,proto3" json:"wait,omitempty"`
 	Since   *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=since,proto3" json:"since,omitempty"`
 	// The process the guardian executed, while there is one.
-	Pid           int32 `protobuf:"varint,7,opt,name=pid,proto3" json:"pid,omitempty"`
+	Pid int32 `protobuf:"varint,7,opt,name=pid,proto3" json:"pid,omitempty"`
+	// Why the instance is stopping or waiting where the guardian acted unasked: `silent`, a Core that
+	// stopped saying it is alive.
+	Reason        string `protobuf:"bytes,8,opt,name=reason,proto3" json:"reason,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -395,9 +399,18 @@ func (x *Watched) GetPid() int32 {
 	return 0
 }
 
+func (x *Watched) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
 type Beat struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Instance      string                 `protobuf:"bytes,1,opt,name=instance,proto3" json:"instance,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Instance string                 `protobuf:"bytes,1,opt,name=instance,proto3" json:"instance,omitempty"`
+	// The Core has begun an orderly shutdown: the silence that follows is an expected one.
+	Stopping      bool `protobuf:"varint,2,opt,name=stopping,proto3" json:"stopping,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -437,6 +450,13 @@ func (x *Beat) GetInstance() string {
 		return x.Instance
 	}
 	return ""
+}
+
+func (x *Beat) GetStopping() bool {
+	if x != nil {
+		return x.Stopping
+	}
+	return false
 }
 
 type AliveResponse struct {
@@ -549,7 +569,7 @@ const file_channel_proto_rawDesc = "" +
 	"\rReportRequest\"\x12\n" +
 	"\x10SubscribeRequest\"R\n" +
 	"\x0eReportResponse\x12@\n" +
-	"\tinstances\x18\x01 \x03(\v2\".yoke.internal.guardian.v1.WatchedR\tinstances\"\xdc\x01\n" +
+	"\tinstances\x18\x01 \x03(\v2\".yoke.internal.guardian.v1.WatchedR\tinstances\"\xf4\x01\n" +
 	"\aWatched\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05state\x18\x02 \x01(\tR\x05state\x12\x1a\n" +
@@ -557,9 +577,11 @@ const file_channel_proto_rawDesc = "" +
 	"\aattempt\x18\x04 \x01(\rR\aattempt\x12-\n" +
 	"\x04wait\x18\x05 \x01(\v2\x19.google.protobuf.DurationR\x04wait\x120\n" +
 	"\x05since\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x05since\x12\x10\n" +
-	"\x03pid\x18\a \x01(\x05R\x03pid\"\"\n" +
+	"\x03pid\x18\a \x01(\x05R\x03pid\x12\x16\n" +
+	"\x06reason\x18\b \x01(\tR\x06reason\">\n" +
 	"\x04Beat\x12\x1a\n" +
-	"\binstance\x18\x01 \x01(\tR\binstance\"\x0f\n" +
+	"\binstance\x18\x01 \x01(\tR\binstance\x12\x1a\n" +
+	"\bstopping\x18\x02 \x01(\bR\bstopping\"\x0f\n" +
 	"\rAliveResponse\"Q\n" +
 	"\aRefusal\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x18\n" +

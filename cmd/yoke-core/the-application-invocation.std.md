@@ -95,3 +95,16 @@
 | **Precondition** | the bundle of `.02`; a listener on the account's `guardian.sock` serving the guardian's channel |
 | **Action** | execute the Core; then execute it again with no `guardian.sock` |
 | **Expected** | after the line saying it is ready, the listener receives one beat naming `bench-a` from the Core's process; the second becomes ready all the same |
+
+## yoke:the-application-invocation.08 — a Core under a guardian says it is alive at its declared interval, and says when it is stopping
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/25.55 · arch/25-guardian/06 §The signal |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the bundle of `.02`, its descriptor declaring a heartbeat of `1s`; a listener on the account's `guardian.sock` |
+| **Action** | execute the Core; wait three seconds; stop it with `SIGTERM` |
+| **Expected** | the listener receives at least three beats before the stop, the last beat saying the Core is stopping, and the stream then ends |

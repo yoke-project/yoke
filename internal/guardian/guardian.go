@@ -137,7 +137,13 @@ type watch struct {
 	gen       int // which execution the timers and the exit belong to
 	policy    gate.Policy
 	ephemeral bool
+	beats     int    // the beats this execution sent, which a silence is measured from
+	reason    string // why the guardian acted unasked: Silent
 }
+
+// Silent is the reason an instance is stopped and brought back that nobody asked for: its Core stopped
+// saying it is alive.
+const Silent = "silent"
 
 type kind int
 
@@ -149,6 +155,7 @@ const (
 	retry                 // a wait elapsed
 	stable                // an instance stayed observable for the stability window
 	kill                  // a Core did not stop within its stop window
+	silence               // no beat arrived within the deployment's tolerance
 	report                // the set, for the channel
 	subscribe             // a subscriber arrives or leaves
 )
@@ -157,6 +164,7 @@ type event struct {
 	kind     kind
 	name     string // empty with wake: every record
 	explicit bool   // somebody asked, so a refusal is tried again
+	stopping bool   // a beat saying the Core has begun an orderly shutdown
 	gen      int
 	pid      int
 	err      error
@@ -246,14 +254,32 @@ func (g *guardian) handle(e event) {
 		switch {
 		case w == nil || w.pid == 0 || w.pid != e.pid:
 			e.reply <- status.Errorf(codes.PermissionDenied, "a beat for %s from process %d, which this guardian did not execute for it", e.name, e.pid)
-		case w.state == Starting:
-			w.state, w.since = Observable, time.Now()
-			g.log.Info("the instance is observable", "instance", w.name, "pid", w.pid)
-			g.after(w.policy.StabilityWindow, event{kind: stable, name: w.name, gen: w.gen})
+		case e.stopping && (w.state == Starting || w.state == Observable):
+			// An orderly shutdown the Core announced: the silence that follows is an expected one.
+			w.state, w.since, w.reason = Stopping, time.Now(), ""
+			g.log.Info("the Core says it is stopping", "instance", w.name, "pid", w.pid)
 			g.publish(w)
+			e.reply <- nil
+		case w.state == Starting:
+			w.state, w.since, w.reason = Observable, time.Now(), ""
+			g.log.Info("the instance is observable", "instance", w.name, "pid", w.pid, "incarnation", w.gen)
+			g.after(w.policy.StabilityWindow, event{kind: stable, name: w.name, gen: w.gen})
+			g.heard(w)
+			g.publish(w)
+			e.reply <- nil
+		case w.state == Observable:
+			g.heard(w)
 			e.reply <- nil
 		default:
 			e.reply <- nil
+		}
+	case silence:
+		if current && w.state == Observable && w.beats == e.pid {
+			tolerance := w.policy.HeartbeatInterval * time.Duration(w.policy.HeartbeatTolerance+1)
+			g.log.Warn("the instance is silent, and its Core is asked to stop", "instance", w.name, "pid", w.pid,
+				"silent for", tolerance)
+			w.reason = Silent
+			g.stop(w)
 		}
 	case noBeat:
 		if current && w.state == Starting {
@@ -287,6 +313,14 @@ func (g *guardian) handle(e event) {
 			e.sub <- s
 		}
 	}
+}
+
+// heard is a beat: the silence it ends is measured again from now, over the interval and the intervals
+// the deployment tolerates missing.
+func (g *guardian) heard(w *watch) {
+	w.beats++
+	tolerance := w.policy.HeartbeatInterval * time.Duration(w.policy.HeartbeatTolerance+1)
+	g.after(tolerance, event{kind: silence, name: w.name, gen: w.gen, pid: w.beats})
 }
 
 func (g *guardian) reconcileAll(explicit, boot bool) {
@@ -426,7 +460,10 @@ func (g *guardian) start(rec instancerecord.Record, w *watch) {
 	cmd.Env = append(os.Environ(), "XDG_RUNTIME_DIR="+filepath.Dir(g.o.Runtime),
 		"XDG_STATE_HOME="+filepath.Dir(filepath.Dir(g.o.Instances)))
 	w.gen++
-	w.findings = nil
+	w.findings, w.beats = nil, 0
+	if w.reason == Silent {
+		g.log.Info("the instance is brought back as a new incarnation", "instance", rec.Name, "attempt", w.attempt, "incarnation", w.gen)
+	}
 	if err := cmd.Start(); err != nil {
 		g.log.Error("the Core cannot be executed", "instance", rec.Name, "core", g.o.Config.Core, "error", err)
 		g.failed(w, err)
@@ -460,7 +497,9 @@ func (g *guardian) refuse(w *watch, findings []gate.Finding) {
 // stop asks the Core to stop, and terminates it once its stop window has passed.
 func (g *guardian) stop(w *watch) {
 	w.state, w.since = Stopping, time.Now()
-	g.log.Info("the Core is asked to stop", "instance", w.name, "pid", w.pid)
+	if w.reason == "" {
+		g.log.Info("the Core is asked to stop", "instance", w.name, "pid", w.pid)
+	}
 	w.cmd.Process.Signal(syscall.SIGTERM)
 	g.after(w.policy.StopWindow, event{kind: kill, name: w.name, gen: w.gen})
 	g.publish(w)
@@ -469,6 +508,12 @@ func (g *guardian) stop(w *watch) {
 // ended is a Core this guardian executed coming to an end: an orderly stop, or a failure.
 func (g *guardian) ended(w *watch, err error) {
 	w.cmd, w.pid = nil, 0
+	if w.state == Stopping && w.reason == Silent {
+		// What a silence ends is not an orderly stop: the instance is brought back under the restart figures.
+		g.log.Warn("the silent Core has ended, and the instance is brought back", "instance", w.name)
+		g.failed(w, err)
+		return
+	}
 	if w.state == Stopping {
 		g.log.Info("the Core has stopped", "instance", w.name)
 		if w.ephemeral {
@@ -515,7 +560,8 @@ func (g *guardian) failed(w *watch, err error) {
 }
 
 func (w *watch) watched() *channel.Watched {
-	out := &channel.Watched{Name: w.name, State: w.state, Findings: slices.Clone(w.findings), Attempt: w.attempt, Pid: int32(w.pid)}
+	out := &channel.Watched{Name: w.name, State: w.state, Findings: slices.Clone(w.findings), Attempt: w.attempt, Pid: int32(w.pid),
+		Reason: w.reason}
 	if w.wait > 0 && w.state == Waiting {
 		out.Wait = durationpb.New(w.wait)
 	}
@@ -659,7 +705,7 @@ func (s *surface) Alive(stream channel.Guardian_AliveServer) error {
 			return err
 		}
 		reply := make(chan any, 1)
-		if !s.g.send(event{kind: beat, name: b.GetInstance(), pid: pid, reply: reply}) {
+		if !s.g.send(event{kind: beat, name: b.GetInstance(), pid: pid, stopping: b.GetStopping(), reply: reply}) {
 			return status.Error(codes.Unavailable, "the guardian is exiting")
 		}
 		select {
