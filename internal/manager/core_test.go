@@ -24,6 +24,9 @@ func TestMain(m *testing.M) {
 	if os.Getenv(role) == "plugin" {
 		os.Exit(runBench())
 	}
+	if os.Getenv(role) == "claim" {
+		os.Exit(holdClaim())
+	}
 	os.Exit(m.Run())
 }
 

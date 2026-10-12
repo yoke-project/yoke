@@ -95,3 +95,42 @@
 | **Precondition** | a configuration naming an install root holding `com.yoke.station` at `2.0.0`, `2.1.0` and `2.2.0`, and an engine that does not answer; an instance `bench-a` pinned to `2.0.0` |
 | **Action** | run `yoke app remove com.yoke.station`, then `yoke app prune com.yoke.station`, then `yoke app remove com.yoke.station --version 2.2.0`, then `yoke app prune com.yoke.other` |
 | **Expected** | the first exits 2 naming `bench-a`, and removes nothing; the prune exits 0 naming `2.1.0` as removed and saying images were not considered, and leaves `2.0.0`, which `bench-a` points at, and `2.2.0`; the removal of `2.2.0` exits 0 naming it; the prune of an application not installed exits 2 |
+
+## yoke:the-manager-command-line.08 — `yoke instance start` and `stop` write the desired state and tell a guardian, starting one where nothing answers
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/17.34 · specs/17.36 · specs/17.37 · arch/10-manager/01 §`yoke instance` — records · arch/25-guardian/07 §2 — A manager arrives and nothing is running · arch/25-guardian/02 §Where its own account goes |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | `yoke-core` and `yoke-guardian` built from this tree, the guardian on the `PATH`; a configuration naming the Core; `com.yoke.station` `2.1.0` installed and an instance `bench-a` of it, stopped; no guardian running |
+| **Action** | run `yoke instance start bench-a`; then `yoke instance list`; then `yoke instance restart bench-a`; then `yoke instance stop bench-a` |
+| **Expected** | the start exits 0, its record says `running`, and a guardian is running whose output is appended to the account's `guardian.log`; the list names `bench-a` observable; the restart exits 0 with a Core of another process observable; the stop exits 0, its record says `stopped`, the instance's claim is free, and the guardian has exited |
+
+## yoke:the-manager-command-line.09 — `enable` and `disable` write autostart alone, and `clear` and `remove` act only on a stopped instance
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/17.11 · specs/17.55 · specs/17.56 · arch/10-manager/01 §`yoke instance` — records · arch/10-manager/06 §Removing |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | instances `bench-a`, stopped, whose state holds a file, and `bench-b`, whose claim another process holds |
+| **Action** | `yoke instance enable bench-a`, then `disable`; `yoke instance clear bench-b` and `remove bench-b`; `yoke instance clear bench-a`, then `remove bench-a` |
+| **Expected** | enable writes `autostart: true` and leaves the desired state, and disable writes it back; both verbs on `bench-b` exit 2 saying it is running, and remove nothing; clearing `bench-a` empties its state and keeps its record; removing it takes the record and the state together |
+
+## yoke:the-manager-command-line.10 — `yoke instance list` answers without a guardian, and starts none
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/17.42 · arch/10-manager/01 §`yoke instance` — records · arch/25-guardian/07 §2 — A manager arrives and nothing is running |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | instances `bench-a`, stopped, and `bench-b`, whose claim another process holds; no guardian running |
+| **Action** | run `yoke instance list` |
+| **Expected** | it names `bench-a` stopped and `bench-b` running, and no guardian is running afterwards |
