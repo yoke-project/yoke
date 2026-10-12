@@ -95,3 +95,29 @@
 | **Precondition** | three containerised units, each needing one device: a node of the account's group that only its owner and group may use; a node any account may read and write; and `/dev/null` |
 | **Action** | launch them |
 | **Expected** | the first is created with the node's group; the second and the third with none, every account already reaching them |
+
+## yoke:what-a-need-expands-into.08 — a secret is a file at its derived path, checked before every launch and never opened, and mounted at that path in a container
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/45.13 · arch/80-security/06 §How it reaches the unit · arch/35-units/05 §What each declared need expands into |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a host oneshot and a containerised oneshot, each needing `secret:token` at `<state>/secrets/token`; the file present, and then absent |
+| **Action** | launch both; remove the file and launch the host one again |
+| **Expected** | the host unit is launched and handed no variable for it; the container is created with the file mounted at its own path; with the file absent the launch fails naming the secret and its path, and the unit is `Failed` |
+
+## yoke:what-a-need-expands-into.09 — under the environment's engine, a unit reads its secret from the path its argument names
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/45.13 · arch/80-security/06 §How it reaches the unit · arch/35-units/05 §What each declared need expands into |
+| **Level** | L3 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the environment's engine serving its API; a composition whose host oneshot and containerised oneshot each need `secret:token` and name `${bind.token}` as their argument; the value written at `<state>/secrets/token`, mode `0600` |
+| **Action** | start the Core and let both complete |
+| **Expected** | each reads the value from the path it was handed and says how many bytes it read; neither is handed the value in its environment |

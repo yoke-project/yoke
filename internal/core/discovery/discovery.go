@@ -224,7 +224,7 @@ func units(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), s
 			switch n.Class {
 			case "device":
 				s.Needs = append(s.Needs, supervisor.Need{Class: n.Class, Path: resolve(u.Bind[n.Key()])})
-			case "storage":
+			case "storage", "secret":
 				s.Needs = append(s.Needs, supervisor.Need{Class: n.Class, Path: materialised[n.Key()]})
 			case "display", "audio", "network":
 				s.Needs = append(s.Needs, supervisor.Need{Class: n.Class})

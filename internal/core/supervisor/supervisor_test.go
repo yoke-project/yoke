@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -96,6 +97,16 @@ func TestMain(m *testing.M) {
 			}
 		}
 		fmt.Printf("wrote opened interfaces=%d\n", others)
+		os.Exit(0)
+	case "secret":
+		// A unit that reads its secret from the path its argument names, and says whether its environment holds it.
+		data, err := os.ReadFile(os.Args[1])
+		if err != nil {
+			fmt.Println("not read:", err)
+			os.Exit(1)
+		}
+		clean := !slices.ContainsFunc(os.Environ(), func(v string) bool { return strings.Contains(v, string(data)) })
+		fmt.Printf("read %d bytes clean=%t\n", len(data), clean)
 		os.Exit(0)
 	case "environment":
 		// Everything the process was handed.
