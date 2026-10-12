@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,7 +15,12 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc"
+	grpcpeer "google.golang.org/grpc/peer"
+
 	"github.com/yoke-project/yoke/internal/core/engine/enginetest"
+	"github.com/yoke-project/yoke/internal/core/peer"
+	"github.com/yoke-project/yoke/internal/guardian/channel"
 )
 
 // account is an account's two directories, each of the test's own; the runtime one is short, since a
@@ -29,9 +35,10 @@ func account(t *testing.T) []string {
 	return append(os.Environ(), "XDG_RUNTIME_DIR="+run, "XDG_STATE_HOME="+t.TempDir())
 }
 
+// from is the value env gives key: the last, as a process executed with it sees.
 func from(env []string, key string) string {
-	for _, kv := range env {
-		if v, ok := strings.CutPrefix(kv, key+"="); ok {
+	for i := len(env) - 1; i >= 0; i-- {
+		if v, ok := strings.CutPrefix(env[i], key+"="); ok {
 			return v
 		}
 	}
@@ -285,4 +292,67 @@ func TestTheEngineTheInvocationNamesIsTheOneTheCoreClears(t *testing.T) {
 	cmd.Process.Signal(syscall.SIGTERM)
 	l.rest()
 	cmd.Wait()
+}
+
+// listener is a guardian's channel that only hears beats, each with the process it came from.
+type listener struct {
+	channel.UnimplementedGuardianServer
+	beats chan string
+}
+
+func (l *listener) Alive(stream channel.Guardian_AliveServer) error {
+	pid := int32(0)
+	if p, ok := grpcpeer.FromContext(stream.Context()); ok {
+		if info, ok := p.AuthInfo.(peer.Info); ok {
+			pid = info.PID
+		}
+	}
+	for {
+		b, err := stream.Recv()
+		if err != nil {
+			return nil
+		}
+		l.beats <- fmt.Sprintf("%s %d", b.GetInstance(), pid)
+	}
+}
+
+// std: yoke:the-application-invocation.07
+func TestACoreUnderAGuardianSaysItIsAliveOnceReady(t *testing.T) {
+	binary := build(t)
+	env := account(t)
+	dir := filepath.Join(from(env, "XDG_RUNTIME_DIR"), "yoke")
+	os.MkdirAll(dir, 0o700)
+	sock, err := net.Listen("unix", filepath.Join(dir, "guardian.sock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	l := &listener{beats: make(chan string, 4)}
+	server := grpc.NewServer(grpc.Creds(peer.Credentials{}))
+	channel.RegisterGuardianServer(server, l)
+	go server.Serve(sock)
+	t.Cleanup(server.Stop)
+
+	args := append([]string{"--instance", "bench-a", "--bundle", bundle(t, "")}, values(filepath.Join(t.TempDir(), "out"))...)
+	cmd, lines := application(t, binary, env, args...)
+	lines.until(10*time.Second, "msg=ready")
+	select {
+	case b := <-l.beats:
+		if want := fmt.Sprintf("bench-a %d", cmd.Process.Pid); b != want {
+			t.Errorf("the beat was %q, want %q", b, want)
+		}
+	case <-time.After(10 * time.Second):
+		cmd.Process.Signal(syscall.SIGTERM)
+		t.Fatalf("no beat arrived:\n%s", lines.rest())
+	}
+	cmd.Process.Signal(syscall.SIGTERM)
+	lines.rest()
+	cmd.Wait()
+
+	server.Stop()
+	os.Remove(filepath.Join(dir, "guardian.sock"))
+	alone, lines := application(t, binary, env, args...)
+	lines.until(10*time.Second, "msg=ready")
+	alone.Process.Signal(syscall.SIGTERM)
+	lines.rest()
+	alone.Wait()
 }

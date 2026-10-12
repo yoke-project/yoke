@@ -1,0 +1,74 @@
+// The channel between the manager and the guardian, on `$XDG_RUNTIME_DIR/yoke/guardian.sock`. It is not a
+// published surface: one client, in the same account and the same module, so it lives here and not among
+// the definitions.
+//
+// The authority is in the instance record and never in a message: what travels is the news that a record
+// changed, so a message that never arrives costs latency and never correctness.
+syntax = "proto3";
+
+package yoke.internal.guardian.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/yoke-project/yoke/internal/guardian/channel";
+
+service Guardian {
+  // Look at one record again. It names the record and carries nothing else.
+  rpc Reconcile(ReconcileRequest) returns (ReconcileResponse);
+  // Look at every record again, as the guardian does when it starts.
+  rpc ReconcileAll(ReconcileAllRequest) returns (ReconcileAllResponse);
+  // Which instances the guardian is watching, what it derived about each, and why one is not running.
+  rpc Report(ReportRequest) returns (ReportResponse);
+  // The set, and then each change to it.
+  rpc Subscribe(SubscribeRequest) returns (stream Watched);
+  // The Core's liveness, in the other direction: a stream it opens at readiness. The first beat is
+  // observability, and only the process the guardian executed for the instance may send it.
+  rpc Alive(stream Beat) returns (AliveResponse);
+}
+
+message ReconcileRequest {
+  string name = 1;
+}
+
+message ReconcileResponse {}
+
+message ReconcileAllRequest {}
+
+message ReconcileAllResponse {}
+
+message ReportRequest {}
+
+message SubscribeRequest {}
+
+message ReportResponse {
+  repeated Watched instances = 1;
+}
+
+// One instance, as the guardian concluded it, and nothing it would have to ask anybody else.
+message Watched {
+  string name = 1;
+  // What the guardian derived: starting, observable, stopping, waiting, refused, stopped.
+  string state = 2;
+  // A refusal's findings, as the gate gave them: `<code> at <location>: <message>`.
+  repeated string findings = 3;
+  // The attempts since the stability window last reset, and the wait before the next.
+  uint32 attempt = 4;
+  google.protobuf.Duration wait = 5;
+  google.protobuf.Timestamp since = 6;
+  // The process the guardian executed, while there is one.
+  int32 pid = 7;
+}
+
+message Beat {
+  string instance = 1;
+}
+
+message AliveResponse {}
+
+// What a refusal on this channel carries, as the detail of its status.
+message Refusal {
+  string code = 1;
+  string message = 2;
+  string subject = 3;
+}

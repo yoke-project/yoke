@@ -1,12 +1,16 @@
 package gate
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/yoke-project/yoke/internal/version"
 )
 
 // SocketCeiling is the longest Unix domain socket path the kernel binds: 108 bytes with the terminator.
@@ -197,6 +201,15 @@ func (c *checker) hostFacts() bool {
 			c.engine = &facts
 		}
 	}
+	if i := c.in.Instance; i != nil && c.doc.Kind == Descriptor {
+		sum := sha256.Sum256(c.doc.Bytes)
+		if got := "sha256:" + hex.EncodeToString(sum[:]); i.DescriptorDigest != "" && got != i.DescriptorDigest && at(Starting) {
+			c.refuse("descriptor.digest", "", "the descriptor %s is %s, and the instance record pins %s", c.doc.Path, got, i.DescriptorDigest)
+		}
+		if err := Readable(c.deployment.Head.Data, i.Stamp, c.deployment.Head.Version); err != nil && at(Creating, Starting) {
+			c.refuse("data.range", "data", "%v", err)
+		}
+	}
 	if longest > SocketCeiling && at(Installing, Creating, Starting) {
 		c.refuse("socket.path.ceiling", "", "the longest socket path this deployment can produce is %d characters, %s, and the ceiling is %d", longest, longestPath, SocketCeiling)
 	}
@@ -204,4 +217,28 @@ func (c *checker) hostFacts() bool {
 		c.refuse("object.name.ceiling", "", "the longest name of a ring this deployment can create is %d characters, %s, and the ceiling is %d", len(longestLabel), longestLabel, ObjectNameCeiling)
 	}
 	return true
+}
+
+// Readable says whether a version declaring the data range given may read state the version stamped last
+// wrote. An omitted upper end means the declaring version; no range, or no stamp, admits anything.
+func Readable(data, stamp, ver string) error {
+	if data == "" || stamp == "" {
+		return nil
+	}
+	r, err := version.ParseRange(data)
+	if err != nil {
+		return err
+	}
+	wrote, err := version.Parse(stamp)
+	if err != nil {
+		return fmt.Errorf("the state's stamp %q is not a version", stamp)
+	}
+	within := r.Contains(wrote)
+	if !strings.Contains(data, "<") {
+		within = within && wrote.Compare(version.MustParse(ver)) <= 0
+	}
+	if !within {
+		return fmt.Errorf("%s declares it reads state written by %s, and %s last wrote this instance's state", ver, data, stamp)
+	}
+	return nil
 }
