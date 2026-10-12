@@ -25,7 +25,7 @@ func TestYokeInstanceCreatesListsShowsAndRePoints(t *testing.T) {
 		os.WriteFile(filepath.Join(dir, "install.yaml"), []byte("state: complete\nsealed: false\nshared: true\n"), 0o664)
 	}
 	vars := conf(t, "install_root: "+apps+"\n")
-	vars["XDG_STATE_HOME"] = t.TempDir()
+	vars["XDG_STATE_HOME"], vars["XDG_RUNTIME_DIR"] = t.TempDir(), t.TempDir()
 	params := filepath.Join(t.TempDir(), "values.toml")
 	os.WriteFile(params, []byte("[setup]\nretries = 4\n"), 0o644)
 	expect := func(want []string, args ...string) {
