@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"golang.org/x/sys/unix"
 
 	"github.com/yoke-project/yoke/internal/core/instance"
 	"github.com/yoke-project/yoke/internal/gate"
@@ -206,7 +205,7 @@ func SetVersion(o Options, name, ver string) error {
 		return err
 	}
 	if stamp, err := os.ReadFile(filepath.Join(instancerecord.StateDir(o.Instances, name), "version")); err == nil {
-		if err := readable(p.d.Head.Data, strings.TrimSpace(string(stamp)), p.version); err != nil {
+		if err := gate.Readable(p.d.Head.Data, strings.TrimSpace(string(stamp)), p.version); err != nil {
 			return err
 		}
 	}
@@ -214,30 +213,6 @@ func SetVersion(o Options, name, ver string) error {
 		r.Version, r.DescriptorDigest = p.version, p.digest
 		return nil
 	})
-}
-
-// readable says whether a version declaring the data range given may read state the version stamped
-// last wrote.
-func readable(data, stamp, ver string) error {
-	if data == "" || stamp == "" {
-		return nil
-	}
-	r, err := version.ParseRange(data)
-	if err != nil {
-		return err
-	}
-	wrote, err := version.Parse(stamp)
-	if err != nil {
-		return fmt.Errorf("the state's stamp %q is not a version", stamp)
-	}
-	within := r.Contains(wrote)
-	if !strings.Contains(data, "<") {
-		within = within && wrote.Compare(version.MustParse(ver)) <= 0
-	}
-	if !within {
-		return fmt.Errorf("%s declares it reads state written by %s, and %s last wrote this instance's state", ver, data, stamp)
-	}
-	return nil
 }
 
 // SetParam replaces one value an instance records, checked against its version's declarations as at
@@ -276,22 +251,10 @@ func SetParam(o Options, name, param, value string) error {
 	})
 }
 
-// running says whether an instance's claim is held, asking without taking it: a record lock another
-// process holds on its file. No file is no claim.
+// running says whether an instance's claim is held, asking without taking it.
 func (o Options) running(name string) (bool, error) {
-	f, err := os.Open(filepath.Join(o.Runtime, name, instance.LockName))
-	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	defer f.Close()
-	lock := unix.Flock_t{Type: unix.F_WRLCK, Whence: 0, Start: 0, Len: 0}
-	if err := unix.FcntlFlock(f.Fd(), unix.F_GETLK, &lock); err != nil {
-		return false, err
-	}
-	return lock.Type != unix.F_UNLCK, nil
+	pid, err := instance.Holder(filepath.Join(o.Runtime, name, instance.LockName))
+	return pid != 0, err
 }
 
 func (o Options) stopped(name string) error {

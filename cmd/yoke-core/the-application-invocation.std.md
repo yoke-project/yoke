@@ -82,3 +82,16 @@
 | **Precondition** | an image loaded into the engine from an OCI archive the test writes; a container created from it, labelled as a unit of the instance `bench-c`; a bundle whose descriptor declares a unit of kind `oneshot` naming that image, not started automatically |
 | **Action** | execute the Core with `--instance bench-c`, the bundle, and `--engine` naming the engine's socket |
 | **Expected** | it names the inherited container and removes it, and becomes ready. Not applicable under Docker, whose classic store loads an archive with no digest |
+
+## yoke:the-application-invocation.07 — a Core under a guardian says it is alive once it is ready, and one with none starts all the same
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/25.55 · arch/25-guardian/06 §The signal · arch/30-core/03 §The eleven steps |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the bundle of `.02`; a listener on the account's `guardian.sock` serving the guardian's channel |
+| **Action** | execute the Core; then execute it again with no `guardian.sock` |
+| **Expected** | after the line saying it is ready, the listener receives one beat naming `bench-a` from the Core's process; the second becomes ready all the same |

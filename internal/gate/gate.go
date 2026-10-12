@@ -119,6 +119,15 @@ type Input struct {
 	Moment    Moment
 	Manifests string
 	Host      *Host
+	// Instance is what the record of the instance being created or started pins, for a descriptor: what
+	// the anchor and the data range are checked against. Nil checks neither.
+	Instance *Instance
+}
+
+// Instance is what an instance's record and state say that the gate checks a descriptor against.
+type Instance struct {
+	DescriptorDigest string // the digest the record pins; empty pins none
+	Stamp            string // the version that last wrote the instance's state; empty where none has
 }
 
 // Check runs every phase it has the inputs for, and returns the report and — when nothing was refused —

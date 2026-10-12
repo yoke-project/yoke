@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	administrativev1 "github.com/yoke-project/yoke/proto/yoke/administrative/v1"
@@ -48,6 +49,7 @@ import (
 	"github.com/yoke-project/yoke/internal/core/supervisor"
 	"github.com/yoke-project/yoke/internal/core/unit"
 	"github.com/yoke-project/yoke/internal/gate"
+	guardianchannel "github.com/yoke-project/yoke/internal/guardian/channel"
 )
 
 // Form is the deployment form, which decides where parameters come from and what the modes are.
@@ -227,6 +229,7 @@ func Steps() []Step {
 			st.mu.Unlock()
 			st.Log.Info(ready, "root", st.Paths.Root)
 			st.publish(event.InstanceReady(st.Paths.Name))
+			st.alive()
 			return nil
 		}},
 		{"units", units},
@@ -1094,4 +1097,34 @@ func Clamp(ceiling logstore.Limits, policy func(group string) logstore.Limits) f
 		}
 		return l
 	}
+}
+
+// alive says, in the application form, that the instance is alive to the account's guardian, on the
+// stream its channel carries for that: the first beat is observability. A Core no guardian executed finds
+// no socket and says nothing. The stream is closed when the Core stops.
+func (st *State) alive() {
+	if st.Form != Application {
+		return
+	}
+	path := filepath.Join(filepath.Dir(st.Paths.Root), "guardian.sock")
+	if _, err := os.Stat(path); err != nil {
+		st.Log.Info("no guardian to tell the instance is alive", "socket", path)
+		return
+	}
+	conn, err := grpc.NewClient("unix://"+path, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		st.Log.Warn("the guardian cannot be told the instance is alive", "error", err)
+		return
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	st.OnStop(func() error { cancel(); return conn.Close() })
+	go func() {
+		stream, err := guardianchannel.NewGuardianClient(conn).Alive(ctx)
+		if err == nil {
+			err = stream.Send(&guardianchannel.Beat{Instance: st.Paths.Name})
+		}
+		if err != nil {
+			st.Log.Warn("the guardian cannot be told the instance is alive", "error", err)
+		}
+	}()
 }

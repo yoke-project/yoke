@@ -95,13 +95,20 @@ var (
 // Claim creates root if it is absent, gives it mode — set explicitly, never taken from a umask — and
 // takes the instance: it succeeds, or it fails saying who holds it.
 func Claim(root string, mode os.FileMode) (*Held, error) {
+	return ClaimNamed(root, LockName, mode)
+}
+
+// ClaimNamed is Claim on a lock file of another name under root: the guardian's, beside the instances'
+// roots in the account's runtime directory.
+func ClaimNamed(root, name string, mode os.FileMode) (*Held, error) {
 	absolute, err := filepath.Abs(root)
 	if err != nil {
 		return nil, err
 	}
 	claimedMu.Lock()
 	defer claimedMu.Unlock()
-	if claimed[absolute] {
+	key := filepath.Join(absolute, name)
+	if claimed[key] {
 		return nil, fmt.Errorf("the instance at %s is already claimed by this process", absolute)
 	}
 
@@ -114,7 +121,7 @@ func Claim(root string, mode os.FileMode) (*Held, error) {
 	if err := os.Chmod(absolute, mode); err != nil {
 		return nil, fmt.Errorf("the instance root %s cannot be given its mode: %w", absolute, err)
 	}
-	file, err := os.OpenFile(filepath.Join(absolute, LockName), os.O_RDWR|os.O_CREATE, 0o600)
+	file, err := os.OpenFile(key, os.O_RDWR|os.O_CREATE, 0o600)
 	if err != nil {
 		return nil, fmt.Errorf("the claim at %s cannot be opened: %w", absolute, err)
 	}
@@ -130,8 +137,8 @@ func Claim(root string, mode os.FileMode) (*Held, error) {
 		}
 		return nil, &AlreadyRunning{Root: absolute, PID: int(holder.Pid)}
 	}
-	claimed[absolute] = true
-	return &Held{root: absolute, file: file}, nil
+	claimed[key] = true
+	return &Held{root: key, file: file}, nil
 }
 
 // Release gives the instance up. The lock file stays: removing what a previous incarnation left is the
@@ -141,4 +148,25 @@ func (c *Held) Release() error {
 	defer claimedMu.Unlock()
 	delete(claimed, c.root)
 	return c.file.Close()
+}
+
+// Holder says which process holds the claim on the lock file at path, asking without taking it: zero where
+// nobody does, or where there is no file.
+func Holder(path string) (int, error) {
+	f, err := os.Open(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+	lock := syscall.Flock_t{Type: syscall.F_WRLCK, Whence: 0, Start: 0, Len: 0}
+	if err := syscall.FcntlFlock(f.Fd(), syscall.F_GETLK, &lock); err != nil {
+		return 0, err
+	}
+	if lock.Type == syscall.F_UNLCK {
+		return 0, nil
+	}
+	return int(lock.Pid), nil
 }
