@@ -32,7 +32,12 @@ func setup(t *testing.T) Options {
 
 func install(t *testing.T, o Options, ver string, state installroot.State) {
 	t.Helper()
-	inst, err := installroot.Root{Path: o.InstallRoot}.Begin("com.yoke.station", ver)
+	installAs(t, o, "com.yoke.station", ver, state)
+}
+
+func installAs(t *testing.T, o Options, id, ver string, state installroot.State) {
+	t.Helper()
+	inst, err := installroot.Root{Path: o.InstallRoot}.Begin(id, ver)
 	if err != nil {
 		t.Fatal(err)
 	}
