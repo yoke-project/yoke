@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"runtime/debug"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -95,6 +96,14 @@ type State struct {
 	// AdmitUnlaunched is the development waiver, declared when the instance is started.
 	AdmitUnlaunched bool
 
+	// The application form's invocation: the bundle, the engine, the account's retention ceiling, the
+	// resolved parameter values, and whether the bundle went unverified. The Core reads nothing else.
+	Bundle     string
+	Engine     string
+	Ceiling    logstore.Limits
+	Values     map[string]map[string]string
+	Unverified bool
+
 	Config     config.Config
 	Paths      instance.Paths
 	Log        *slog.Logger
@@ -121,6 +130,7 @@ type State struct {
 	stoppingAt     time.Time
 	compositionSum string         // the digest the composition in force was read at
 	composed       *composed      // the composition in force as the gate found it, read once, at step 7
+	described      *gate.Document // the application form's descriptor, read at step 2 and closed
 	engine         *engine.Engine // the container engine step 7 reached, where a unit names an image
 	weaker         []string       // the weaker arrangements the gate reported, in force
 	interfaces     *interfaces.Bound
@@ -209,6 +219,9 @@ func Steps() []Step {
 		{ready, func(st *State) error {
 			// Readiness is recorded before it is announced, so whoever reads the announcement and then the
 			// instance finds it ready.
+			if err := st.stamp(); err != nil {
+				return err
+			}
 			st.mu.Lock()
 			st.readyAt = time.Now()
 			st.mu.Unlock()
@@ -262,8 +275,23 @@ func identity(st *State) error {
 
 func parameters(st *State) error {
 	if st.Form == Application {
-		// The descriptor and the resolved values are read by the part of the Core that ingests them.
+		// The descriptor is read here, once, and closed: steps 7 and 8 take the deployment from this
+		// reading. What core.yaml would say comes from the invocation.
 		st.Config = config.Defaults()
+		st.Config.StateDir, st.Config.RuntimeDir = st.Paths.State, st.Paths.Root
+		if st.Engine != "" {
+			st.Config.Engine = st.Engine
+		}
+		if st.Bundle == "" {
+			// Nothing declared, as a service form with no composition: the binary never runs this way.
+			return nil
+		}
+		st.Composition = filepath.Join(st.Bundle, "yoke.yaml")
+		doc := gate.Read(st.Composition, gate.Descriptor)
+		if doc.Err != nil {
+			return fmt.Errorf("the descriptor cannot be read: %w", doc.Err)
+		}
+		st.described = &doc
 		return nil
 	}
 	c, err := config.Load(st.Env)
@@ -381,11 +409,11 @@ func stores(st *State) error {
 	// The cleaner is the only thing that deletes what nobody asked to delete. It is stopped before the
 	// store it cleans is closed.
 	cleaner := &logstore.Cleaner{Store: logs, Instance: st.Paths.Name, Interval: time.Hour,
-		Policy: RetentionOf(logs, func() *gate.Deployment {
+		Policy: Clamp(st.Ceiling, RetentionOf(logs, func() *gate.Deployment {
 			st.mu.Lock()
 			defer st.mu.Unlock()
 			return st.Deployment
-		}),
+		})),
 		Report: func(err error) { st.Log.Error("retention", "error", err) }}
 	ctx, stop := context.WithCancel(context.Background())
 	st.Log.Info("retention", "first", cleaner.First(time.Now()).Format(time.RFC3339Nano), "interval", time.Hour)
@@ -398,16 +426,24 @@ func stores(st *State) error {
 // composition in force through the gate. In the service form a failure here leaves a deployment — the
 // Plugins found are declared — so it is reported rather than fatal.
 func declarations(st *State) error {
-	if st.Form != Service {
-		// The descriptor's units are ingested by the part of the Core that reads it.
+	plugins := st.Config.Plugins
+	if st.Form == Application && st.Bundle == "" {
 		return nil
 	}
-	plugins := st.Config.Plugins
-	d := discovery.New(plugins.Manifests, st.Registry, st.Log)
-	d.Publishing(st.publish)
-	d.Scan()
-	st.Discovery = d
-	if plugins.ScanInterval > 0 {
+	if st.Form == Application {
+		// The bundle's Manifests are read once, as the descriptor is: the bundle is the deployment.
+		d := discovery.Bundle(filepath.Join(st.Bundle, "manifests"), st.Registry, st.Log)
+		d.Publishing(st.publish)
+		d.Scan()
+		st.Discovery = d
+	} else {
+		d := discovery.New(plugins.Manifests, st.Registry, st.Log)
+		d.Publishing(st.publish)
+		d.Scan()
+		st.Discovery = d
+	}
+	d := st.Discovery
+	if st.Form == Service && plugins.ScanInterval > 0 {
 		stop := d.Every(plugins.ScanInterval)
 		st.OnStop(func() error { stop(); return nil })
 	}
@@ -428,7 +464,36 @@ func declarations(st *State) error {
 		}
 	}
 	if dep == nil {
-		return fmt.Errorf("the composition %s is refused", st.Composition)
+		return fmt.Errorf("the description %s is refused", st.Composition)
+	}
+	var values map[string]map[string]string
+	if st.Form == Application {
+		var refused []string
+		resolved, findings := gate.Values(dep, st.Values)
+		for _, f := range findings {
+			st.Log.Error("finding", "document", st.Composition, "code", f.Code, "location", f.Location, "finding", f.Message)
+			refused = append(refused, f.Code+" at "+f.Location)
+		}
+		if len(refused) > 0 {
+			return fmt.Errorf("the values the Core was executed with are refused: %s", strings.Join(refused, "; "))
+		}
+		values = resolved
+		// A channel's port is the fourth place a parameter may be referenced, resolved in the group named
+		// after the channel, then in `shared`.
+		for name, ch := range dep.Channels {
+			if ch.Address != nil {
+				address := *ch.Address
+				address.Port = discovery.Substitute(values, name, address.Port)
+				ch.Address = &address
+				dep.Channels[name] = ch
+			}
+		}
+		if st.Unverified {
+			// A run from a working directory: no integrity check was performed, and the instance says so.
+			st.Log.Warn("finding", "document", st.Composition, "code", "bundle.unverified", "location", st.Bundle,
+				"finding", "this run was asked for from a working directory, so no integrity check was performed")
+			st.weaker = append(st.weaker, "bundle.unverified at "+st.Bundle)
+		}
 	}
 	sum := sha256.Sum256(composition.Bytes)
 	st.compositionSum = "sha256:" + hex.EncodeToString(sum[:])
@@ -442,7 +507,11 @@ func declarations(st *State) error {
 	st.mu.Lock()
 	st.Deployment = dep
 	st.mu.Unlock()
-	st.Units = discovery.Units(dep, d.Manifest, plugins.Executables, st.Paths.State)
+	if st.Form == Application {
+		st.Units = discovery.Descriptor(dep, d.Manifest, st.Bundle, st.Paths.State, values)
+	} else {
+		st.Units = discovery.Units(dep, d.Manifest, plugins.Executables, st.Paths.State)
+	}
 	return nil
 }
 
@@ -457,19 +526,20 @@ type composed struct {
 // whether a unit names an image, and step 8 reports what the gate found and takes the deployment from the
 // same reading. Nil where the form reads none.
 func (st *State) composition() *composed {
-	if st.Form != Service || st.Composition == "" {
+	if st.Composition == "" {
 		return nil
 	}
 	if st.composed == nil {
 		plugins := st.Config.Plugins
-		doc := gate.Read(st.Composition, gate.Composition)
-		report, dep := gate.Check(gate.Input{
-			Document:  doc,
-			Moment:    gate.Starting,
-			Manifests: plugins.Manifests,
-			Host: &gate.Host{Executables: plugins.Executables, StateDir: st.Paths.State, RuntimeRoot: st.Paths.Root, Instance: st.Paths.Name,
-				Engine: st.reachEngine},
-		})
+		var doc gate.Document
+		manifests, host := plugins.Manifests, &gate.Host{Executables: plugins.Executables, StateDir: st.Paths.State,
+			RuntimeRoot: st.Paths.Root, Instance: st.Paths.Name, Engine: st.reachEngine}
+		if st.Form == Application {
+			doc, manifests, host.Executables, host.Bundle = *st.described, filepath.Join(st.Bundle, "manifests"), "", st.Bundle
+		} else {
+			doc = gate.Read(st.Composition, gate.Composition)
+		}
+		report, dep := gate.Check(gate.Input{Document: doc, Moment: gate.Starting, Manifests: manifests, Host: host})
 		st.composed = &composed{doc, report, dep}
 	}
 	return st.composed
@@ -989,5 +1059,39 @@ func RetentionOf(logs *logstore.Store, deployment func() *gate.Deployment) func(
 			return limits(u.Policy)
 		}
 		return limits(d.Policy)
+	}
+}
+
+// stamp writes the version that last ran against this state, in the application form: the last point
+// before any unit of the deployment can have written anything. The service form has nothing to write.
+func (st *State) stamp() error {
+	st.mu.Lock()
+	dep := st.Deployment
+	st.mu.Unlock()
+	if st.Form != Application || dep == nil {
+		return nil
+	}
+	path := filepath.Join(st.Paths.State, "version")
+	if err := os.WriteFile(path+".new", []byte(dep.Head.Version+"\n"), 0o600); err != nil {
+		return err
+	}
+	return os.Rename(path+".new", path)
+}
+
+// Clamp puts the account's ceiling over what each group resolves to: per limit, the more restrictive of
+// the two, where a limit of zero constrains nothing. A ceiling tightens and never loosens.
+func Clamp(ceiling logstore.Limits, policy func(group string) logstore.Limits) func(group string) logstore.Limits {
+	return func(group string) logstore.Limits {
+		l := policy(group)
+		if ceiling.Age > 0 && (l.Age == 0 || ceiling.Age < l.Age) {
+			l.Age = ceiling.Age
+		}
+		if ceiling.Bytes > 0 && (l.Bytes == 0 || ceiling.Bytes < l.Bytes) {
+			l.Bytes = ceiling.Bytes
+		}
+		if ceiling.Entries > 0 && (l.Entries == 0 || ceiling.Entries < l.Entries) {
+			l.Entries = ceiling.Entries
+		}
+		return l
 	}
 }

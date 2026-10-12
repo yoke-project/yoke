@@ -153,6 +153,13 @@ func (c *checker) hostFacts() bool {
 			}
 		}
 		fits(filepath.Join(h.RuntimeRoot, "plugins", name+".sock"))
+		if c.doc.Kind == Descriptor {
+			// A descriptor names every program, a Plugin's included, inside its bundle.
+			executable, where = "", joined(location, "exec")
+			if u.Exec != "" {
+				executable = filepath.Join(h.Bundle, u.Exec)
+			}
+		}
 		if executable != "" && at(Installing, Creating, Starting) {
 			info, err := os.Stat(executable)
 			switch {

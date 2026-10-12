@@ -82,3 +82,28 @@ func TestAnOverrideReplacesWhatTheDescriptionResolvedToAndIsReadLive(t *testing.
 		t.Errorf("once cleared, a resolves to %+v, want %+v", got, want)
 	}
 }
+
+// std: yoke:a-groups-policy.04
+func TestTheAccountsCeilingClampsWhatAGroupResolvesTo(t *testing.T) {
+	dep := deploymentOf(t, `
+policy: { retention: { bytes: 50MB, age: 3d } }
+units:
+  probe: { kind: oneshot, exec: /bin/true, policy: { retention: { bytes: 10MB } } }
+  quiet: { kind: oneshot, exec: /bin/true }
+`)
+	logs := storeOf(t)
+	hundred := uint64(100_000_000)
+	if err := logs.SetOverride("quiet", logstore.Retention{Bytes: &hundred}); err != nil {
+		t.Fatal(err)
+	}
+	policy := trunk.Clamp(logstore.Limits{Bytes: 20_000_000}, trunk.RetentionOf(logs, func() *gate.Deployment { return dep }))
+	for group, want := range map[string]logstore.Limits{
+		logstore.CoreGroup: {Age: 3 * 24 * time.Hour, Bytes: 20_000_000, Entries: 100_000},
+		"probe":            {Age: 3 * 24 * time.Hour, Bytes: 10_000_000, Entries: 100_000},
+		"quiet":            {Bytes: 20_000_000},
+	} {
+		if got := policy(group); got != want {
+			t.Errorf("%s resolves to %+v, want %+v", group, got, want)
+		}
+	}
+}
