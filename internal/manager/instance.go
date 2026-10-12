@@ -85,17 +85,36 @@ func (c *call) instanceList() error {
 	if err != nil {
 		return err
 	}
+	var names []string
+	for _, l := range listed {
+		names = append(names, l.Name)
+	}
+	derived := c.derived(o, names)
 	for _, l := range listed {
 		if l.Record == nil {
 			fmt.Fprintf(c.out, "%s holds no valid record: %v\n", l.Name, l.Err)
 			continue
 		}
-		r := l.Record
-		autostart := ""
-		if r.Autostart {
-			autostart = " autostart"
+		r, w := l.Record, derived[l.Name]
+		state := "stopped"
+		if w != nil {
+			state = w.GetState()
 		}
-		fmt.Fprintf(c.out, "%s %s %s %s%s\n", r.Name, r.ID, r.Version, r.DesiredState, autostart)
+		line := fmt.Sprintf("%s %s %s %s", r.Name, r.ID, r.Version, state)
+		if up := state != "stopped" && state != "refused" && state != "failed"; up != (r.DesiredState == instancerecord.Running) {
+			line += ", desired " + r.DesiredState
+		}
+		if r.Autostart {
+			line += " autostart"
+		}
+		fmt.Fprintln(c.out, line)
+		// The why, which only the guardian knows.
+		for _, f := range w.GetFindings() {
+			fmt.Fprintf(c.out, "  refused: %s\n", f)
+		}
+		if w.GetState() == "waiting" {
+			fmt.Fprintf(c.out, "  waiting: attempt %d, tried again in %v\n", w.GetAttempt(), w.GetWait().AsDuration())
+		}
 	}
 	return nil
 }

@@ -257,7 +257,7 @@ func (o Options) running(name string) (bool, error) {
 	return pid != 0, err
 }
 
-func (o Options) stopped(name string) error {
+func (o Options) stopped(name string, verbs ...string) error {
 	if _, err := instancerecord.Read(o.Instances, name); err != nil {
 		return err
 	}
@@ -266,7 +266,11 @@ func (o Options) stopped(name string) error {
 		return err
 	}
 	if up {
-		return fmt.Errorf("the instance %s is running, and its state is copied or restored only while it is stopped", name)
+		what := "copied or restored"
+		if len(verbs) > 0 {
+			what = verbs[0]
+		}
+		return fmt.Errorf("the instance %s is running, and it is %s only while it is stopped", name, what)
 	}
 	return nil
 }
@@ -401,4 +405,42 @@ func Occupies(o Options, name string) (map[string]int64, error) {
 		out["storage/"+n.Name()] = size
 	}
 	return out, nil
+}
+
+// SetDesired writes the desired state, the one field starting and stopping change.
+func SetDesired(o Options, name, desired string) error {
+	return instancerecord.Update(o.Instances, name, func(r *instancerecord.Record) error {
+		r.DesiredState = desired
+		if desired == instancerecord.Running {
+			r.LastStartedAt = o.now()
+		}
+		return nil
+	})
+}
+
+// SetAutostart writes autostart, a second field and not the desired state.
+func SetAutostart(o Options, name string, autostart bool) error {
+	return instancerecord.Update(o.Instances, name, func(r *instancerecord.Record) error {
+		r.Autostart = autostart
+		return nil
+	})
+}
+
+// Running says whether an instance's claim is held.
+func Running(o Options, name string) (bool, error) { return o.running(name) }
+
+// Clear removes a stopped instance's state and leaves it declared.
+func Clear(o Options, name string) error {
+	if err := o.stopped(name, "cleared"); err != nil {
+		return err
+	}
+	return os.RemoveAll(instancerecord.StateDir(o.Instances, name))
+}
+
+// Remove removes a stopped instance's record and its state together: one directory.
+func Remove(o Options, name string) error {
+	if err := o.stopped(name, "removed"); err != nil {
+		return err
+	}
+	return os.RemoveAll(filepath.Join(o.Instances, name))
 }
