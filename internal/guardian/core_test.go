@@ -16,12 +16,12 @@ import (
 
 // std: yoke:the-guardian.10
 func TestAGuardianStartsACoreBuiltFromThisTree(t *testing.T) {
-	h := newHost(t, "")
 	core := filepath.Join(t.TempDir(), "yoke-core")
 	if said, err := exec.Command("go", "build", "-o", core, "github.com/yoke-project/yoke/cmd/yoke-core").CombinedOutput(); err != nil {
 		t.Fatalf("yoke-core does not build: %v\n%s", err, said)
 	}
 	s := enginetest.Serve(t)
+	h := newHost(t, "")
 	h.o.Config.Core, h.o.Config.Engine = core, "unix://"+s.Socket
 	// A unit naming an image, not started automatically: the Core reaches the engine for it at its start.
 	image := "localhost/yoke-l3-guardian@sha256:" + strings.Repeat("ab", 32)

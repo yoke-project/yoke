@@ -31,8 +31,10 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/yoke-project/yoke/internal/core/engine"
 	"github.com/yoke-project/yoke/internal/core/instance"
 	"github.com/yoke-project/yoke/internal/core/peer"
+	"github.com/yoke-project/yoke/internal/core/supervisor"
 	"github.com/yoke-project/yoke/internal/gate"
 	"github.com/yoke-project/yoke/internal/guardian/channel"
 	"github.com/yoke-project/yoke/internal/instancerecord"
@@ -104,7 +106,8 @@ func Run(ctx context.Context, o Options) error {
 	server := grpc.NewServer(grpc.Creds(peer.Credentials{}))
 	channel.RegisterGuardianServer(server, &surface{g: g})
 	go server.Serve(listener)
-	g.log.Info("the guardian is running", "socket", path, "boot", o.Boot)
+	g.delegated = g.delegation()
+	g.log.Info("the guardian is running", "socket", path, "boot", o.Boot, "control groups", g.delegated)
 	defer func() {
 		// The socket goes first, so a manager arriving now finds nobody answering and starts another.
 		os.Remove(path)
@@ -116,7 +119,10 @@ func Run(ctx context.Context, o Options) error {
 }
 
 type guardian struct {
-	o           Options
+	o Options
+	// delegated is the account's systemd running units for it, so each instance has its slice; without
+	// it, the declared weaker fallback.
+	delegated   bool
 	log         *slog.Logger
 	watched     map[string]*watch
 	events      chan event
@@ -417,8 +423,9 @@ func (g *guardian) start(rec instancerecord.Record, w *watch) {
 		Document:  gate.Read(filepath.Join(bundle, "yoke.yaml"), gate.Descriptor),
 		Moment:    gate.Starting,
 		Manifests: filepath.Join(bundle, "manifests"),
-		Host:      &gate.Host{Bundle: bundle, StateDir: stateDir, RuntimeRoot: filepath.Join(g.o.Runtime, rec.Name), Instance: rec.Name},
-		Instance:  &gate.Instance{DescriptorDigest: rec.DescriptorDigest, Stamp: strings.TrimSpace(string(stamp))},
+		Host: &gate.Host{Bundle: bundle, StateDir: stateDir, RuntimeRoot: filepath.Join(g.o.Runtime, rec.Name), Instance: rec.Name,
+			NoDelegation: !g.delegated},
+		Instance: &gate.Instance{DescriptorDigest: rec.DescriptorDigest, Stamp: strings.TrimSpace(string(stamp))},
 	})
 	findings := report.Findings
 	var values map[string]map[string]string
@@ -432,6 +439,13 @@ func (g *guardian) start(rec instancerecord.Record, w *watch) {
 		return
 	}
 	w.policy = dep.Policy
+	for _, f := range findings {
+		if f.Class == gate.Weaker {
+			g.log.Warn("weaker", "instance", rec.Name, "code", f.Code, "location", f.Location, "finding", f.Message)
+		}
+	}
+	// What an earlier incarnation left is never carried into the next.
+	g.empty(rec.Name, 0)
 
 	args := []string{"--instance", rec.Name, "--bundle", bundle}
 	if g.o.Config.Engine != "" && slices.ContainsFunc(dep.Order, func(n string) bool { return dep.Units[n].Image != "" }) {
@@ -453,12 +467,23 @@ func (g *guardian) start(rec instancerecord.Record, w *watch) {
 	if rec.Admission == instancerecord.UnlaunchedPermitted {
 		args = append(args, "--admit-unlaunched")
 	}
-	cmd := exec.Command(g.o.Config.Core, args...)
-	cmd.Stdout, cmd.Stderr = g.o.Stderr, g.o.Stderr
 	// The Core derives its paths from the same two directories the guardian reads the records and the
 	// claims under, whatever the environment left implicit.
-	cmd.Env = append(os.Environ(), "XDG_RUNTIME_DIR="+filepath.Dir(g.o.Runtime),
-		"XDG_STATE_HOME="+filepath.Dir(filepath.Dir(g.o.Instances)))
+	dirs := []string{"XDG_RUNTIME_DIR=" + filepath.Dir(g.o.Runtime), "XDG_STATE_HOME=" + filepath.Dir(filepath.Dir(g.o.Instances))}
+	cmd := exec.Command(g.o.Config.Core, args...)
+	cmd.Env = append(os.Environ(), dirs...)
+	if g.delegated {
+		// The Core is executed inside the instance's slice, which systemd makes on demand: it, its host units
+		// and the containers it names the slice as the parent of all sit in it. systemd-run reaches the
+		// account's systemd with the guardian's own environment, and the Core is handed its directories.
+		run, _ := exec.LookPath("systemd-run")
+		env, _ := exec.LookPath("env")
+		cmd = exec.Command(run, append(append([]string{"--user", "--scope", "--quiet", "--collect", "--slice=" + engine.Slice(rec.Name),
+			"--", env}, dirs...), append([]string{g.o.Config.Core}, args...)...)...)
+	} else {
+		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	}
+	cmd.Stdout, cmd.Stderr = g.o.Stderr, g.o.Stderr
 	w.gen++
 	w.findings, w.beats = nil, 0
 	if w.reason == Silent {
@@ -507,6 +532,7 @@ func (g *guardian) stop(w *watch) {
 
 // ended is a Core this guardian executed coming to an end: an orderly stop, or a failure.
 func (g *guardian) ended(w *watch, err error) {
+	g.empty(w.name, w.pid)
 	w.cmd, w.pid = nil, 0
 	if w.state == Stopping && w.reason == Silent {
 		// What a silence ends is not an orderly stop: the instance is brought back under the restart figures.
@@ -727,4 +753,58 @@ func refusal(c codes.Code, code, subject, format string, args ...any) error {
 		return status.Error(c, r.Message)
 	}
 	return st.Err()
+}
+
+// delegation says whether the account's systemd runs units for it, which is what gives every instance a
+// slice of its own: asked once, by running nothing in a scope.
+func (g *guardian) delegation() bool {
+	run, err := exec.LookPath("systemd-run")
+	if err != nil {
+		g.log.Warn("no control group can be made for an instance: systemd-run is not on the PATH")
+		return false
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if said, err := exec.CommandContext(ctx, run, "--user", "--scope", "--quiet", "--collect", "true").CombinedOutput(); err != nil {
+		g.log.Warn("no control group can be made for an instance: the account's systemd runs nothing for it", "said",
+			strings.TrimSpace(string(said)), "error", err)
+		return false
+	}
+	return true
+}
+
+// empty ends everything that belonged to an instance, in one operation over its slice, with nothing
+// enumerated. Without delegation, the declared weaker fallback: the process group the Core led is
+// signalled, and the containers carrying the instance's label are reaped — which addresses the engine.
+func (g *guardian) empty(name string, pid int) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if g.delegated {
+		systemctl, err := exec.LookPath("systemctl")
+		if err != nil {
+			g.log.Error("the instance's slice cannot be emptied: systemctl is not on the PATH", "instance", name)
+			return
+		}
+		slice := engine.Slice(name)
+		exec.CommandContext(ctx, systemctl, "--user", "kill", "--signal=SIGKILL", slice).Run()
+		exec.CommandContext(ctx, systemctl, "--user", "stop", slice).Run()
+		return
+	}
+	if pid > 0 {
+		syscall.Kill(-pid, syscall.SIGKILL)
+	}
+	if g.o.Config.Engine == "" {
+		return
+	}
+	e, err := engine.Reach(ctx, g.o.Config.Engine)
+	if err != nil {
+		return
+	}
+	reaped, err := supervisor.Inherited(ctx, e, name)
+	for _, f := range reaped {
+		g.log.Warn("a container of the instance is reaped by its label", "instance", name, "container", f.ID, "unit", f.Unit)
+	}
+	if err != nil {
+		g.log.Error("the instance's containers cannot all be reaped", "instance", name, "error", err)
+	}
 }

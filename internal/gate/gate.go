@@ -102,6 +102,9 @@ type Host struct {
 	StateDir    string // the instance's state directory, holding secrets/
 	RuntimeRoot string // the instance root, under which every socket path is derived
 	Instance    string // the instance's name, from which every ring's label is derived
+	// NoDelegation is a host whose session manager delegates no control group to the account, so an
+	// instance is confined by a process group and containers reaped by label.
+	NoDelegation bool
 	// Engine reaches the container engine. It is asked only where a unit names an image, and at most
 	// once a pass; nil looks for none.
 	Engine func() (EngineFacts, error)

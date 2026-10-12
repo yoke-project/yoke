@@ -108,3 +108,16 @@
 | **Precondition** | the bundle of `.02`, its descriptor declaring a heartbeat of `1s`; a listener on the account's `guardian.sock` |
 | **Action** | execute the Core; wait three seconds; stop it with `SIGTERM` |
 | **Expected** | the listener receives at least three beats before the stop, the last beat saying the Core is stopping, and the stream then ends |
+
+## yoke:the-application-invocation.09 — a Core says whether it is confined, as the weaker arrangements in force
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/17.46 · arch/25-guardian/05 §Where a host cannot provide one |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | `yoke-core` built; a bundle; the Core executed in the application form by the test, outside any slice of its instance |
+| **Action** | execute the Core, and read what it said before it was ready |
+| **Expected** | it reports `confinement.no_cgroup_delegation` as a weaker finding |

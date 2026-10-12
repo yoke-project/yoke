@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -33,12 +34,26 @@ import (
 // says so; `exit` fails at once. Each invocation's arguments are appended, one line each.
 const witness = "YOKE_TEST_WITNESS"
 
+// child makes this test binary a process a fake Core starts and leaves running; serve makes it a
+// container's process that runs until it is ended.
+const (
+	child = "YOKE_TEST_CHILD"
+	serve = "YOKE_TEST_SERVE"
+)
+
 // second makes this test binary a second guardian of the account whose runtime directory it names.
 const second = "YOKE_TEST_SECOND_GUARDIAN"
 
 func TestMain(m *testing.M) {
 	if i := slices.Index(os.Args, "--instance"); i > 0 && i+1 < len(os.Args) {
 		os.Exit(fakeCore(os.Args[i+1]))
+	}
+	if os.Getenv(child) != "" || os.Getenv(serve) != "" {
+		// It runs until it is killed: a signal it waits for and is never sent.
+		hold := make(chan os.Signal, 1)
+		signal.Notify(hold, syscall.SIGUSR2)
+		<-hold
+		os.Exit(0)
 	}
 	if runtime := os.Getenv(second); runtime != "" {
 		err := guardian.Run(context.Background(), guardian.Options{Runtime: runtime, Instances: os.Getenv("YOKE_TEST_INSTANCES"), Stderr: os.Stderr})
@@ -65,6 +80,21 @@ func fakeCore(name string) int {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGTERM)
 	switch r := strings.TrimSpace(string(role)); r {
+	case "parent":
+		// It starts a child, which stays in its process group, and then behaves as a Core that beats.
+		self, _ := os.Executable()
+		c := exec.Command(self, "-test.run=^$")
+		c.Env = append(os.Environ(), child+"=1")
+		if err := c.Start(); err != nil {
+			return 1
+		}
+		os.WriteFile(filepath.Join(dir, name+".child"), []byte(strconv.Itoa(c.Process.Pid)), 0o600)
+		alive, err := dialAlive()
+		if err != nil || alive.Send(&channel.Beat{Instance: name}) != nil {
+			return 1
+		}
+		<-stop
+		return 0
 	case "mute", "retire":
 		// It says it is alive once; then a mute Core falls silent and will not stop when asked, and a retiring
 		// one says it is stopping, stays silent past the tolerance, and ends.
@@ -106,6 +136,7 @@ type host struct {
 	t                     *testing.T
 	run, state, instances string
 	witness               string
+	path, runtime         string // what PATH and XDG_RUNTIME_DIR were, for a case the account's systemd runs
 	out                   buffer
 	o                     guardian.Options
 	descriptor            []byte
@@ -118,7 +149,10 @@ func newHost(t *testing.T, policy string) *host {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.RemoveAll(run) })
-	h := &host{t: t, run: run, state: t.TempDir(), witness: t.TempDir()}
+	h := &host{t: t, run: run, state: t.TempDir(), witness: t.TempDir(), path: os.Getenv("PATH"), runtime: os.Getenv("XDG_RUNTIME_DIR")}
+	// Nothing on the PATH: the guardian finds no systemd to run a slice in, and confines by the fallback,
+	// so no case here empties a slice another run, or the account itself, is using.
+	t.Setenv("PATH", t.TempDir())
 	t.Setenv("XDG_RUNTIME_DIR", run)
 	t.Setenv("XDG_STATE_HOME", h.state)
 	t.Setenv(witness, h.witness)
@@ -527,4 +561,11 @@ func dialAlive() (channel.Guardian_AliveClient, error) {
 		return nil, err
 	}
 	return channel.NewGuardianClient(conn).Alive(context.Background())
+}
+
+// delegate gives the guardian the account's own systemd, for a case that runs in a slice: the PATH and the
+// runtime directory it reaches systemd through. The case names its instance so no other run uses it.
+func (h *host) delegate() {
+	h.t.Setenv("PATH", h.path)
+	h.t.Setenv("XDG_RUNTIME_DIR", h.runtime)
 }
