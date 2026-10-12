@@ -48,7 +48,8 @@ message ReportResponse {
 // One instance, as the guardian concluded it, and nothing it would have to ask anybody else.
 message Watched {
   string name = 1;
-  // What the guardian derived: starting, observable, stopping, waiting, refused, stopped.
+  // What the guardian derived: starting, observable, stopping, waiting, refused, running, stopped,
+  // failed.
   string state = 2;
   // A refusal's findings, as the gate gave them: `<code> at <location>: <message>`.
   repeated string findings = 3;
@@ -58,10 +59,15 @@ message Watched {
   google.protobuf.Timestamp since = 6;
   // The process the guardian executed, while there is one.
   int32 pid = 7;
+  // Why the instance is stopping or waiting where the guardian acted unasked: `silent`, a Core that
+  // stopped saying it is alive.
+  string reason = 8;
 }
 
 message Beat {
   string instance = 1;
+  // The Core has begun an orderly shutdown: the silence that follows is an expected one.
+  bool stopping = 2;
 }
 
 message AliveResponse {}

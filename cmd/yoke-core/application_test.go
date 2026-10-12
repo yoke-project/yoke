@@ -312,7 +312,7 @@ func (l *listener) Alive(stream channel.Guardian_AliveServer) error {
 		if err != nil {
 			return nil
 		}
-		l.beats <- fmt.Sprintf("%s %d", b.GetInstance(), pid)
+		l.beats <- fmt.Sprintf("%s %d %t", b.GetInstance(), pid, b.GetStopping())
 	}
 }
 
@@ -326,7 +326,7 @@ func TestACoreUnderAGuardianSaysItIsAliveOnceReady(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	l := &listener{beats: make(chan string, 4)}
+	l := &listener{beats: make(chan string, 64)}
 	server := grpc.NewServer(grpc.Creds(peer.Credentials{}))
 	channel.RegisterGuardianServer(server, l)
 	go server.Serve(sock)
@@ -337,7 +337,7 @@ func TestACoreUnderAGuardianSaysItIsAliveOnceReady(t *testing.T) {
 	lines.until(10*time.Second, "msg=ready")
 	select {
 	case b := <-l.beats:
-		if want := fmt.Sprintf("bench-a %d", cmd.Process.Pid); b != want {
+		if want := fmt.Sprintf("bench-a %d false", cmd.Process.Pid); b != want {
 			t.Errorf("the beat was %q, want %q", b, want)
 		}
 	case <-time.After(10 * time.Second):
@@ -355,4 +355,37 @@ func TestACoreUnderAGuardianSaysItIsAliveOnceReady(t *testing.T) {
 	alone.Process.Signal(syscall.SIGTERM)
 	lines.rest()
 	alone.Wait()
+}
+
+// std: yoke:the-application-invocation.08
+func TestACoreSaysItIsAliveAtItsIntervalAndWhenItStops(t *testing.T) {
+	binary := build(t)
+	env := account(t)
+	dir := filepath.Join(from(env, "XDG_RUNTIME_DIR"), "yoke")
+	os.MkdirAll(dir, 0o700)
+	sock, err := net.Listen("unix", filepath.Join(dir, "guardian.sock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	l := &listener{beats: make(chan string, 64)}
+	server := grpc.NewServer(grpc.Creds(peer.Credentials{}))
+	channel.RegisterGuardianServer(server, l)
+	go server.Serve(sock)
+	t.Cleanup(server.Stop)
+
+	b := bundle(t, "policy: { heartbeat: { interval: 1s } }\n")
+	cmd, lines := application(t, binary, env, append([]string{"--instance", "bench-a", "--bundle", b}, values(filepath.Join(t.TempDir(), "out"))...)...)
+	lines.until(10*time.Second, "msg=ready")
+	time.Sleep(3200 * time.Millisecond)
+	cmd.Process.Signal(syscall.SIGTERM)
+	lines.rest()
+	cmd.Wait()
+	var beats []string
+	for len(l.beats) > 0 {
+		beats = append(beats, <-l.beats)
+	}
+	alive := fmt.Sprintf("bench-a %d false", cmd.Process.Pid)
+	if len(beats) < 4 || strings.Count(strings.Join(beats, "\n"), alive) < 3 || beats[len(beats)-1] != fmt.Sprintf("bench-a %d true", cmd.Process.Pid) {
+		t.Errorf("the beats were %q", beats)
+	}
 }

@@ -64,6 +64,25 @@ func fakeCore(name string) int {
 	}
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGTERM)
+	switch r := strings.TrimSpace(string(role)); r {
+	case "mute", "retire":
+		// It says it is alive once; then a mute Core falls silent and will not stop when asked, and a retiring
+		// one says it is stopping, stays silent past the tolerance, and ends.
+		if r == "mute" {
+			signal.Ignore(syscall.SIGTERM)
+		}
+		alive, err := dialAlive()
+		if err != nil || alive.Send(&channel.Beat{Instance: name}) != nil {
+			return 1
+		}
+		if r == "mute" {
+			select {}
+		}
+		alive.Send(&channel.Beat{Instance: name, Stopping: true})
+		time.Sleep(2500 * time.Millisecond)
+		alive.CloseAndRecv()
+		return 0
+	}
 	if strings.TrimSpace(string(role)) == "beat" {
 		conn, err := grpc.NewClient("unix://"+filepath.Join(runtime, "guardian.sock"), grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
@@ -498,4 +517,14 @@ func TestABeatIsAcceptedOnlyFromTheProcessTheGuardianExecuted(t *testing.T) {
 		t.Errorf("a beat from another process: %v", err)
 	}
 	h.until(c, "bench-a", "bench-a still starting", in("starting"))
+}
+
+// dialAlive opens a fake Core's liveness stream to the account's guardian.
+func dialAlive() (channel.Guardian_AliveClient, error) {
+	sock := filepath.Join(os.Getenv("XDG_RUNTIME_DIR"), "yoke", "guardian.sock")
+	conn, err := grpc.NewClient("unix://"+sock, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+	return channel.NewGuardianClient(conn).Alive(context.Background())
 }
