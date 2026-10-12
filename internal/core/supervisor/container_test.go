@@ -2,6 +2,7 @@ package supervisor_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -45,6 +46,7 @@ type containers struct {
 	gone     map[string]bool          // containers the engine no longer holds, though nobody removed them
 	foreign  []engine.Found           // containers under the label that nobody here launched
 	returned chan struct{}            // a notice that the engine returned
+	hold     chan struct{}            // a start that does not return until this is closed
 }
 
 func newContainers() *containers {
@@ -103,6 +105,9 @@ func (c *containers) Attach(_ context.Context, id string, stdout, stderr io.Writ
 
 func (c *containers) Start(_ context.Context, id string) error {
 	c.record("start " + id)
+	if c.hold != nil {
+		<-c.hold
+	}
 	c.mu.Lock()
 	c.busy--
 	out, says := c.outputs[id], c.says
@@ -405,5 +410,42 @@ func TestOneLaunchIsAskedOfTheEngineAtATime(t *testing.T) {
 	defer c.mu.Unlock()
 	if c.overlap {
 		t.Errorf("a container was created while another launch was in flight: %v", c.asked)
+	}
+}
+
+// std: yoke:the-container-backend.08
+func TestAPluginAdmittedBeforeItsStartReturnsBelongsToItsIncarnation(t *testing.T) {
+	c := newContainers()
+	c.hold = make(chan struct{})
+	p := &published{}
+	s := supervisor.New(supervisor.Config{Root: t.TempDir(), Policy: fast(), Instance: "bench", Incarnations: supervisor.NewCounter(),
+		Tokens: supervisor.NewTokens(), Output: &output{}, Containers: c, Publish: p.publish})
+	t.Cleanup(func() { s.Stop() })
+	bench := imaged("bench", unit.Plugin)
+	bench.Plugin = "com.example.bench"
+	s.Launch(bench)
+	until(t, "the engine to be asked to start it", 3*time.Second, func() bool {
+		return slices.ContainsFunc(c.acts(), func(a string) bool { return strings.HasPrefix(a, "start ") })
+	})
+	s.Input("bench", unit.AdmissionAccepted{})
+	s.Input("bench", unit.SessionOpened{})
+	close(c.hold)
+	until(t, "the unit to run in its first incarnation", 3*time.Second, func() bool {
+		st := s.Status("bench")
+		return st.State == unit.Running && st.Incarnation == 1
+	})
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	var states []string
+	for _, e := range p.events {
+		if e.Type != "unit.state.changed" || e.Subject.ID != "bench" {
+			continue
+		}
+		var detail map[string]any
+		json.Unmarshal(e.Detail, &detail)
+		states = append(states, fmt.Sprintf("%v#%d", detail["to"], e.Subject.Incarnation))
+	}
+	if !slices.Equal(states, []string{"Starting#1", "Admitted#1", "Running#1"}) {
+		t.Errorf("the changes were %v", states)
 	}
 }

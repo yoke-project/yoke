@@ -95,3 +95,16 @@
 | **Precondition** | an engine that takes a while to create a container, and notes whether a container is created while another launch is between its creation and its start |
 | **Action** | launch three units of kind `interface` naming an image, together |
 | **Expected** | every unit is `Running`; no container was created while another was still being created, attached or started |
+
+## yoke:the-container-backend.08 — a Plugin admitted before the engine says its container started belongs to the incarnation launched
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/45.3 · arch/35-units/05 §What containerisation is allowed to change · arch/35-units/02 |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an engine whose start of a container has not yet returned |
+| **Action** | launch a Plugin unit in a container; while the engine's start is pending, admit it and open its Session; then let the start return |
+| **Expected** | the unit is `Running` in incarnation `1`; every change of its state names incarnation `1`, `Starting` first, then `Admitted`, then `Running` |
