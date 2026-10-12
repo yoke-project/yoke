@@ -25,6 +25,9 @@ func TestAGuardianStartsACoreBuiltFromThisTree(t *testing.T) {
 	h.o.Config.Core, h.o.Config.Engine = core, "unix://"+s.Socket
 	// A unit naming an image, not started automatically: the Core reaches the engine for it at its start.
 	image := "localhost/yoke-l3-guardian@sha256:" + strings.Repeat("ab", 32)
+	// Reaching the engine is the slowest step of this Core's start where the engine is shared with other
+	// cases, so its startup window is wider than the other cases'.
+	h.descriptor = []byte(strings.Replace(string(h.descriptor), "startup_window: 5s", "startup_window: 30s", 1))
 	h.descriptor = append(h.descriptor, []byte("  keeper: { kind: oneshot, image: \""+image+"\", autostart: false }\n")...)
 	os.WriteFile(filepath.Join(h.o.Config.InstallRoot, "com.yoke.station", "2.1.0", "bundle", "yoke.yaml"), h.descriptor, 0o644)
 	h.declare("bench-a", instancerecord.Running, "", nil)

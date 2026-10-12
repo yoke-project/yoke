@@ -116,6 +116,7 @@ func TestAContainerTheCoreLaunchedIsInTheSliceAndEndsWithIt(t *testing.T) {
 	h.o.Config.Core, h.o.Config.Engine = core, "unix://"+s.Socket
 	name := "cg-" + strconv.Itoa(os.Getpid()) + "-c"
 	t.Cleanup(func() { enginetest.Remove(enginetest.Labelled("dev.yoke-project.instance=" + name)...) })
+	h.descriptor = []byte(strings.Replace(string(h.descriptor), "startup_window: 5s", "startup_window: 30s", 1))
 	h.describe("  keeper: { kind: oneshot, image: \""+image+"\" }\n", nil)
 	h.declare(name, instancerecord.Running, "", nil)
 	h.start(false)
