@@ -389,3 +389,17 @@ func TestACoreSaysItIsAliveAtItsIntervalAndWhenItStops(t *testing.T) {
 		t.Errorf("the beats were %q", beats)
 	}
 }
+
+// std: yoke:the-application-invocation.09
+func TestACoreSaysWhetherItIsConfined(t *testing.T) {
+	binary := build(t)
+	env := account(t)
+	cmd, lines := application(t, binary, env, append([]string{"--instance", "bench-a", "--bundle", bundle(t, "")}, values(filepath.Join(t.TempDir(), "out"))...)...)
+	lines.until(10*time.Second, "msg=ready")
+	if said := strings.Join(lines.said, "\n"); !strings.Contains(said, "code=confinement.no_cgroup_delegation") {
+		t.Errorf("a Core outside its slice did not say so:\n%s", said)
+	}
+	cmd.Process.Signal(syscall.SIGTERM)
+	lines.rest()
+	cmd.Wait()
+}

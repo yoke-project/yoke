@@ -854,6 +854,11 @@ func (c *checker) weaker() bool {
 				"the channel %s is bound on the loopback address, which keeps none of the first trust layer and requires nothing of a caller", name)
 		}
 	}
+	if h := c.in.Host; h != nil && h.NoDelegation && (c.in.Moment == Creating || c.in.Moment == Starting) {
+		c.note("confinement.no_cgroup_delegation", "", "this host delegates no control group to the account, so the instance is "+
+			"confined by signalling a process group and reaping containers by label: weaker in confinement, and in the "+
+			"reliability of the party that reaps")
+	}
 	if c.engine != nil && !c.engine.Rootless {
 		c.note("engine.rootful", "", "containerised units are driven through a root-owned daemon, which can do anything as root on behalf of whoever reaches it")
 	}

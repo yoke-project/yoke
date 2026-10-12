@@ -544,6 +544,7 @@ func (st *State) composition() *composed {
 			RuntimeRoot: st.Paths.Root, Instance: st.Paths.Name, Engine: st.reachEngine}
 		if st.Form == Application {
 			doc, manifests, host.Executables, host.Bundle = *st.described, filepath.Join(st.Bundle, "manifests"), "", st.Bundle
+			host.NoDelegation = !confined(st.Paths.Name)
 		} else {
 			doc = gate.Read(st.Composition, gate.Composition)
 		}
@@ -1158,4 +1159,11 @@ func (st *State) alive() {
 		}
 		st.Log.Warn("the guardian cannot be told the instance is alive", "error", err)
 	}()
+}
+
+// confined says whether this process runs in its instance's slice, as a guardian with a delegated control
+// group executes it; read from the kernel, never assumed.
+func confined(instance string) bool {
+	data, err := os.ReadFile("/proc/self/cgroup")
+	return err == nil && strings.Contains(string(data), "/"+engine.Slice(instance)+"/")
 }
