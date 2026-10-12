@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/yoke-project/yoke/internal/compose"
 	"github.com/yoke-project/yoke/internal/instancerecord"
 )
 
@@ -26,7 +27,7 @@ func secretsAccount(t *testing.T) map[string]string {
 	unit := func(name, needs string) string {
 		return fmt.Sprintf("  %s: { kind: oneshot, exec: components/linger, digest: \"sha256:%x\"%s }\n", name, sha256.Sum256([]byte(linger)), needs)
 	}
-	os.WriteFile(filepath.Join(bundle, "yoke.yaml"), []byte("model: 1\nid: com.yoke.station\nversion: 2.1.0\narch: aarch64\n"+
+	os.WriteFile(filepath.Join(bundle, "yoke.yaml"), []byte("model: 1\nid: com.yoke.station\nversion: 2.1.0\narch: "+compose.HostArch()+"\n"+
 		"core: \">=0.0.0-0\"\npolicy: { stop_window: 2s }\nunits:\n"+unit("keeper", `, needs: [ "secret:token" ]`)+
 		unit("keyed", `, needs: [ "secret:key" ]`)+unit("other", "")), 0o644)
 	return vars

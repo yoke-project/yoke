@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -171,6 +172,17 @@ func (c *checker) hostFacts() bool {
 				c.refuse("component.missing", where, "the executable %s of the unit %s is not there", executable, name)
 			case !info.Mode().IsRegular() || info.Mode().Perm()&0o111 == 0:
 				c.refuse("component.not_executable", where, "the executable %s of the unit %s is there and cannot be executed", executable, name)
+			case c.doc.Kind == Descriptor && u.Digest != "":
+				if got, err := fileDigest(executable); err != nil {
+					c.refuse("component.missing", where, "the executable %s of the unit %s cannot be read: %v", executable, name, err)
+				} else if got != u.Digest {
+					c.refuse("component.digest", joined(location, "digest"), "the executable %s of the unit %s is %s, and the descriptor states %s", executable, name, got, u.Digest)
+				}
+			}
+		}
+		if m := c.manifests[u.Plugin]; u.Kind == "plugin" && u.ManifestDigest != "" && m != nil && at(Installing, Creating, Starting) {
+			if got, err := fileDigest(m.Path); err == nil && got != u.ManifestDigest {
+				c.refuse("plugin.manifest.digest", joined(location, "manifest_digest"), "the Manifest %s of the plugin %s is %s, and the unit %s states %s", m.Path, u.Plugin, got, name, u.ManifestDigest)
 			}
 		}
 		for _, n := range needs {
@@ -199,6 +211,23 @@ func (c *checker) hostFacts() bool {
 			c.refuse("engine.unreachable", "", "the deployment declares containerised units, and the container engine cannot be reached: %v", err)
 		} else {
 			c.engine = &facts
+		}
+	}
+	if head := c.deployment.Head; c.doc.Kind == Descriptor && at(Installing, Creating, Starting) {
+		if h.Arch != "" && head.Arch != h.Arch {
+			c.refuse("arch.mismatch", "arch", "the descriptor is for %s, and this host is %s", head.Arch, h.Arch)
+		}
+		if h.Core != nil {
+			if r, err := version.ParseRange(head.Core); err == nil && !r.Contains(*h.Core) {
+				c.refuse("core.range", "core", "the descriptor needs a Core in %s, and this host executes %s", head.Core, h.Core)
+			}
+		}
+	}
+	if h.RuntimeDir != nil && at(Creating, Starting) {
+		if info, err := os.Stat(*h.RuntimeDir); *h.RuntimeDir == "" || err != nil || !info.IsDir() {
+			c.refuse("runtime.dir.missing", "", "the launching account has no runtime directory (XDG_RUNTIME_DIR %q), and an instance's sockets "+
+				"and claim go nowhere else: give the account a login session through pam_systemd, or let it linger with "+
+				"loginctl enable-linger", *h.RuntimeDir)
 		}
 	}
 	if i := c.in.Instance; i != nil && c.doc.Kind == Descriptor {
@@ -241,4 +270,18 @@ func Readable(data, stamp, ver string) error {
 		return fmt.Errorf("%s declares it reads state written by %s, and %s last wrote this instance's state", ver, data, stamp)
 	}
 	return nil
+}
+
+// fileDigest is a file's sha256 digest, as `sha256:<hex>`.
+func fileDigest(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return "sha256:" + hex.EncodeToString(h.Sum(nil)), nil
 }

@@ -66,10 +66,11 @@ func TestYokeAppRemovesAndReclaims(t *testing.T) {
 	apps := filepath.Join(t.TempDir(), "apps")
 	for _, ver := range []string{"2.0.0", "2.1.0", "2.2.0"} {
 		dir := filepath.Join(apps, "com.yoke.station", ver)
-		os.MkdirAll(filepath.Join(dir, "bundle"), 0o775)
+		os.MkdirAll(filepath.Join(dir, "bundle", "components"), 0o775)
+		os.WriteFile(filepath.Join(dir, "bundle", "components", "setup"), []byte(setupProgram), 0o755)
 		os.WriteFile(filepath.Join(dir, "bundle", "yoke.yaml"), []byte("model: 1\nid: com.yoke.station\nversion: "+ver+
-			"\narch: aarch64\ncore: \">=0.1\"\nunits:\n  setup: { kind: oneshot, exec: components/setup, digest: \"sha256:"+
-			strings.Repeat("ab", 32)+"\" }\n"), 0o644)
+			"\narch: "+compose.HostArch()+"\ncore: \">=0.1\"\nunits:\n  setup: { kind: oneshot, exec: components/setup, digest: \""+
+			setupDigest+"\" }\n"), 0o644)
 		os.WriteFile(filepath.Join(dir, "install.yaml"), []byte("state: complete\nsealed: false\nshared: true\n"), 0o664)
 	}
 	vars := conf(t, "install_root: "+apps+"\nengine: unix:///nonexistent/engine.sock\n")

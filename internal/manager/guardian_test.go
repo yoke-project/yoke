@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/yoke-project/yoke/internal/compose"
 	"github.com/yoke-project/yoke/internal/core/instance"
 	"github.com/yoke-project/yoke/internal/instancerecord"
 )
@@ -54,7 +55,7 @@ func account(t *testing.T, extra string) map[string]string {
 	bundle := filepath.Join(apps, "com.yoke.station", "2.1.0", "bundle")
 	os.MkdirAll(filepath.Join(bundle, "components"), 0o755)
 	os.WriteFile(filepath.Join(bundle, "components", "probe"), []byte(probe), 0o755)
-	os.WriteFile(filepath.Join(bundle, "yoke.yaml"), []byte(fmt.Sprintf("model: 1\nid: com.yoke.station\nversion: 2.1.0\narch: aarch64\n"+
+	os.WriteFile(filepath.Join(bundle, "yoke.yaml"), []byte(fmt.Sprintf("model: 1\nid: com.yoke.station\nversion: 2.1.0\narch: "+compose.HostArch()+"\n"+
 		"core: \">=0.0.0-0\"\npolicy: { stop_window: 5s }\nunits:\n  probe: { kind: oneshot, exec: components/probe, digest: \"sha256:%x\" }\n",
 		sha256.Sum256([]byte(probe)))), 0o644)
 	os.WriteFile(filepath.Join(apps, "com.yoke.station", "2.1.0", "install.yaml"), []byte("state: complete\nsealed: false\nshared: true\n"), 0o664)
@@ -196,3 +197,8 @@ func TestYokeInstanceListAnswersWithoutAGuardian(t *testing.T) {
 		t.Errorf("listing started a guardian, process %d", pid)
 	}
 }
+
+// setupProgram is the component a fixture's unit setup names, and setupDigest its digest.
+const setupProgram = "#!/bin/sh\nexit 0\n"
+
+var setupDigest = fmt.Sprintf("sha256:%x", sha256.Sum256([]byte(setupProgram)))

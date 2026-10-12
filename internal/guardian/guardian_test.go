@@ -23,6 +23,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/yoke-project/yoke/internal/core/instance"
+	"github.com/yoke-project/yoke/internal/gate"
 	"github.com/yoke-project/yoke/internal/guardian"
 	"github.com/yoke-project/yoke/internal/guardian/channel"
 	"github.com/yoke-project/yoke/internal/instancerecord"
@@ -161,10 +162,10 @@ func newHost(t *testing.T, policy string) *host {
 	bundle := filepath.Join(apps, "com.yoke.station", "2.1.0", "bundle")
 	os.MkdirAll(filepath.Join(bundle, "components"), 0o755)
 	os.WriteFile(filepath.Join(bundle, "components", "probe"), []byte(program), 0o755)
-	h.descriptor = []byte(fmt.Sprintf(`model: 1
+	h.descriptor = []byte(strings.Replace(fmt.Sprintf(`model: 1
 id: com.yoke.station
 version: 2.1.0
-arch: aarch64
+arch: {{HOSTARCH}}
 core: ">=0.0.0-0"
 parameters:
   shared:
@@ -173,7 +174,7 @@ parameters:
 policy: { startup_window: 5s, stop_window: 2s%s }
 units:
   probe: { kind: oneshot, exec: components/probe, digest: "sha256:%x", args: [ "${label}" ] }
-`, policy, sha256.Sum256([]byte(program))))
+`, policy, sha256.Sum256([]byte(program))), "{{HOSTARCH}}", gate.HostArch(), 1))
 	os.WriteFile(filepath.Join(bundle, "yoke.yaml"), h.descriptor, 0o644)
 	os.WriteFile(filepath.Join(apps, "com.yoke.station", "2.1.0", "install.yaml"), []byte("state: complete\nsealed: false\nshared: true\n"), 0o664)
 	self, _ := os.Executable()

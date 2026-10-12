@@ -50,6 +50,7 @@ import (
 	"github.com/yoke-project/yoke/internal/core/unit"
 	"github.com/yoke-project/yoke/internal/gate"
 	guardianchannel "github.com/yoke-project/yoke/internal/guardian/channel"
+	"github.com/yoke-project/yoke/internal/version"
 )
 
 // Form is the deployment form, which decides where parameters come from and what the modes are.
@@ -545,6 +546,11 @@ func (st *State) composition() *composed {
 		if st.Form == Application {
 			doc, manifests, host.Executables, host.Bundle = *st.described, filepath.Join(st.Bundle, "manifests"), "", st.Bundle
 			host.NoDelegation = !confined(st.Paths.Name)
+			runtime := st.Env("XDG_RUNTIME_DIR")
+			host.Arch, host.RuntimeDir = gate.HostArch(), &runtime
+			if v, err := version.Running(); err == nil {
+				host.Core = &v
+			}
 		} else {
 			doc = gate.Read(st.Composition, gate.Composition)
 		}

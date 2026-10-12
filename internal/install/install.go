@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"debug/buildinfo"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -122,16 +121,10 @@ func Install(o Options) (Result, error) {
 		return res, err
 	}
 	// 8 · the descriptor, read for the first time, and gated.
-	report, d := gate.Check(gate.Input{Document: gate.Read(filepath.Join(bundle, "yoke.yaml"), gate.Descriptor),
-		Moment: gate.Installing, Manifests: filepath.Join(bundle, "manifests")})
+	doc := gate.Read(filepath.Join(bundle, "yoke.yaml"), gate.Descriptor)
+	report, d := gate.Check(gate.Input{Document: doc, Moment: gate.Installing, Manifests: filepath.Join(bundle, "manifests")})
 	if report.Refused() {
-		var lines []string
-		for _, f := range report.Findings {
-			if f.Class == gate.Refusal {
-				lines = append(lines, fmt.Sprintf("%s at %s: %s", f.Code, f.Location, f.Message))
-			}
-		}
-		return res, refuse("the descriptor is refused: %s", strings.Join(lines, "; "))
+		return res, refusedDescriptor(report)
 	}
 	if h := d.Head; h.ID != m.ID || h.Version != m.Version || h.Arch != m.Arch || h.Core != m.Core || uint16(h.Model) != m.Model {
 		return res, refuse("the descriptor says it is %s %s for %s, Core %s, model %d, and the footer that was checked says %s %s for %s, Core %s, model %d",
@@ -141,9 +134,15 @@ func Install(o Options) (Result, error) {
 	if err := obtain(o, bundle, d, m); err != nil {
 		return res, err
 	}
-	// 10 · every component the descriptor names, against the digest it states; executables made so.
+	// 10 · every component the descriptor names, against the digest it states; executables made so. Then the
+	// host's facts, over the bundle as it now stands, from the same reading.
 	if err := components(bundle, d); err != nil {
 		return res, err
+	}
+	core := o.Host.Core
+	if report, _ := gate.Check(gate.Input{Document: doc, Moment: gate.Installing, Manifests: filepath.Join(bundle, "manifests"),
+		Host: &gate.Host{Bundle: bundle, Arch: o.Host.Arch, Core: &core}}); report.Refused() {
+		return res, refusedDescriptor(report)
 	}
 	// 11 · complete.
 	verified := "unsigned"
@@ -325,14 +324,15 @@ func matches(p, digest string) error {
 
 // CoreVersion is the version a Core binary states in the build information stamped into it, read
 // without executing it.
-func CoreVersion(binary string) (version.Version, error) {
-	info, err := buildinfo.ReadFile(binary)
-	if err != nil {
-		return version.Version{}, fmt.Errorf("the Core %s states no version: %v", binary, err)
+func CoreVersion(binary string) (version.Version, error) { return version.OfBinary(binary) }
+
+// refusedDescriptor is the gate's refusal of the descriptor, every finding named.
+func refusedDescriptor(report gate.Report) error {
+	var lines []string
+	for _, f := range report.Findings {
+		if f.Class == gate.Refusal {
+			lines = append(lines, fmt.Sprintf("%s at %s: %s", f.Code, f.Location, f.Message))
+		}
 	}
-	v, err := version.Parse(strings.TrimPrefix(info.Main.Version, "v"))
-	if err != nil {
-		return version.Version{}, fmt.Errorf("the Core %s states no version a range can hold: %q", binary, info.Main.Version)
-	}
-	return v, nil
+	return refuse("the descriptor is refused: %s", strings.Join(lines, "; "))
 }
