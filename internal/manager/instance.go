@@ -146,6 +146,7 @@ func (c *call) instanceShow() error {
 	for _, what := range slices.Sorted(maps.Keys(occupies)) {
 		fmt.Fprintf(c.out, "  %s %d\n", what, occupies[what])
 	}
+	c.secretsOf(o, c.args[0])
 	return nil
 }
 

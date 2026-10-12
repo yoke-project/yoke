@@ -40,6 +40,15 @@ func (s *Supervisor) expand(u Unit, contained bool) (expansion, error) {
 			err = x.audio(s.getenv)
 		case "network":
 			x.network = true
+		case "secret":
+			// The file the manager wrote: checked to be there, never opened, and mounted at its own path.
+			if _, err = os.Stat(n.Path); err == nil {
+				if contained {
+					x.mounts = append(x.mounts, n.Path)
+				}
+			} else {
+				err = fmt.Errorf("the secret %s is not in the instance's store at %s", filepath.Base(n.Path), n.Path)
+			}
 		}
 		if err != nil {
 			return expansion{}, err

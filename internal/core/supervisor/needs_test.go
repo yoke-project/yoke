@@ -253,3 +253,58 @@ func TestADevicesGroupIsCarriedOnlyWhereTheAccountReachesItThroughIt(t *testing.
 		}
 	}
 }
+
+// std: yoke:what-a-need-expands-into.08
+func TestASecretIsAFileCheckedAndMountedAtItsPath(t *testing.T) {
+	_, dep := gate.Check(gate.Input{Document: gate.Document{Path: "bench.yaml", Kind: gate.Composition, Bytes: []byte(
+		"units:\n  keeper: { kind: oneshot, exec: /bin/true, needs: [ \"secret:token\" ], args: [ \"${bind.token}\" ] }\n")}})
+	if dep == nil {
+		t.Fatal("the composition is refused")
+	}
+	state := t.TempDir()
+	path := filepath.Join(state, "secrets", "token")
+	units := discovery.Units(dep, func(string) (*gate.Manifest, bool) { return nil, false }, "", state)
+	if len(units) != 1 || !slices.Equal(units[0].Args, []string{path}) || !slices.Equal(units[0].Needs, []supervisor.Need{{Class: "secret", Path: path}}) {
+		t.Fatalf("resolved as %+v", units)
+	}
+	os.MkdirAll(filepath.Dir(path), 0o700)
+	os.WriteFile(path, []byte("value"), 0o600)
+
+	c := newContainers()
+	s, out := underHost(t, newHost(t), c)
+	host := declared(t, "host", unit.Oneshot, "environment")
+	host.Needs = units[0].Needs
+	s.Launch(host)
+	until(t, "the host unit to complete", 3*time.Second, func() bool { return s.Status("host").State == unit.Completed })
+	until(t, "the host unit's environment to be read", 3*time.Second, func() bool {
+		return slices.ContainsFunc(out.all(), func(l string) bool { return strings.Contains(l, "env YOKE_UNIT=host") })
+	})
+	for _, line := range out.all() {
+		if strings.Contains(line, "env ") && (strings.Contains(line, path) || strings.Contains(line, "value")) {
+			t.Errorf("the host unit was handed the secret in its environment: %s", line)
+		}
+	}
+	contained := imaged("contained", unit.Oneshot)
+	contained.Needs = units[0].Needs
+	s.Launch(contained)
+	until(t, "the container to be created", 3*time.Second, func() bool {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		return len(c.launched) == 1
+	})
+	c.mu.Lock()
+	created := c.launched[0]
+	c.mu.Unlock()
+	if !slices.Contains(created.Mounts, path) {
+		t.Errorf("the container was created with %v, not the secret at %s", created.Mounts, path)
+	}
+
+	os.Remove(path)
+	again := declared(t, "again", unit.Oneshot, "exit-0")
+	again.Needs = units[0].Needs
+	s.Launch(again)
+	until(t, "the unit without its secret to fail", 3*time.Second, failed(s, "again"))
+	if st := s.Status("again"); !strings.Contains(st.Failure, "secret token") || !strings.Contains(st.Failure, path) || st.PID != 0 {
+		t.Errorf("the failure is %q, with process %d", st.Failure, st.PID)
+	}
+}

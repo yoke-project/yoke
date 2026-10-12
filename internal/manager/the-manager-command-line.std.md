@@ -134,3 +134,29 @@
 | **Precondition** | instances `bench-a`, stopped, and `bench-b`, whose claim another process holds; no guardian running |
 | **Action** | run `yoke instance list` |
 | **Expected** | it names `bench-a` stopped and `bench-b` running, and no guardian is running afterwards |
+
+## yoke:the-manager-command-line.11 — `yoke instance set-secret` writes into the instance's state, never displays the value, and the presence of each secret is reported
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/15.57 · specs/15.58 · specs/15.59 · arch/10-manager/07 §Supplying a secret · arch/80-security/06 §Where the value lives |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an instance `bench-a`, stopped, of a version whose units need `secret:token` and `secret:key`; a value on the standard input |
+| **Action** | run `yoke instance set-secret bench-a token`; then `yoke instance show bench-a`; then `set-secret bench-a ../token` |
+| **Expected** | the first exits 0 saying the secret is present and that nothing runs to restart, without the value; `<instance state>/secrets/token` holds the value, mode `0600`, in a directory of mode `0700`; the show says `token` present and `key` missing, and neither it nor the record holds the value; the third exits 2 and writes nothing |
+
+## yoke:the-manager-command-line.12 — a secret set on a running instance restarts the units that need it
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/80-security/06 §What is refused, and what is restarted · arch/10-manager/07 §Supplying a secret |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | `yoke-core` built; an instance `bench-a` running, of a version with a unit `keeper` needing `secret:token` and a unit `other` needing nothing, each running |
+| **Action** | run `yoke instance set-secret bench-a token` with a new value |
+| **Expected** | it exits 0 naming `keeper` as restarted; `keeper` is in its second incarnation and `other` still in its first |

@@ -444,3 +444,78 @@ func Remove(o Options, name string) error {
 	}
 	return os.RemoveAll(filepath.Join(o.Instances, name))
 }
+
+// Secrets are the secrets an instance's version declares, each with the units that need it: from the
+// units' own needs and, for a Plugin unit, its Manifest's. Which exist is the directory's to say.
+func Secrets(o Options, name string) (map[string][]string, error) {
+	r, err := instancerecord.Read(o.Instances, name)
+	if err != nil {
+		return nil, err
+	}
+	bundle := filepath.Join(o.InstallRoot, r.ID, r.Version, "bundle")
+	if r.Source != "" {
+		bundle = r.Source
+	}
+	report, d := gate.Check(gate.Input{Document: gate.Read(filepath.Join(bundle, "yoke.yaml"), gate.Descriptor), Moment: gate.Creating,
+		Manifests: filepath.Join(bundle, "manifests")})
+	if d == nil {
+		return nil, refused("the descriptor of "+r.ID+" "+r.Version, report.Findings)
+	}
+	out := map[string][]string{}
+	for _, unit := range d.Order {
+		u := d.Units[unit]
+		needs := u.Needs
+		if u.Kind == "plugin" {
+			if _, m := gate.CheckManifest(gate.Read(gate.BundleManifestPath(filepath.Join(bundle, "manifests"), u.Plugin), gate.Composition)); m != nil {
+				needs = m.Needs
+			}
+		}
+		for _, n := range needs {
+			if n.Class == "secret" {
+				out[n.Name] = append(out[n.Name], unit)
+			}
+		}
+	}
+	return out, nil
+}
+
+// SecretPath is where an instance's secret is: `<instance state>/secrets/<secret>`.
+func SecretPath(o Options, name, secret string) string {
+	return filepath.Join(instancerecord.StateDir(o.Instances, name), "secrets", secret)
+}
+
+// SetSecret writes a secret into the instance's state, mode 0600 in a directory of mode 0700, replacing
+// any value it had. It is never in the record.
+func SetSecret(o Options, name, secret, value string) error {
+	if _, err := instancerecord.Read(o.Instances, name); err != nil {
+		return err
+	}
+	if err := instance.ValidateName(secret); err != nil {
+		return fmt.Errorf("the secret's name: %w", err)
+	}
+	path := SecretPath(o, name, secret)
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	if err := os.Chmod(dir, 0o700); err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(dir, "."+secret+".")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmp.Name())
+	if _, err := tmp.WriteString(value); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Chmod(0o600); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), path)
+}

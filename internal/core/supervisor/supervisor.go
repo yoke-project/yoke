@@ -45,10 +45,10 @@ type Unit struct {
 	Needs            []Need   // what each launch expands, on the host or in a container
 }
 
-// Need is one declared need as a launch expands it: its class, and the path a device is bound to or a
-// storage need is materialised at. A secret is not among them: it is 0.5's.
+// Need is one declared need as a launch expands it: its class, and the path a device is bound to, a
+// storage need is materialised at, or a secret's file is.
 type Need struct {
-	Class string // device, storage, display, audio or network
+	Class string // device, storage, secret, display, audio or network
 	Path  string
 }
 
