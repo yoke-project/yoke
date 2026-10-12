@@ -99,3 +99,61 @@ func follow(r io.Reader, progress func(string)) error {
 		}
 	}
 }
+
+// Image is one image in the engine's store and every tag it carries, as the engine names them.
+type Image struct {
+	ID   string
+	Tags []string
+}
+
+// Images lists the engine's store.
+func (e *Engine) Images(ctx context.Context) ([]Image, error) {
+	resp, err := e.do(ctx, http.MethodGet, "/images/json", nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return nil, refusal(resp, "list its images")
+	}
+	var listed []struct {
+		ID       string `json:"Id"`
+		RepoTags []string
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&listed); err != nil {
+		return nil, fmt.Errorf("the engine's list of images cannot be read: %w", err)
+	}
+	images := make([]Image, 0, len(listed))
+	for _, l := range listed {
+		images = append(images, Image{ID: l.ID, Tags: l.RepoTags})
+	}
+	return images, nil
+}
+
+// Reserved reads a tag in the reserved namespace back into the application and version it names. Podman
+// qualifies an unqualified name with `localhost/`, and Docker does not; both are the same tag.
+func Reserved(tag string) (id, version string, ok bool) {
+	name := strings.TrimPrefix(tag, "localhost/")
+	rest, found := strings.CutPrefix(name, "yoke/")
+	if !found {
+		return "", "", false
+	}
+	id, version, ok = strings.Cut(rest, ":")
+	return id, version, ok && id != "" && version != ""
+}
+
+// RemoveImage removes a reference: a tag goes, and an image goes once nothing refers to it. An image the
+// engine declines to remove because something else still refers to it, and one already gone, are not
+// failures.
+func (e *Engine) RemoveImage(ctx context.Context, ref string) error {
+	resp, err := e.do(ctx, http.MethodDelete, "/images/"+ref, nil, nil)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 300 || resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusConflict {
+		io.Copy(io.Discard, resp.Body)
+		return nil
+	}
+	return refusal(resp, "remove "+ref)
+}
