@@ -16,6 +16,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -37,6 +38,7 @@ type Discovery struct {
 	manifests map[string]*gate.Manifest // what the last scan read, by plugin
 	publish   func(event.Event)
 	resolved  map[string]string // the digest each Manifest last resolved at, by path
+	bundled   bool              // the directory is a bundle's `manifests/`, holding `<plugin>.yaml`
 }
 
 // Publishing has discovery tell publish what it concludes of each document it reads: that it resolved,
@@ -61,7 +63,15 @@ func New(dir string, r *registry.Registry, log *slog.Logger) *Discovery {
 	return &Discovery{dir: dir, registry: r, log: log, manifests: map[string]*gate.Manifest{}, resolved: map[string]string{}}
 }
 
-// Scan reads every `<plugin>/manifest.yaml` under the directory. Each that passes its check is declared
+// Bundle is discovery over a bundle's `manifests/` directory, where each Manifest is `<plugin>.yaml`. It
+// is scanned once: the bundle is the deployment, and is not watched.
+func Bundle(dir string, r *registry.Registry, log *slog.Logger) *Discovery {
+	d := New(dir, r, log)
+	d.bundled = true
+	return d
+}
+
+// Scan reads every `<plugin>/manifest.yaml` under the directory, or every `<plugin>.yaml` in a bundle's. Each that passes its check is declared
 // in the Registry, its digest computed over the bytes as read; each that does not is logged and
 // skipped. What the scan read replaces what the last one did.
 func (d *Discovery) Scan() {
@@ -73,10 +83,16 @@ func (d *Discovery) Scan() {
 		d.log.Error("the Plugin directory cannot be read", "directory", d.dir, "error", err)
 	}
 	for _, e := range entries {
-		if !e.IsDir() {
+		path := gate.ManifestPath(d.dir, e.Name())
+		if d.bundled {
+			plugin, isManifest := strings.CutSuffix(e.Name(), ".yaml")
+			if e.IsDir() || !isManifest {
+				continue
+			}
+			path = gate.BundleManifestPath(d.dir, plugin)
+		} else if !e.IsDir() {
 			continue
 		}
-		path := gate.ManifestPath(d.dir, e.Name())
 		doc := gate.Read(path, gate.Composition)
 		if errors.Is(doc.Err, fs.ErrNotExist) {
 			continue
@@ -148,6 +164,29 @@ func (d *Discovery) Available(id string) bool {
 // plugin's from its identity in the executables directory — and every reference already resolved, a
 // binding to its value and a secret or a storage need to its path in the state directory.
 func Units(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), executables, stateDir string) []supervisor.Unit {
+	return units(dep, manifest, stateDir, nil, func(u gate.Unit) (string, string) {
+		if u.Kind == "plugin" {
+			return filepath.Join(executables, u.Plugin), ""
+		}
+		return u.Exec, ""
+	})
+}
+
+// Descriptor are what a descriptor launches: each program inside the bundle, with the identity the
+// descriptor states for it, and each parameter reference resolved against the values the Core was executed
+// with — in the group named after the unit, then in `shared`.
+func Descriptor(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), bundle, stateDir string,
+	values map[string]map[string]string) []supervisor.Unit {
+	return units(dep, manifest, stateDir, values, func(u gate.Unit) (string, string) {
+		if u.Exec == "" {
+			return "", ""
+		}
+		return filepath.Join(bundle, u.Exec), u.Digest
+	})
+}
+
+func units(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), stateDir string,
+	values map[string]map[string]string, program func(gate.Unit) (exec, digest string)) []supervisor.Unit {
 	var out []supervisor.Unit
 	kinds := map[string]unit.Kind{"plugin": unit.Plugin, "oneshot": unit.Oneshot, "interface": unit.Interface}
 	for _, name := range dep.Order {
@@ -168,8 +207,11 @@ func Units(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), e
 				materialised[n.Key()] = filepath.Join(stateDir, "storage", n.Name)
 			}
 		}
+		parameter := func(value string) string { return Substitute(values, u.Name, value) }
 		resolve := func(value string) string {
+			value = parameter(value)
 			for key, bound := range u.Bind {
+				bound = parameter(bound)
 				value = strings.ReplaceAll(value, "${bind."+key+"}", bound)
 			}
 			for key, path := range materialised {
@@ -177,7 +219,7 @@ func Units(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), e
 			}
 			return value
 		}
-		s := supervisor.Unit{ID: name, Kind: kinds[u.Kind], Plugin: u.Plugin, Exec: u.Exec, Image: u.Image, RestartOnFailure: u.OnFailure, DependsOn: u.DependsOn, Env: map[string]string{}}
+		s := supervisor.Unit{ID: name, Kind: kinds[u.Kind], Plugin: u.Plugin, Image: u.Image, RestartOnFailure: u.OnFailure, DependsOn: u.DependsOn, Env: map[string]string{}}
 		for _, n := range needs {
 			switch n.Class {
 			case "device":
@@ -188,9 +230,7 @@ func Units(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), e
 				s.Needs = append(s.Needs, supervisor.Need{Class: n.Class})
 			}
 		}
-		if u.Kind == "plugin" {
-			s.Exec = filepath.Join(executables, u.Plugin)
-		}
+		s.Exec, s.Digest = program(u)
 		for _, a := range u.Args {
 			s.Args = append(s.Args, resolve(a))
 		}
@@ -203,3 +243,21 @@ func Units(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), e
 	}
 	return out
 }
+
+// Substitute resolves each parameter reference in value against the values given: in the group named
+// first, then in `shared`. A `${bind.…}` is left for the binding it names.
+func Substitute(values map[string]map[string]string, group, value string) string {
+	return reference.ReplaceAllStringFunc(value, func(ref string) string {
+		name := ref[2 : len(ref)-1]
+		if strings.HasPrefix(name, "bind.") {
+			return ref
+		}
+		if v, ok := values[group][name]; ok {
+			return v
+		}
+		return values["shared"][name]
+	})
+}
+
+// reference is one substitution, `${name}` or `${bind.<key>}`, which is always one whole value.
+var reference = regexp.MustCompile(`\$\{[^}]+\}`)

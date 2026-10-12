@@ -43,3 +43,16 @@
 | **Precondition** | the deployment of case 01, and a resolution made before anything is written to the store |
 | **Action** | write an override of 10 entries for `a`, resolve `a`; clear it, resolve `a` again |
 | **Expected** | with the override, `a` keeps 10 entries and nothing constrains its age or size; once cleared, `a` is what case 01 resolved |
+
+## yoke:a-groups-policy.04 — the account's ceiling clamps what a group resolves to, and never loosens it
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/32.14 · arch/40-state/04 §A host may tighten and may never loosen |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a deployment whose policy keeps `50MB` and `3d`, a unit `probe` whose own policy keeps `10MB` and no age, and a unit `quiet` with an override keeping `100MB`; a ceiling of `20MB` and `0` entries |
+| **Action** | resolve the limits of the Core's group, of `probe` and of `quiet` under the ceiling |
+| **Expected** | the Core's group keeps `20MB` and `3d`; `probe` keeps `10MB`, which is tighter; `quiet`'s override is clamped to `20MB`; no group's entries are constrained, since a ceiling of zero tightens nothing |

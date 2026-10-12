@@ -98,6 +98,7 @@ const (
 // Host is what phase 4 reads of the host that will run the deployment.
 type Host struct {
 	Executables string // where a Plugin's executable is found by its identity
+	Bundle      string // a descriptor's bundle, which every `exec` it names is relative to
 	StateDir    string // the instance's state directory, holding secrets/
 	RuntimeRoot string // the instance root, under which every socket path is derived
 	Instance    string // the instance's name, from which every ring's label is derived
