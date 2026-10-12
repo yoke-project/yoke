@@ -82,3 +82,16 @@
 | **Precondition** | a stopped instance `bench-a` whose state holds a log store, and a stopped instance `bench-b` |
 | **Action** | run `yoke instance show bench-a`, `yoke instance copy bench-a <path>`, then `yoke instance restore <path> bench-b` |
 | **Expected** | each exits 0; the show reports what the log store occupies; the copy names where it wrote; after the restore `bench-b`'s state holds the log store |
+
+## yoke:the-manager-command-line.07 — `yoke app` removes bundles and reclaims what nothing points at
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/15.55 · specs/15.56 · arch/10-manager/01 §`yoke app` — artifacts · arch/10-manager/06 §Removing · arch/10-manager/06 §Reclaiming |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a configuration naming an install root holding `com.yoke.station` at `2.0.0`, `2.1.0` and `2.2.0`, and an engine that does not answer; an instance `bench-a` pinned to `2.0.0` |
+| **Action** | run `yoke app remove com.yoke.station`, then `yoke app prune com.yoke.station`, then `yoke app remove com.yoke.station --version 2.2.0`, then `yoke app prune com.yoke.other` |
+| **Expected** | the first exits 2 naming `bench-a`, and removes nothing; the prune exits 0 naming `2.1.0` as removed and saying images were not considered, and leaves `2.0.0`, which `bench-a` points at, and `2.2.0`; the removal of `2.2.0` exits 0 naming it; the prune of an application not installed exits 2 |

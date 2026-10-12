@@ -60,3 +60,41 @@ func TestYokeAppInstallsListsAndShows(t *testing.T) {
 		t.Errorf("a file that is not a package exited %d:\n%s", code, out)
 	}
 }
+
+// std: yoke:the-manager-command-line.07
+func TestYokeAppRemovesAndReclaims(t *testing.T) {
+	apps := filepath.Join(t.TempDir(), "apps")
+	for _, ver := range []string{"2.0.0", "2.1.0", "2.2.0"} {
+		dir := filepath.Join(apps, "com.yoke.station", ver)
+		os.MkdirAll(filepath.Join(dir, "bundle"), 0o775)
+		os.WriteFile(filepath.Join(dir, "bundle", "yoke.yaml"), []byte("model: 1\nid: com.yoke.station\nversion: "+ver+
+			"\narch: aarch64\ncore: \">=0.1\"\nunits:\n  setup: { kind: oneshot, exec: components/setup, digest: \"sha256:"+
+			strings.Repeat("ab", 32)+"\" }\n"), 0o644)
+		os.WriteFile(filepath.Join(dir, "install.yaml"), []byte("state: complete\nsealed: false\nshared: true\n"), 0o664)
+	}
+	vars := conf(t, "install_root: "+apps+"\nengine: unix:///nonexistent/engine.sock\n")
+	vars["XDG_STATE_HOME"] = t.TempDir()
+	vars["XDG_RUNTIME_DIR"] = t.TempDir()
+	if code, out := yoke(vars, "instance", "create", "com.yoke.station", "--name", "bench-a", "--version", "2.0.0"); code != Done {
+		t.Fatalf("create: %s", out)
+	}
+	there := func(ver string) bool {
+		_, err := os.Stat(filepath.Join(apps, "com.yoke.station", ver))
+		return err == nil
+	}
+	if code, out := yoke(vars, "app", "remove", "com.yoke.station"); code != Refused || !strings.Contains(out, "bench-a") ||
+		!there("2.0.0") || !there("2.1.0") || !there("2.2.0") {
+		t.Errorf("removing what bench-a points at exited %d:\n%s", code, out)
+	}
+	if code, out := yoke(vars, "app", "prune", "com.yoke.station"); code != Done || !strings.Contains(out, "removed com.yoke.station 2.1.0") ||
+		!strings.Contains(out, "images were not considered") || there("2.1.0") || !there("2.0.0") || !there("2.2.0") {
+		t.Errorf("the prune exited %d:\n%s", code, out)
+	}
+	if code, out := yoke(vars, "app", "remove", "com.yoke.station", "--version", "2.2.0"); code != Done ||
+		!strings.Contains(out, "removed com.yoke.station 2.2.0") || there("2.2.0") {
+		t.Errorf("removing 2.2.0 exited %d:\n%s", code, out)
+	}
+	if code, out := yoke(vars, "app", "prune", "com.yoke.other"); code != Refused {
+		t.Errorf("pruning an application not installed exited %d:\n%s", code, out)
+	}
+}
