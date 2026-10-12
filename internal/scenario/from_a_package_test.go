@@ -35,6 +35,8 @@ func TestMain(m *testing.M) {
 			fmt.Fprintln(os.Stderr, "bench:", err)
 			os.Exit(1)
 		}
+		// A unit's heartbeat repeats its author's last report, so it reports once to keep its Session.
+		u.Health(0, "ready")
 		<-ctx.Done()
 		u.Close()
 		<-u.Done()

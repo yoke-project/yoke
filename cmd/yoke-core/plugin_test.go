@@ -37,6 +37,8 @@ func runBench() int {
 		fmt.Fprintln(os.Stderr, "bench:", err)
 		return 1
 	}
+	// A unit's heartbeat repeats its author's last report, so it reports once to keep its Session.
+	u.Health(0, "ready")
 	for {
 		select {
 		case _, open := <-u.Events():
