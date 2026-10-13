@@ -188,6 +188,13 @@ func Create(o Options, id, name, ver, valuesFile string) (string, error) {
 		r.Name = name
 		return name, instancerecord.Create(o.Instances, r)
 	}
+	return o.named(r)
+}
+
+// named creates a record under a name generated from its application's identifier, unique within the
+// account because creating it creates a directory that cannot already exist.
+func (o Options) named(r instancerecord.Record) (string, error) {
+	id := r.ID
 	base := id[strings.LastIndex(id, ".")+1:]
 	for n := 1; ; n++ {
 		r.Name = fmt.Sprintf("%s-%d", base, n)
@@ -201,6 +208,58 @@ func Create(o Options, id, name, ver, valuesFile string) (string, error) {
 		}
 		return r.Name, nil
 	}
+}
+
+// Run is what a run of an application with no record asks for: an installed application, by identifier
+// and optionally version, or a working directory; and whether a process the Core did not launch may
+// register. The two waivers are the invocation's, and independent.
+type Run struct {
+	ID, Version     string
+	From            string
+	AdmitUnlaunched bool
+}
+
+// Ephemeral creates the record a run with no record lasts as long as: visibly ephemeral, never eligible
+// for autostart, its desired state running. From an installed application it is pinned as a declared
+// record is; from a working directory it names the directory, and the verification waived — the
+// directory being edited has no signed statement of what it should contain, and no digest is pinned.
+// The values are the declared defaults, checked as at creation.
+func Ephemeral(o Options, run Run) (string, error) {
+	r := instancerecord.Record{DesiredState: instancerecord.Running, Owner: o.me(), CreatedAt: o.now().UTC(),
+		LastStartedAt: o.now().UTC(), Ephemeral: true}
+	var d *gate.Deployment
+	if run.From != "" {
+		dir, err := filepath.Abs(run.From)
+		if err != nil {
+			return "", err
+		}
+		descriptor := filepath.Join(dir, "yoke.yaml")
+		if _, err := os.Stat(descriptor); err != nil {
+			return "", fmt.Errorf("%s is not a bundle being written: it holds no yoke.yaml", dir)
+		}
+		report, dep := gate.Check(gate.Input{Document: gate.Read(descriptor, gate.Descriptor), Moment: gate.Creating,
+			Manifests: filepath.Join(dir, "manifests"), Host: &gate.Host{Bundle: dir, Arch: o.Arch, Core: o.Core, RuntimeDir: o.RuntimeDir},
+			Instance: &gate.Instance{}})
+		if report.Refused() || dep == nil {
+			return "", refused("the descriptor in "+dir, report.Findings)
+		}
+		d, r.ID, r.Version, r.Source, r.Verification = dep, dep.Head.ID, dep.Head.Version, dir, instancerecord.Waived
+	} else {
+		p, err := o.pinnable(run.ID, run.Version, "")
+		if err != nil {
+			return "", err
+		}
+		d, r.ID, r.Version, r.DescriptorDigest = p.d, run.ID, p.version, p.digest
+	}
+	resolved, findings := gate.Values(d, nil)
+	if len(findings) > 0 {
+		return "", refused("the declared defaults", findings)
+	}
+	r.Parameters = resolved
+	if run.AdmitUnlaunched {
+		r.Admission = instancerecord.UnlaunchedPermitted
+	}
+	return o.named(r)
 }
 
 func nameable(name string) bool {
