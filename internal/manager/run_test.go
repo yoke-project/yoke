@@ -261,3 +261,20 @@ func TestWhatARunCannotBeIsRefusedBeforeAnythingIsWritten(t *testing.T) {
 		t.Errorf("a refused run left %+v", listed)
 	}
 }
+
+// std: yoke:the-ephemeral-run.06
+func TestAStartThatNeverHappenedTakesItsRecordWithIt(t *testing.T) {
+	bin, vars := runAccount(t)
+	dir := workingBundle(t, "")
+	descriptor := filepath.Join(dir, "yoke.yaml")
+	data, _ := os.ReadFile(descriptor)
+	os.WriteFile(descriptor, []byte(strings.Replace(string(data), `" }`+"\n", `", needs: [ "secret:token" ] }`+"\n", 1)), 0o644)
+	f := follows(t, bin, vars, "--from", dir)
+	if code := f.ended(t, 30*time.Second); code != Refused || !strings.Contains(f.out.String(), "secret.missing") ||
+		!strings.Contains(f.out.String(), "nothing ran") {
+		t.Errorf("the refused run exited %d:\n%s", code, f.out)
+	}
+	if listed, _ := instancerecord.List(instancerecord.Root(environment(vars))); len(listed) != 0 {
+		t.Errorf("a start that never happened left %+v", listed)
+	}
+}
