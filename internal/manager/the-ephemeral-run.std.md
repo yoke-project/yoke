@@ -69,3 +69,16 @@
 | **Precondition** | `com.yoke.station` `2.1.0` installed; no instance declared |
 | **Action** | run `yoke app run` with no subject; with `com.yoke.other`; with `--from` and an application's identifier; with `--from` a directory holding no descriptor |
 | **Expected** | each exits 2 and no instance directory exists afterwards |
+
+## yoke:the-ephemeral-run.06 — a start that never happened takes its record with it
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/17.69 · arch/10-manager/07 §Running an application that was never declared |
+| **Level** | L3 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | as in `.01`, and a working directory holding a bundle whose one unit needs `secret:token`, which nothing supplies |
+| **Action** | run `yoke app run --from <dir>` |
+| **Expected** | it exits 2 naming `secret.missing`, says nothing ran, and no instance directory exists afterwards |

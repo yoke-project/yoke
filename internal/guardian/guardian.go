@@ -410,33 +410,55 @@ func (g *guardian) watching(name string) *watch {
 	return w
 }
 
-// start runs the gate, which nothing may execute a Core without, and then executes the Core with the
-// invocation drawn from the record and the configuration. The start is finished at its first beat.
-func (g *guardian) start(rec instancerecord.Record, w *watch) {
-	w.ephemeral = rec.Ephemeral
-	bundle := filepath.Join(g.o.Config.InstallRoot, rec.ID, rec.Version, "bundle")
+// Gated is what the gate said of an instance's start: the bundle it runs from, its deployment where the
+// descriptor could be read, the resolved values, and every finding.
+type Gated struct {
+	Bundle     string
+	Deployment *gate.Deployment
+	Values     map[string]map[string]string
+	Findings   []gate.Finding
+}
+
+// Refused says whether the start may not go ahead.
+func (g Gated) Refused() bool {
+	return g.Deployment == nil || slices.ContainsFunc(g.Findings, func(f gate.Finding) bool { return f.Class == gate.Refusal })
+}
+
+// GateStart runs the gate an instance's start runs, over its record and the account's configuration:
+// what the guardian runs before it executes a Core, and what a manager may run first to say why a start
+// would be refused. Delegated is whether the account's systemd runs a slice per instance.
+func GateStart(o Options, rec instancerecord.Record, delegated bool) Gated {
+	bundle := filepath.Join(o.Config.InstallRoot, rec.ID, rec.Version, "bundle")
 	if rec.Source != "" {
 		bundle = rec.Source
 	}
-	stateDir := instancerecord.StateDir(g.o.Instances, rec.Name)
-	runtimeDir := filepath.Dir(g.o.Runtime)
+	stateDir := instancerecord.StateDir(o.Instances, rec.Name)
+	runtimeDir := filepath.Dir(o.Runtime)
 	stamp, _ := os.ReadFile(filepath.Join(stateDir, "version"))
 	report, dep := gate.Check(gate.Input{
 		Document:  gate.Read(filepath.Join(bundle, "yoke.yaml"), gate.Descriptor),
 		Moment:    gate.Starting,
 		Manifests: filepath.Join(bundle, "manifests"),
-		Host: &gate.Host{Bundle: bundle, StateDir: stateDir, RuntimeRoot: filepath.Join(g.o.Runtime, rec.Name), Instance: rec.Name,
-			NoDelegation: !g.delegated, Arch: gate.HostArch(), Core: g.coreVersion(), RuntimeDir: &runtimeDir},
+		Host: &gate.Host{Bundle: bundle, StateDir: stateDir, RuntimeRoot: filepath.Join(o.Runtime, rec.Name), Instance: rec.Name,
+			NoDelegation: !delegated, Arch: gate.HostArch(), Core: coreVersion(o.Config.Core), RuntimeDir: &runtimeDir},
 		Instance: &gate.Instance{DescriptorDigest: rec.DescriptorDigest, Stamp: strings.TrimSpace(string(stamp))},
 	})
-	findings := report.Findings
-	var values map[string]map[string]string
+	out := Gated{Bundle: bundle, Deployment: dep, Findings: report.Findings}
 	if dep != nil {
 		var refused []gate.Finding
-		values, refused = gate.Values(dep, rec.Parameters)
-		findings = append(findings, refused...)
+		out.Values, refused = gate.Values(dep, rec.Parameters)
+		out.Findings = append(out.Findings, refused...)
 	}
-	if dep == nil || slices.ContainsFunc(findings, func(f gate.Finding) bool { return f.Class == gate.Refusal }) {
+	return out
+}
+
+// start runs the gate, which nothing may execute a Core without, and then executes the Core with the
+// invocation drawn from the record and the configuration. The start is finished at its first beat.
+func (g *guardian) start(rec instancerecord.Record, w *watch) {
+	w.ephemeral = rec.Ephemeral
+	gated := GateStart(g.o, rec, g.delegated)
+	bundle, dep, values, findings := gated.Bundle, gated.Deployment, gated.Values, gated.Findings
+	if gated.Refused() {
 		g.refuse(w, findings)
 		return
 	}
@@ -811,10 +833,9 @@ func (g *guardian) empty(name string, pid int) {
 	}
 }
 
-// coreVersion is the version of the Core this guardian will execute, read from the binary without
+// coreVersion is the version of the Core the configuration names, read from the binary without
 // executing it; nil where it cannot be read, which leaves the range to the Core's own pass.
-func (g *guardian) coreVersion() *version.Version {
-	core := g.o.Config.Core
+func coreVersion(core string) *version.Version {
 	if !filepath.IsAbs(core) {
 		if found, err := exec.LookPath(core); err == nil {
 			core = found

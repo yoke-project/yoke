@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/yoke-project/yoke/internal/gate"
+	"github.com/yoke-project/yoke/internal/guardian"
 	"github.com/yoke-project/yoke/internal/guardian/channel"
 	"github.com/yoke-project/yoke/internal/instancerecord"
 	"github.com/yoke-project/yoke/internal/instances"
@@ -61,6 +63,20 @@ func (c *call) appRun() error {
 	if r.Admission == instancerecord.UnlaunchedPermitted {
 		fmt.Fprintln(c.out, "  a process the Core did not launch may register")
 	}
+	// The gate the guardian will run, run first: a start it refuses is said here, to whoever typed the
+	// command, rather than only where the guardian's output goes.
+	cfg, err := LoadConfig(c.getenv)
+	if err != nil {
+		return refusal{err}
+	}
+	if gated := guardian.GateStart(guardian.Options{Runtime: o.Runtime, Instances: o.Instances, Config: cfg}, r, true); gated.Refused() {
+		for _, f := range gated.Findings {
+			if f.Class == gate.Refusal {
+				fmt.Fprintf(c.out, "  refused: %s at %s: %s\n", f.Code, f.Location, f.Message)
+			}
+		}
+		return c.unrun(o, nil, name, refusef("%s was refused at its start, and nothing ran", name))
+	}
 	return c.follow(o, name)
 }
 
@@ -74,6 +90,13 @@ func (c *call) follow(o instances.Options, name string) error {
 
 	client, done, err := c.summon()
 	if err != nil {
+		// A guardian that had nothing it would watch has gone already: a run whose record is still there,
+		// unmarked and unclaimed, never started.
+		if r, rerr := instancerecord.Read(o.Instances, name); rerr == nil && r.Outcome == "" {
+			if up, _ := instances.Running(o, name); !up {
+				return c.unrun(o, nil, name, fmt.Errorf("%s never started, and nothing ran: %w", name, err))
+			}
+		}
 		return err
 	}
 	defer done()
@@ -189,7 +212,9 @@ func (c *call) unrun(o instances.Options, client channel.GuardianClient, name st
 	if err := instances.Remove(o, name); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
-	client.Reconcile(context.Background(), &channel.ReconcileRequest{Name: name})
+	if client != nil {
+		client.Reconcile(context.Background(), &channel.ReconcileRequest{Name: name})
+	}
 	if why == nil {
 		fmt.Fprintf(c.out, "%s has stopped, and its record is gone with it\n", name)
 	}
