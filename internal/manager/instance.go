@@ -112,12 +112,18 @@ func (c *call) instanceList() error {
 		if w != nil {
 			state = w.GetState()
 		}
+		if state == "stopped" && r.Outcome == instancerecord.Failed {
+			state = "failed"
+		}
 		line := fmt.Sprintf("%s %s %s %s", r.Name, r.ID, r.Version, state)
 		if up := state != "stopped" && state != "refused" && state != "failed"; up != (r.DesiredState == instancerecord.Running) {
 			line += ", desired " + r.DesiredState
 		}
 		if r.Autostart {
 			line += " autostart"
+		}
+		if r.Ephemeral {
+			line += " ephemeral"
 		}
 		fmt.Fprintln(c.out, line)
 		// The why, which only the guardian knows.
