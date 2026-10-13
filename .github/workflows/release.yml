@@ -11,6 +11,10 @@ on:
 permissions:
   contents: write
   id-token: write
+  # The programs release is described from the pull requests merged since the previous programs tag, and
+  # the issues they close.
+  pull-requests: read
+  issues: read
 
 jobs:
   release:

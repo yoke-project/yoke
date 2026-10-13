@@ -63,6 +63,11 @@ type Config struct {
 	// SourceRelease is a family consumed as its source: its `vX.Y.Z` tags hand over the source archive,
 	// named for Source, to the tag's release, and nothing else is published.
 	SourceRelease bool
+
+	// Forge, where it is set, is asked what was merged since the previous programs tag, and the release
+	// a programs tag hands its files to is described with it. Repository is where, as owner/name.
+	Forge      Forge
+	Repository string
 }
 
 // Artifact is one archive of programs, built from the packages named.
@@ -189,6 +194,11 @@ func Run(cfg Config) int {
 		handed, err := handOver(cfg, m.tag, strings.TrimPrefix(m.version, "v"), notices)
 		if err != nil {
 			return fail("the files of %s could not be handed over: %v", m.tag, err)
+		}
+		if cfg.Forge != nil {
+			if err := cfg.Describe(m.tag); err != nil {
+				return fail("the release %s could not be described: %v", m.tag, err)
+			}
 		}
 		for _, f := range handed {
 			lines = append(lines, Line{Line: "publication", Published: f.published, Version: m.version, Commit: commit,
