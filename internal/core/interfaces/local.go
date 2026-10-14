@@ -2,6 +2,7 @@ package interfaces
 
 import (
 	"context"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"io"
 	"strings"
 	"sync"
@@ -62,6 +63,9 @@ type Config struct {
 	// Authenticate asks the host's authentication service whether a secret is an account's, for a
 	// routable channel. Where it is nil, nothing can establish a caller and every credential is refused.
 	Authenticate func(ctx context.Context, account, secret string) (hostauth.Verdict, error)
+	// Now is the Core's clock, which a session token's life is measured on. Where it is nil, the
+	// system's.
+	Now func() time.Time
 	// Operations are the members of the union served, by the name the contract writes them with.
 	Operations map[string]Operation
 	// Picture is the opening picture, where nothing below computes one. Optional.
@@ -123,7 +127,8 @@ type Surface struct {
 	interfacev1.UnimplementedInterfaceServer
 	cfg Config
 
-	web *web
+	web      *web
+	sessions sessions
 
 	mu      sync.Mutex
 	clients []string // the clients attached now, in the order they attached
@@ -144,6 +149,9 @@ func (s *Surface) hold(delta int) {
 
 // NewSurface is a terminator serving the operations given.
 func NewSurface(cfg Config) *Surface {
+	if cfg.Now == nil {
+		cfg.Now = time.Now
+	}
 	s := &Surface{cfg: cfg, web: &web{attachments: map[string]*attachment{}, deliveries: map[string]*webDelivery{}}}
 	ops := map[string]Operation{}
 	if cfg.Bus != nil {
@@ -189,16 +197,17 @@ func (s *Surface) Attach(stream interfacev1.Interface_AttachServer) error {
 	// On a routable channel the first frame establishes the caller, before anything is attached; its
 	// answer follows the opening, which stays the Core's first frame.
 	var first *interfacev1.ClientFrame
+	var answered *interfacev1.Authenticated
 	if s.routable() {
 		f, err := stream.Recv()
 		if err != nil {
 			return nil
 		}
-		account, ref := s.credential(stream.Context(), f.GetRequest())
-		if ref != nil {
+		var ref *interfacev1.Refusal
+		if answered, ref = s.credential(stream.Context(), f.GetRequest()); ref != nil {
 			return refusedStatus(ref)
 		}
-		client, first = account, f
+		client, first = answered.GetAccount(), f
 	}
 	a, ref := s.begin(stream.Context(), client, stream.Send)
 	if ref != nil {
@@ -211,7 +220,7 @@ func (s *Surface) Attach(stream interfacev1.Interface_AttachServer) error {
 	}
 	if first != nil {
 		a.live(&interfacev1.CoreFrame{Call: first.GetCall(), Carries: &interfacev1.CoreFrame_Answer{Answer: &interfacev1.Response{
-			Answer: &interfacev1.Response_Authenticate{Authenticate: &interfacev1.Authenticated{Account: client}}}}})
+			Answer: &interfacev1.Response_Authenticate{Authenticate: answered}}}})
 	}
 	for {
 		f, err := stream.Recv()
@@ -237,22 +246,31 @@ func (s *Surface) routable() bool {
 }
 
 // credential establishes the caller a request presents, on a routable channel: a request that is not
-// authenticate presents none; a password is the host's to judge, and whatever the host answers other than
-// accepted is the same refusal, carrying nothing about why.
-func (s *Surface) credential(ctx context.Context, r *interfacev1.Request) (string, *interfacev1.Refusal) {
+// authenticate presents none; a token this channel issued stands for its account while it stands; a
+// password is the host's to judge, and an accepted one is answered with a fresh token. Whatever else is
+// presented is the same refusal, carrying nothing about why.
+func (s *Surface) credential(ctx context.Context, r *interfacev1.Request) (*interfacev1.Authenticated, *interfacev1.Refusal) {
 	invalid := refusal("auth.invalid", "the credential is not accepted")
 	auth := r.GetAuthenticate()
 	if auth == nil {
-		return "", refusal("auth.required", "the channel "+s.cfg.Channel.Name+" is on a routable address, and requires a credential establishing the caller")
+		return nil, refusal("auth.required", "the channel "+s.cfg.Channel.Name+" is on a routable address, and requires a credential establishing the caller")
+	}
+	if token := auth.GetToken(); token != "" {
+		account, expires, ok := s.sessions.redeem(token, s.cfg.Now())
+		if !ok {
+			return nil, invalid
+		}
+		return &interfacev1.Authenticated{Account: account, Expires: timestamppb.New(expires)}, nil
 	}
 	p := auth.GetPassword()
 	if p == nil || p.GetAccount() == "" || s.cfg.Authenticate == nil {
-		return "", invalid
+		return nil, invalid
 	}
 	if verdict, _ := s.cfg.Authenticate(ctx, p.GetAccount(), p.GetSecret()); verdict != hostauth.Accepted {
-		return "", invalid
+		return nil, invalid
 	}
-	return p.GetAccount(), nil
+	token, expires := s.sessions.issue(p.GetAccount(), s.cfg.Now())
+	return &interfacev1.Authenticated{Account: p.GetAccount(), Token: token, Expires: timestamppb.New(expires)}, nil
 }
 
 func (s *Surface) publish(e event.Event) {

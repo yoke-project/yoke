@@ -789,3 +789,43 @@ channels:
 		t.Errorf("a wrong secret: %v", err)
 	}
 }
+
+// std: yoke:the-session-token.05
+func TestThroughTheCoreABrowserSignsInAndAttachesWithItsCookie(t *testing.T) {
+	port := freePort(t)
+	dir := t.TempDir()
+	material(t, filepath.Join(dir, "state", "tls"), "service")
+	_, lines := startCoreIn(t, dir, "", `# The test binary, %s, runs nothing here; %s is unused.
+units: {}
+channels:
+  service: { transport: http+ws, clients: multiple, address: { class: routable, host: 127.0.0.1, port: "`+port+`", security: { transport: encrypted, caller: authenticated } } }
+`)
+	var said []string
+	deadline := time.After(20 * time.Second)
+	for bound := false; !bound; {
+		select {
+		case line, open := <-lines:
+			if !open {
+				t.Fatalf("the Core exited:\n%s", strings.Join(said, "\n"))
+			}
+			said = append(said, line)
+			bound = strings.Contains(line, "msg=channel") && strings.Contains(line, "name=service")
+		case <-deadline:
+			t.Fatalf("within twenty seconds the Core said:\n%s", strings.Join(said, "\n"))
+		}
+	}
+	address := "127.0.0.1:" + port
+	resp, _ := signIn(t, address)
+	var session *http.Cookie
+	for _, k := range resp.Cookies() {
+		if k.Name == "yoke-session" {
+			session = k
+		}
+	}
+	if session == nil {
+		t.Fatalf("signing in set no session cookie: %d", resp.StatusCode)
+	}
+	if frame, err := events(t, address, session); err != nil || !strings.Contains(frame, "opening") {
+		t.Errorf("attaching with the cookie: %v %s", err, frame)
+	}
+}

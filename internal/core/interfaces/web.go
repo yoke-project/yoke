@@ -91,15 +91,24 @@ func (s *Surface) attached(r *http.Request) *attachment {
 // events attaches: the WebSocket is the live shape, carrying the opening first and then the frames in
 // JSON, and the attachment lives as long as it does.
 func (s *Surface) events(w http.ResponseWriter, r *http.Request) {
-	// A browser attaches to a routable channel with the session its authentication began, which this Core
-	// does not yet issue.
-	if s.routable() {
-		writeRefusal(w, refusal("auth.required", "the channel "+s.cfg.Channel.Name+" is on a routable address, and requires a credential establishing the caller"))
-		return
-	}
 	client, established := peer.Account(r.Context(), s.cfg.Accounts)
 	if !established {
 		client = "unestablished"
+	}
+	// A browser attaches to a routable channel with the session its authentication began, carried in its
+	// cookie.
+	if s.routable() {
+		c, err := r.Cookie(SessionCookie)
+		if err != nil {
+			writeRefusal(w, refusal("auth.required", "the channel "+s.cfg.Channel.Name+" is on a routable address, and requires a credential establishing the caller"))
+			return
+		}
+		account, _, ok := s.sessions.redeem(c.Value, s.cfg.Now())
+		if !ok {
+			writeRefusal(w, refusal("auth.invalid", "the credential is not accepted"))
+			return
+		}
+		client = account
 	}
 	id := make([]byte, 16)
 	rand.Read(id)
@@ -183,12 +192,18 @@ func (s *Surface) control(w http.ResponseWriter, r *http.Request) {
 	// On a routable channel a browser authenticates before it attaches: the credential is asked of the
 	// host with no attachment, and anything else with none presents no caller.
 	if a == nil {
-		account, ref := s.credential(r.Context(), req)
+		answered, ref := s.credential(r.Context(), req)
 		if ref != nil {
 			writeRefusal(w, ref)
 			return
 		}
-		body, _ := protojson.Marshal(&interfacev1.Response{Answer: &interfacev1.Response_Authenticate{Authenticate: &interfacev1.Authenticated{Account: account}}})
+		// The token travels as a cookie the page cannot read, and never in a body a page can.
+		if answered.GetToken() != "" {
+			http.SetCookie(w, &http.Cookie{Name: SessionCookie, Value: answered.GetToken(), Path: "/v1", HttpOnly: true,
+				SameSite: http.SameSiteStrictMode, Secure: r.TLS != nil, Expires: answered.GetExpires().AsTime()})
+		}
+		body, _ := protojson.Marshal(&interfacev1.Response{Answer: &interfacev1.Response_Authenticate{Authenticate: &interfacev1.Authenticated{
+			Account: answered.GetAccount(), Expires: answered.GetExpires()}}})
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(body)
 		return
