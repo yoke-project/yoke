@@ -174,7 +174,16 @@ var (
 )
 
 // headKeys are a descriptor's, read by the part that builds the application form.
-var headKeys = []string{"model", "id", "version", "arch", "core", "data", "parameters"}
+// headKeys are the keys a descriptor's head holds, which a composition document has none of.
+var headKeys = func() []string {
+	var keys []string
+	for _, f := range schema {
+		if key, _, _ := strings.Cut(f.path, "."); f.descriptorOnly && key != "units" && !slices.Contains(keys, key) {
+			keys = append(keys, key)
+		}
+	}
+	return keys
+}()
 
 // shape is phase 1: keys, types, values, formats, what each kind and document may carry. It builds the
 // deployment as it goes.
@@ -333,7 +342,7 @@ func (c *checker) unit(name string, n *node, outer overrides) (Unit, bool) {
 	for _, e := range n.entries() {
 		fields[e.key] = e.value
 	}
-	known := []string{"kind", "plugin", "exec", "image", "digest", "manifest_digest", "args", "env", "needs", "bind", "depends_on", "autostart", "migrates_from", "policy"}
+	known := keysAt("units.*")
 	for _, e := range n.entries() {
 		if !slices.Contains(known, e.key) {
 			c.refuse("key.unknown", joined(location, e.key), "the key %s is not part of a unit", e.key)
@@ -543,14 +552,14 @@ func (c *checker) policy(n *node, location, kind string) overrides {
 			read(e.key, e.value, joined(at, e.key))
 		}
 	}
-	block(n, location, []string{"heartbeat", "startup_window", "stop_window", "restart", "retention"}, func(key string, v *node, at string) {
+	block(n, location, keysAt("units.*.policy"), func(key string, v *node, at string) {
 		switch key {
 		case "startup_window":
 			o.startupWindow = dur(v, at, false)
 		case "stop_window":
 			o.stopWindow = dur(v, at, false)
 		case "heartbeat":
-			block(v, at, []string{"interval", "tolerance"}, func(key string, v *node, at string) {
+			block(v, at, keysAt("units.*.policy.heartbeat"), func(key string, v *node, at string) {
 				if key == "interval" {
 					o.heartbeatInterval = dur(v, at, false)
 					return
@@ -573,9 +582,10 @@ func (c *checker) policy(n *node, location, kind string) overrides {
 				o.tolerance = &t
 			})
 		case "restart":
-			keys := []string{"backoff", "ceiling", "stability_window"}
+			// on_failure is in the unit's scope only, and a oneshot's: the document's scope does not name it.
+			keys := keysAt("policy.restart")
 			if kind == "oneshot" {
-				keys = append(keys, "on_failure")
+				keys = keysAt("units.*.policy.restart")
 			}
 			block(v, at, keys, func(key string, v *node, at string) {
 				switch key {
@@ -590,7 +600,7 @@ func (c *checker) policy(n *node, location, kind string) overrides {
 				}
 			})
 		case "retention":
-			block(v, at, []string{"age", "bytes", "entries"}, func(key string, v *node, at string) {
+			block(v, at, keysAt("units.*.policy.retention"), func(key string, v *node, at string) {
 				switch key {
 				case "age":
 					o.age = dur(v, at, true)
@@ -635,7 +645,7 @@ func (c *checker) channel(name string, n *node) Channel {
 	at := func(key string) string { return joined(location, key) }
 	fields := map[string]*node{}
 	for _, e := range n.entries() {
-		if !slices.Contains([]string{"unit", "transport", "clients", "address", "on_suspend"}, e.key) {
+		if !slices.Contains(keysAt("channels.*"), e.key) {
 			c.refuse("key.unknown", at(e.key), "the key %s is not part of a channel", e.key)
 			continue
 		}
@@ -671,7 +681,7 @@ func (c *checker) address(n *node, location string) *Address {
 	at := func(key string) string { return joined(location, key) }
 	fields := map[string]*node{}
 	for _, e := range n.entries() {
-		if !slices.Contains([]string{"class", "host", "port", "security"}, e.key) {
+		if !slices.Contains(keysAt("channels.*.address"), e.key) {
 			c.refuse("key.unknown", at(e.key), "the key %s is not part of an address", e.key)
 			continue
 		}
@@ -709,13 +719,15 @@ func (c *checker) address(n *node, location string) *Address {
 				continue
 			}
 			for _, e := range v.entries() {
+				if !slices.Contains(keysAt("channels.*.address.security"), e.key) {
+					c.refuse("key.unknown", joined(at(key), e.key), "the key %s is not part of security", e.key)
+					continue
+				}
 				switch e.key {
 				case "transport":
 					a.Transport, _ = c.enum(e.value, joined(at(key), e.key), "encrypted")
 				case "caller":
 					a.Caller, _ = c.enum(e.value, joined(at(key), e.key), "authenticated")
-				default:
-					c.refuse("key.unknown", joined(at(key), e.key), "the key %s is not part of security", e.key)
 				}
 			}
 		}
@@ -730,6 +742,10 @@ func (c *checker) rule(n *node, location string) Rule {
 	}
 	var prevails, over bool
 	for _, e := range n.entries() {
+		if !slices.Contains(keysAt("arbitration.*"), e.key) {
+			c.refuse("key.unknown", joined(location, e.key), "the key %s is not part of an arbitration rule", e.key)
+			continue
+		}
 		switch e.key {
 		case "prevails":
 			prevails = true
@@ -737,8 +753,6 @@ func (c *checker) rule(n *node, location string) Rule {
 		case "over":
 			over = true
 			r.Over, _ = c.strings(e.value, joined(location, e.key), false)
-		default:
-			c.refuse("key.unknown", joined(location, e.key), "the key %s is not part of an arbitration rule", e.key)
 		}
 	}
 	if !prevails {
@@ -1006,7 +1020,7 @@ func (c *checker) parameter(n *node, at string) (Parameter, bool) {
 	}
 	fields := map[string]*node{}
 	for _, e := range n.entries() {
-		if !slices.Contains([]string{"type", "range", "pattern", "values", "required", "default", "label"}, e.key) {
+		if !slices.Contains(keysAt("parameters.*.*"), e.key) {
 			c.refuse("key.unknown", joined(at, e.key), "the key %s is not part of a parameter's declaration", e.key)
 			continue
 		}
