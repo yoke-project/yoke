@@ -67,5 +67,5 @@ develop floor="":
 
 # Publish into this repository's ecosystems, one manifest line per publication: what the tags on this
 # commit name. It runs where a release's tag is seen, and reads nothing beyond this tree.
-release:
-    @go run ./cmd/yoke-release
+release tag="":
+    @go run ./cmd/yoke-release -tag "{{tag}}"

@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -33,6 +34,10 @@ import (
 // Config is what the verb runs with.
 type Config struct {
 	Root string // the checkout, at the commit being released
+	// Invoked is the tag whose placing invoked this run, where one did: the run publishes what that tag
+	// names and leaves the commit's other tags to their own runs. Empty, every release tag on the
+	// commit is published.
+	Invoked string
 	// Proxy asks the module proxy to serve a module at a version, which is what publishes it, and
 	// returns the digest the proxy serves.
 	Proxy func(module, version string) (string, error)
@@ -120,6 +125,12 @@ func Run(cfg Config) int {
 	commit, err := gitIn(cfg.Root, "rev-parse", "HEAD")
 	if err != nil {
 		return fail("the commit cannot be read: %v", err)
+	}
+	if cfg.Invoked != "" {
+		if !slices.Contains(strings.Fields(listed), cfg.Invoked) {
+			return fail("the run was invoked by %s, which does not name this commit", cfg.Invoked)
+		}
+		listed = cfg.Invoked
 	}
 	var modules []tagged
 	for _, tag := range strings.Fields(listed) {

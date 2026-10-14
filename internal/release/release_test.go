@@ -181,3 +181,32 @@ func TestTheNoticesTheTreeStatesAreNamed(t *testing.T) {
 		t.Errorf("the line names the notices %v", lines[0]["notices"])
 	}
 }
+
+// std: yoke:the-release-verb.06
+func TestARunInvokedByOneTagPublishesWhatThatTagNames(t *testing.T) {
+	root, _ := repository(t, "v0.1.0", "proto/v0.2.0")
+	programs, definitions := treeHash(t, root, "example.com/yk", "v0.1.0", "v0.1.0", ""), treeHash(t, root, "example.com/yk/proto", "v0.2.0", "proto/v0.2.0", "proto")
+	invoked := func(tag string) (int, []string, string) {
+		p := &proxy{served: map[string]string{"example.com/yk@v0.1.0": programs, "example.com/yk/proto@v0.2.0": definitions}}
+		var out, errs bytes.Buffer
+		code := release.Run(release.Config{Root: root, Proxy: p.serve, Out: &out, Err: &errs, Invoked: tag,
+			Today: func() time.Time { return time.Date(2026, 9, 26, 23, 30, 0, 0, time.UTC) }})
+		var published []string
+		for _, line := range strings.Split(strings.TrimSpace(out.String()), "\n") {
+			var l map[string]any
+			if json.Unmarshal([]byte(line), &l) == nil {
+				published = append(published, l["published"].(string)+"@"+l["version"].(string))
+			}
+		}
+		return code, published, errs.String()
+	}
+	if code, got, errs := invoked("proto/v0.2.0"); code != 0 || strings.Join(got, " ") != "example.com/yk/proto@v0.2.0" {
+		t.Errorf("invoked by the definitions tag: %d %v %s", code, got, errs)
+	}
+	if code, got, errs := invoked("v0.1.0"); code != 0 || strings.Join(got, " ") != "example.com/yk@v0.1.0" {
+		t.Errorf("invoked by the programs tag: %d %v %s", code, got, errs)
+	}
+	if code, got, errs := invoked("v9.9.9"); code == 0 || len(got) != 0 || !strings.Contains(errs, "v9.9.9") {
+		t.Errorf("invoked by a tag not on the commit: %d %v %s", code, got, errs)
+	}
+}

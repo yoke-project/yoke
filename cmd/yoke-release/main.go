@@ -24,8 +24,11 @@ func main() {
 	wheel := flag.String("wheel", "", "publish the family's wheel of this name at its release tag, and nothing else")
 	// A family consumed as its source — C, C++ — names the archive, and the verb hands that over alone.
 	source := flag.String("source", "", "hand over the family's source archive of this name at its release tag, and nothing else")
+	// The tag whose placing invoked the run: a commit carrying two release tags runs the verb once for
+	// each, and each run publishes what its own tag names.
+	invoked := flag.String("tag", "", "the tag that invoked this run; none publishes every release tag on the commit")
 	flag.Parse()
-	cfg := release.Config{Root: ".", Proxy: release.FromProxy, Today: time.Now, Out: os.Stdout, Err: os.Stderr}
+	cfg := release.Config{Root: ".", Invoked: *invoked, Proxy: release.FromProxy, Today: time.Now, Out: os.Stdout, Err: os.Stderr}
 	switch {
 	case *crate != "" && *wheel != "":
 		fmt.Fprintln(os.Stderr, "release: a family publishes one package: -crate or -wheel, not both")
