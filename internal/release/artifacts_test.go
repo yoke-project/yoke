@@ -316,3 +316,64 @@ func TestAProgramIsBuiltFromTheTagAndSaysItsVersion(t *testing.T) {
 		}
 	}
 }
+
+// std: yoke:the-artifacts.08
+func TestAnArtifactCarriesFilesOfTheTreeAtTheirOwnPaths(t *testing.T) {
+	root := withCommandsAnd(t, map[string]string{"README": "read me\n"}, "v0.1.0")
+	os.MkdirAll(filepath.Join(root, "packaging"), 0o755)
+	os.WriteFile(filepath.Join(root, "packaging", "unit"), []byte("[Unit]\n"), 0o644)
+	git(t, root, "add", "packaging/unit")
+	git(t, root, "commit", "-q", "-m", "two")
+	git(t, root, "tag", "-f", "v0.1.0")
+	os.WriteFile(filepath.Join(root, "packaging", "unit"), []byte("changed beside the tag\n"), 0o644)
+	s := &shelf{}
+	var out, errs bytes.Buffer
+	code := release.Run(release.Config{Root: root, Out: &out, Err: &errs,
+		Proxy:     func(m, v string) (string, error) { return treeHash(t, root, m, v, v, ""), nil },
+		Today:     func() time.Time { return time.Date(2026, 9, 26, 0, 0, 0, 0, time.UTC) },
+		Artifacts: []release.Artifact{{Name: "yk", Packages: []string{"./cmd/a"}, Files: []string{"packaging/unit"}}},
+		Releases:  "https://forge.example/yk/releases/tag/", Upload: s.upload})
+	if code != 0 {
+		t.Fatalf("the verb failed: %s%s", out.String(), errs.String())
+	}
+	for _, arch := range []string{"amd64", "arm64"} {
+		inside := entries(t, s.files["yk-0.1.0-linux-"+arch+".tar.gz"])
+		if string(inside["packaging/unit"]) != "[Unit]\n" || len(inside) != 3 {
+			t.Errorf("the %s archive holds %v, the file %q", arch, keys(inside), inside["packaging/unit"])
+		}
+	}
+}
+
+// std: yoke:the-artifacts.09
+func TestYokesArtifactsHoldWhatEachAxisCarries(t *testing.T) {
+	want := map[string][2][]string{
+		"yoke": {{"./cmd/yoke-core", "./cmd/yoke", "./cmd/yoke-guardian"},
+			{"packaging/yoke.service", "packaging/core.yaml", "packaging/yoke.tmpfiles", "packaging/yoke.sysusers"}},
+		"yoke-conformance": {{"./cmd/yoke-conformance", "./cmd/yoke-core", "./cmd/yoke-compose"}, nil},
+		"yoke-verify":      {{"./cmd/yoke-verify"}, nil},
+	}
+	if len(release.Yoke) != len(want) {
+		t.Errorf("yoke hands over %d artifacts", len(release.Yoke))
+	}
+	tree := filepath.Join("..", "..")
+	for _, a := range release.Yoke {
+		w, found := want[a.Name]
+		if !found {
+			t.Errorf("an artifact %s", a.Name)
+			continue
+		}
+		if strings.Join(a.Packages, " ") != strings.Join(w[0], " ") || strings.Join(a.Files, " ") != strings.Join(w[1], " ") {
+			t.Errorf("%s holds %v and %v", a.Name, a.Packages, a.Files)
+		}
+		for _, p := range a.Packages {
+			if _, err := os.Stat(filepath.Join(tree, p, "main.go")); err != nil {
+				t.Errorf("%s names %s: %v", a.Name, p, err)
+			}
+		}
+		for _, f := range a.Files {
+			if _, err := os.Stat(filepath.Join(tree, f)); err != nil {
+				t.Errorf("%s names %s: %v", a.Name, f, err)
+			}
+		}
+	}
+}

@@ -70,10 +70,12 @@ type Config struct {
 	Repository string
 }
 
-// Artifact is one archive of programs, built from the packages named.
+// Artifact is one archive of programs, built from the packages named, with files of the tagged tree
+// carried at the paths they have there.
 type Artifact struct {
 	Name     string
 	Packages []string
+	Files    []string
 }
 
 // Line is one publication, in the manifest's fixed shape and order.
@@ -349,6 +351,13 @@ func handOver(cfg Config, tag, version string, notices []string) ([]handed, erro
 					return nil, err
 				}
 				entries = append(entries, entry{name: filepath.Base(pkg), mode: 0o755, data: data})
+			}
+			for _, name := range a.Files {
+				data, err := os.ReadFile(filepath.Join(tree, filepath.FromSlash(name)))
+				if err != nil {
+					return nil, err
+				}
+				entries = append(entries, entry{name: name, mode: 0o644, data: data})
 			}
 			entries = append(entries, entry{name: "LICENSE", mode: 0o644, data: licensed})
 			for _, name := range notices {

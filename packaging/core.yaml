@@ -1,0 +1,13 @@
+# The Core's configuration in the service form, installed at /etc/yoke/core.yaml. Every key is written at
+# its default, so a host with this file behaves as one with none; a value from the environment, YOKE_ and
+# the key's path upper-cased, overrides one key. It is about the process, never about the deployment:
+# which units run is the composition's.
+state_dir: /var/lib/yoke
+runtime_dir: /run/yoke
+plugins:
+  manifests: /etc/yoke/plugins.d
+  executables: /usr/lib/yoke/plugins
+  scan_interval: 30s
+engine: unix:///run/podman/podman.sock
+log:
+  level: info

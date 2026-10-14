@@ -1,0 +1,3 @@
+# The group whose members may install applications into /var/lib/yoke/apps, installed at
+# /usr/lib/sysusers.d/yoke.conf. Membership is the right to install; the system allocates its identifier.
+g yoke-apps -

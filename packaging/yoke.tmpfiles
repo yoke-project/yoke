@@ -1,0 +1,13 @@
+# The directories installing Yoke creates, with their owners and modes, installed at
+# /usr/lib/tmpfiles.d/yoke.conf. /var/lib/yoke belongs to the account the deployment runs as: root, unless
+# a drop-in on yoke.service names another, in which case the same line under /etc/tmpfiles.d/ names it.
+# /run/yoke is the Core's to create, the stores are the Core's, and secrets/ and tls/ are made by whoever
+# first writes one.
+d /etc/yoke                0755 root root      -
+d /etc/yoke/plugins.d      0755 root root      -
+d /etc/yoke/deployments    0755 root root      -
+d /usr/lib/yoke            0755 root root      -
+d /usr/lib/yoke/plugins    0755 root root      -
+d /usr/lib/yoke/interfaces 0755 root root      -
+d /var/lib/yoke            0755 root root      -
+d /var/lib/yoke/apps       2775 root yoke-apps -
