@@ -21,12 +21,18 @@ const usage = `usage: yoke-compose <verb> [options]
   build [--dir D] [--out O] [--sign KEY] [--seal FILE]      make a package from it
 `
 
-// Run is the command line: one verb per act. It returns the exit status — zero when the act was done,
-// non-zero when it was refused or failed.
+// The exit statuses: a refusal will not pass on the next attempt, a fault may.
+const (
+	Done    = 0
+	Refused = 1
+	Fault   = 2
+)
+
+// Run is the command line: one verb per act. It returns the exit status: Done, Refused or Fault.
 func Run(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprint(stderr, usage)
-		return 2
+		return Refused
 	}
 	verb, rest := args[0], args[1:]
 	fs := flag.NewFlagSet("yoke-compose "+verb, flag.ContinueOnError)
@@ -40,29 +46,29 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		core := fs.String("core", "", "the range of Core versions, by default >=0.5")
 		id, flags := split(rest)
 		if fs.Parse(flags) != nil {
-			return 2
+			return Refused
 		}
 		if id == "" {
 			fmt.Fprint(stderr, "init takes the application's identifier\n"+usage)
-			return 2
+			return Refused
 		}
 		err = Init(*dir, id, InitOptions{Arch: *arch, Version: *ver, Core: *core})
 	case "check":
 		if fs.Parse(rest) != nil {
-			return 2
+			return Refused
 		}
 		r := Check(*dir)
 		show(stdout, r)
 		if r.Refused() {
-			return 1
+			return Refused
 		}
-		return 0
+		return Done
 	case "build":
 		out := fs.String("out", ".", "where the package is written")
 		key := fs.String("sign", "", "a private key in PEM to sign with; none builds an unsigned package")
 		seal := fs.String("seal", "", "a file holding the seal credential; none leaves the payload in clear")
 		if fs.Parse(rest) != nil {
-			return 2
+			return Refused
 		}
 		o := BuildOptions{Out: *out}
 		if *key != "" {
@@ -84,13 +90,16 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		}
 	default:
 		fmt.Fprintf(stderr, "yoke-compose has no verb %q; the verbs are init, check and build\n", verb)
-		return 2
+		return Refused
 	}
 	if err != nil {
 		fmt.Fprintln(stderr, err)
-		return 1
+		if IsRefusal(err) {
+			return Refused
+		}
+		return Fault
 	}
-	return 0
+	return Done
 }
 
 // split takes the one positional argument out of args, wherever it stands among the flags.
@@ -131,15 +140,15 @@ func signer(path string) (crypto.Signer, error) {
 	}
 	block, _ := pem.Decode(data)
 	if block == nil {
-		return nil, fmt.Errorf("%s holds no PEM block", path)
+		return nil, refusef("%s holds no PEM block", path)
 	}
 	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
+		return nil, refusef("%s: %w", path, err)
 	}
 	s, ok := key.(crypto.Signer)
 	if !ok {
-		return nil, fmt.Errorf("%s holds a key that cannot sign", path)
+		return nil, refusef("%s holds a key that cannot sign", path)
 	}
 	return s, nil
 }
@@ -151,10 +160,10 @@ func credential(path string) ([]byte, error) {
 	}
 	key, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(data)))
 	if err != nil {
-		return nil, fmt.Errorf("%s is not one line of base64: %w", path, err)
+		return nil, refusef("%s is not one line of base64: %w", path, err)
 	}
 	if len(key) != 32 {
-		return nil, fmt.Errorf("the seal credential in %s is %d bytes; it must be 32", path, len(key))
+		return nil, refusef("the seal credential in %s is %d bytes; it must be 32", path, len(key))
 	}
 	return key, nil
 }

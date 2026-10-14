@@ -42,7 +42,7 @@
 | **Label** | blocking |
 | **Precondition** | a `core.yaml`; a composition in force with two units whose executables are not there; a second composition with nothing to refuse |
 | **Action** | run `yoke service check`; then with `--composition` naming the second |
-| **Expected** | the first exits 2 naming `component.missing` for both units; the second exits 0 saying it passes |
+| **Expected** | the first exits 1 naming `component.missing` for both units; the second exits 0 saying it passes |
 
 ## yoke:the-service-regime.04 — `set-secret` writes into the deployment's own area and never displays the value
 
@@ -68,7 +68,7 @@
 | **Label** | blocking |
 | **Precondition** | `yoke` built; a `yoke-core` the test puts on the `PATH`, writing its process and its arguments; the two compositions of `.03` |
 | **Action** | run `yoke service exec --composition` with the refused one; then with the one that passes |
-| **Expected** | the first exits 2 naming the refusals, and no Core was executed; the second is the Core, in the same process, executed with `--composition` naming it |
+| **Expected** | the first exits 1 naming the refusals, and no Core was executed; the second is the Core, in the same process, executed with `--composition` naming it |
 
 ## yoke:the-service-regime.06 — the shipped unit, under systemd, runs the deployment the composition declares
 
@@ -82,3 +82,16 @@
 | **Precondition** | `yoke` and `yoke-core` built; `packaging/yoke.service` installed for the account's own systemd, a drop-in naming the built `yoke`, a `core.yaml` and a composition of the test's own; a `systemctl` on the `PATH` that is the account's own |
 | **Action** | run `yoke service start`; `yoke service status`; `yoke service stop` |
 | **Expected** | the start exits 0 and the instance becomes ready under the unit; the status says the unit is active and the instance answers, naming no disagreement; after the stop the unit is inactive and the instance's claim is free |
+
+## yoke:the-service-regime.07 — the shipped unit restarts after a fault and never after a refusal
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/10-manager/01 §What it reports · arch/00-system/06 §1 — The service form, from boot |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | `packaging/yoke.service` as shipped |
+| **Action** | read its `[Service]` section |
+| **Expected** | `Restart=on-failure`, and `RestartPreventExitStatus=` names exactly the status `yoke` exits with on a refusal, `1` |

@@ -14,7 +14,7 @@ Type=exec
 ExecStart=/usr/bin/yoke service exec
 # A refusal will not pass on the next attempt, so it is not restarted; a fault may be.
 Restart=on-failure
-RestartPreventExitStatus=2
+RestartPreventExitStatus=1
 KillSignal=SIGTERM
 
 [Install]

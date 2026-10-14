@@ -147,3 +147,27 @@ func TestServiceExecGatesAndThenExecutesTheCoreInItsPlace(t *testing.T) {
 		t.Errorf("the Core was executed as %q, want %q", got, want)
 	}
 }
+
+// std: yoke:the-service-regime.07
+func TestTheShippedUnitNeverRestartsARefusal(t *testing.T) {
+	unit, err := os.ReadFile(filepath.Join("..", "..", "packaging", "yoke.service"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(string(unit), "\n")
+	var restart, prevent []string
+	for _, l := range lines {
+		if v, ok := strings.CutPrefix(l, "Restart="); ok {
+			restart = append(restart, v)
+		}
+		if v, ok := strings.CutPrefix(l, "RestartPreventExitStatus="); ok {
+			prevent = append(prevent, strings.Fields(v)...)
+		}
+	}
+	if len(restart) != 1 || restart[0] != "on-failure" {
+		t.Errorf("Restart= %v", restart)
+	}
+	if len(prevent) != 1 || prevent[0] != strconv.Itoa(Refused) {
+		t.Errorf("RestartPreventExitStatus= %v, where a refusal exits %d", prevent, Refused)
+	}
+}
