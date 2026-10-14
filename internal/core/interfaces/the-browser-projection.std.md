@@ -82,3 +82,16 @@
 | **Precondition** | `yoke-core` built, with a composition declaring an attached channel carrying `http+ws` on loopback and a unit that runs to completion |
 | **Action** | open `/v1/events`; `POST /v1/read` the units with the cookie it set |
 | **Expected** | the WebSocket's first message is the opening; the read is answered `200` with the unit's record |
+
+## yoke:the-browser-projection.07 — on a routable channel, `POST /v1/authenticate` asks the host with no attachment
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/80-security/08 §2 — A browser reaches a routable channel · arch/80-security/04 §The host's answer about a person · arch/70-interface-surface/08 §`http+ws` — the browser projection |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a routable channel carrying `http+ws`, bound with its material, whose host accepts `alice` with `hunter2x` and refuses any other |
+| **Action** | `POST /v1/authenticate` with `alice` and `hunter2x`, with no attachment; then with `alice` and `wrong`; then `POST` another operation with no attachment |
+| **Expected** | the first answers `alice`; the second is refused `auth.invalid`, status `401`; the third is refused `auth.required` |

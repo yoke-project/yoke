@@ -69,3 +69,16 @@
 | **Precondition** | a descriptor declaring a routable channel `panel` and a local channel `local`; a state directory holding no `tls/`, then `tls/panel.crt` alone, then `tls/panel.crt` and `tls/panel.key` with the key unreadable, then both readable |
 | **Action** | check it at installing, at creating and at starting, each time |
 | **Expected** | at starting, `channel.tls.missing` naming `panel` and the path, for each of the first three, and nothing about `local`; nothing for the fourth; nothing at installing or at creating |
+
+## yoke:the-moments.06 — a routable channel on a host whose authentication service cannot be asked is refused when it starts
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/15-gate/06 §Phase 4 — host facts · arch/80-security/04 §The host's answer about a person |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a descriptor declaring a routable channel `panel` whose caller is authenticated, its material in the store; the host's answer about its authentication service supplied as a failure, then as a success; then a descriptor declaring no routable channel, with the failure |
+| **Action** | check each at installing, at creating and at starting |
+| **Expected** | at starting with the failure, `auth.unavailable` naming `panel` and why; nothing of it with the success, nor for the descriptor with no routable channel, nor at installing or at creating |

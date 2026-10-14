@@ -91,6 +91,12 @@ func (s *Surface) attached(r *http.Request) *attachment {
 // events attaches: the WebSocket is the live shape, carrying the opening first and then the frames in
 // JSON, and the attachment lives as long as it does.
 func (s *Surface) events(w http.ResponseWriter, r *http.Request) {
+	// A browser attaches to a routable channel with the session its authentication began, which this Core
+	// does not yet issue.
+	if s.routable() {
+		writeRefusal(w, refusal("auth.required", "the channel "+s.cfg.Channel.Name+" is on a routable address, and requires a credential establishing the caller"))
+		return
+	}
 	client, established := peer.Account(r.Context(), s.cfg.Accounts)
 	if !established {
 		client = "unestablished"
@@ -156,7 +162,7 @@ func (s *Surface) events(w http.ResponseWriter, r *http.Request) {
 // attachment is refused, since the channel is held by the connection that can be told things.
 func (s *Surface) control(w http.ResponseWriter, r *http.Request) {
 	a := s.attached(r)
-	if a == nil {
+	if a == nil && !s.routable() {
 		writeRefusal(w, refusal("channel.not_attached", "a control request is made from a live attachment, and none is open"))
 		return
 	}
@@ -172,6 +178,19 @@ func (s *Surface) control(w http.ResponseWriter, r *http.Request) {
 	}
 	if named := strings.TrimPrefix(r.URL.Path, "/v1/"); Name(req) != named {
 		writeRefusal(w, refusal("operation.malformed", "the path names "+named+" and the request "+Name(req)))
+		return
+	}
+	// On a routable channel a browser authenticates before it attaches: the credential is asked of the
+	// host with no attachment, and anything else with none presents no caller.
+	if a == nil {
+		account, ref := s.credential(r.Context(), req)
+		if ref != nil {
+			writeRefusal(w, ref)
+			return
+		}
+		body, _ := protojson.Marshal(&interfacev1.Response{Answer: &interfacev1.Response_Authenticate{Authenticate: &interfacev1.Authenticated{Account: account}}})
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(body)
 		return
 	}
 	id := make([]byte, 8)

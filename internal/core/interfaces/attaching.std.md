@@ -95,3 +95,16 @@
 | **Precondition** | `yoke-core` built, with a composition declaring a single channel carrying `local` and a unit that runs to completion |
 | **Action** | attach to the channel's socket; attach again |
 | **Expected** | the opening's picture holds the unit and the channel's record, attached by the test's own account; the Core's output records `channel.attached`; the second attachment is refused with `channel.in_use` |
+
+## yoke:attaching.08 — on a routable channel, the typed projection's first frame authenticates, and the host's answer decides
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/70-interface-surface/03 §Who the client is · arch/80-security/04 §The host's answer about a person · arch/70-interface-surface/08 §`local` — the typed projection |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a routable channel carrying `local`, bound with its material, whose host accepts `alice` with `hunter2x`, refuses any other, and cannot be asked about `carol` |
+| **Action** | attach sending first `authenticate` with `alice` and `hunter2x`; then with `alice` and `wrong`; then with `carol`; then sending first an operation that is not `authenticate` |
+| **Expected** | the first is given the opening picture and then the call's answer naming `alice`, and `channel.attached` carries `alice`; the second and third are refused `auth.invalid`, alike and with nothing about why; the fourth is refused `auth.required`; none of the last three is attached |
