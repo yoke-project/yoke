@@ -252,3 +252,16 @@
 | **Precondition** | a composition declaring the unit `a` twice; a Manifest writing `id` twice |
 | **Action** | check each |
 | **Expected** | `document.malformed` for each, naming the repeated key; nothing past reading is checked |
+
+## yoke:the-gate.20 — the schema the gate carries is what it accepts: every field it names is accepted where it is written, and no other key is
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/15-gate/06 §Phase 1 — shape · arch/20-composer/01 §What it must be able to write |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the fields the gate names for a descriptor and for a composition document; for each, a document of that kind writing it, under a unit, a channel, a rule or a group of the kind the field belongs to |
+| **Action** | check each document; then, under every object the schema names, write a key it does not name |
+| **Expected** | no field the schema names is refused as unknown in either document; every key it does not name is refused `key.unknown` at its path; and a descriptor-only field is refused in a composition document |

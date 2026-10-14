@@ -19,6 +19,15 @@ const usage = `usage: yoke-compose <verb> [options]
   init <id> [--dir D] [--arch A] [--version V] [--core R]   make a project
   check [--dir D]                                           run the gate over it
   build [--dir D] [--out O] [--sign KEY] [--seal FILE]      make a package from it
+
+  add unit <name> --kind K [--exec P | --image R | --plugin ID] [--arg A]... [--depends-on U]...
+  add channel <name> --transport T --clients C [--unit U] [--class C [--host H] [--port N]] [--on-suspend G]
+  add parameter <group>.<name> --type T [--range R] [--pattern P] [--values A,B] [--required] [--default V] [--label L]
+  set <path> <value>                                        write any field, by the path a finding carries
+  arbitrate <channel> over <channel>...                     write one precedence relation
+
+  An authoring verb writes the project's descriptor in --dir, or the composition document --file names,
+  checked against the Manifests in --manifests.
 `
 
 // The exit statuses: a refusal will not pass on the next attempt, a fault may.
@@ -88,8 +97,10 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		if err == nil {
 			fmt.Fprintln(stdout, path)
 		}
+	case "add", "set", "arbitrate":
+		return author(verb, rest, stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "yoke-compose has no verb %q; the verbs are init, check and build\n", verb)
+		fmt.Fprintf(stderr, "yoke-compose has no verb %q; the verbs are init, check, build, add, set and arbitrate\n", verb)
 		return Refused
 	}
 	if err != nil {
@@ -166,4 +177,102 @@ func credential(path string) ([]byte, error) {
 		return nil, refusef("the seal credential in %s is %d bytes; it must be 32", path, len(key))
 	}
 	return key, nil
+}
+
+// author runs an authoring verb: it writes one declaration, or one field, and says what it wrote.
+func author(verb string, args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("yoke-compose "+verb, flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	dir := fs.String("dir", ".", "the project's directory")
+	file := fs.String("file", "", "a composition document to write, in place of the project's descriptor")
+	manifests := fs.String("manifests", "", "the Manifests a composition document is checked against")
+	var u UnitOptions
+	var c ChannelOptions
+	var p ParameterOptions
+	var values string
+	fs.StringVar(&u.Kind, "kind", "", "the unit's kind")
+	fs.StringVar(&u.Exec, "exec", "", "the unit's program")
+	fs.StringVar(&u.Image, "image", "", "the unit's image, pinned by digest")
+	fs.StringVar(&u.Plugin, "plugin", "", "the Plugin a unit of kind plugin runs")
+	fs.Func("arg", "an argument, in order; repeat it", func(s string) error { u.Args = append(u.Args, s); return nil })
+	fs.Func("depends-on", "a unit this one depends on; repeat it", func(s string) error { u.DependsOn = append(u.DependsOn, s); return nil })
+	fs.StringVar(&c.Transport, "transport", "", "the channel's transport")
+	fs.StringVar(&c.Clients, "clients", "", "single or multiple")
+	fs.StringVar(&c.Unit, "unit", "", "the managed interface the channel serves")
+	fs.StringVar(&c.OnSuspend, "on-suspend", "", "the grade a suspension leaves")
+	fs.StringVar(&c.Class, "class", "", "the address's class: local, loopback or routable")
+	fs.StringVar(&c.Host, "host", "", "the address to bind")
+	fs.StringVar(&c.Port, "port", "", "the port")
+	fs.StringVar(&p.Type, "type", "", "the parameter's type")
+	fs.StringVar(&p.Range, "range", "", "its range, [min, max]")
+	fs.StringVar(&p.Pattern, "pattern", "", "its pattern")
+	fs.StringVar(&values, "values", "", "its permitted values, separated by commas")
+	fs.BoolVar(&p.Required, "required", false, "whether it is required")
+	fs.StringVar(&p.Default, "default", "", "its default")
+	fs.StringVar(&p.Label, "label", "", "its label")
+	positional, flags := positionals(args, fs)
+	if fs.Parse(flags) != nil {
+		return Refused
+	}
+	if values != "" {
+		p.Values = strings.Split(values, ",")
+	}
+	d := ProjectDocument(*dir)
+	if *file != "" {
+		d = CompositionDocument(*file, *manifests)
+	}
+	var err error
+	var wrote string
+	switch {
+	case verb == "add" && len(positional) == 2 && positional[0] == "unit":
+		err, wrote = AddUnit(d, positional[1], u), "units."+positional[1]
+	case verb == "add" && len(positional) == 2 && positional[0] == "channel":
+		err, wrote = AddChannel(d, positional[1], c), "channels."+positional[1]
+	case verb == "add" && len(positional) == 2 && positional[0] == "parameter":
+		err, wrote = AddParameter(d, positional[1], p), "parameters."+positional[1]
+	case verb == "set" && len(positional) == 2:
+		err, wrote = Set(d, positional[0], positional[1]), positional[0]
+	case verb == "arbitrate" && len(positional) >= 3 && positional[1] == "over":
+		err, wrote = Arbitrate(d, positional[0], positional[2:]), "arbitration"
+	default:
+		fmt.Fprint(stderr, "yoke-compose "+verb+" takes other arguments\n"+usage)
+		return Refused
+	}
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		if IsRefusal(err) {
+			return Refused
+		}
+		return Fault
+	}
+	fmt.Fprintf(stdout, "wrote %s in %s\n", wrote, d.Path)
+	return Done
+}
+
+// positionals takes the positional arguments out of args, wherever they stand among the flags; a flag
+// that is not boolean takes the argument after it unless it is written --flag=value.
+func positionals(args []string, fs *flag.FlagSet) ([]string, []string) {
+	var positional, flags []string
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if !strings.HasPrefix(a, "-") || a == "-" {
+			positional = append(positional, a)
+			continue
+		}
+		flags = append(flags, a)
+		name := strings.TrimLeft(a, "-")
+		if strings.Contains(name, "=") {
+			continue
+		}
+		if f := fs.Lookup(name); f != nil {
+			if b, ok := f.Value.(interface{ IsBoolFlag() bool }); ok && b.IsBoolFlag() {
+				continue
+			}
+		}
+		if i+1 < len(args) {
+			flags = append(flags, args[i+1])
+			i++
+		}
+	}
+	return positional, flags
 }
