@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Feature** | what `yoke`'s release verb hands over as files at a programs tag: the developer axis's artifacts — the conformance suite with a Core binary for it to drive, and the verification tool — each for Linux `amd64` and `arm64`, statically linked, and the source archive; built the same way twice to the same bytes, uploaded to the tag's release, and each named by one manifest line with its digest |
+| **Feature** | what `yoke`'s release verb hands over as files at a programs tag: the host's artifact — the Core, the manager and the guardian with the packaging inputs — and the developer axis's — the conformance suite with a Core binary for it to drive and the composer, and the verification tool — each for Linux `amd64` and `arm64`, statically linked, and the source archive; built the same way twice to the same bytes, uploaded to the tag's release, and each named by one manifest line with its digest |
 | **Planning item** | yoke-project/yoke#21 |
 
 ## yoke:the-artifacts.01 — a programs tag builds each artifact for both architectures, statically linked
@@ -95,3 +95,29 @@
 | **Precondition** | the repository with two commands, tagged `v0.1.0`, with a file that is not committed beside the tagged tree |
 | **Action** | run the verb at that commit, and read the build information each program carries |
 | **Expected** | every program names its module at `v0.1.0`, the tag's commit as its revision, and no modification — what lies beside the tagged tree never reaches a build |
+
+## yoke:the-artifacts.08 — an artifact carries files of the tagged tree at their own paths
+
+| Field | Value |
+| --- | --- |
+| **Cites** | prj_structure/95 §The built binaries |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the repository with two commands and a committed file `packaging/unit`, tagged `v0.1.0`, the file changed beside the tag afterwards; one artifact declared holding one command and that file |
+| **Action** | run the verb at that commit |
+| **Expected** | each architecture's archive holds the program, the licence and `packaging/unit` at that path, with the tagged content |
+
+## yoke:the-artifacts.09 — `yoke`'s artifacts hold what each axis carries
+
+| Field | Value |
+| --- | --- |
+| **Cites** | prj_structure/95 §The built binaries · prj_structure/40 F3 |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the artifacts `yoke`'s release verb declares |
+| **Action** | read them against the tree |
+| **Expected** | three: `yoke`, holding `yoke-core`, `yoke` and `yoke-guardian` with `packaging/yoke.service`, `packaging/core.yaml`, `packaging/yoke.tmpfiles` and `packaging/yoke.sysusers`; `yoke-conformance`, holding the suite, `yoke-core` and `yoke-compose`; `yoke-verify`; every program and file named exists in the tree |

@@ -12,13 +12,6 @@ import (
 	"github.com/yoke-project/yoke/internal/release"
 )
 
-// What a programs tag hands over as files: the developer axis's two artifacts, and the source archive.
-// The host axis's tarball waits for the programs it holds.
-var artifacts = []release.Artifact{
-	{Name: "yoke-conformance", Packages: []string{"./cmd/yoke-conformance", "./cmd/yoke-core"}},
-	{Name: "yoke-verify", Packages: []string{"./cmd/yoke-verify"}},
-}
-
 func main() {
 	// A repository that publishes only its Go modules — a Go family — runs this verb with -modules-only.
 	modulesOnly := flag.Bool("modules-only", false, "publish the modules the tags name, and hand over no file")
@@ -53,7 +46,7 @@ func main() {
 		cfg.Packages = release.Scripted(".", packages.Python, *wheel)
 		cfg.Registries = []release.Registry{release.PyPI{Index: "https://pypi.org", Upload: "https://upload.pypi.org/legacy/", Name: *wheel}}
 	case !*modulesOnly:
-		cfg.Artifacts, cfg.Source, cfg.Upload = artifacts, "yoke", release.ToForge
+		cfg.Artifacts, cfg.Source, cfg.Upload = release.Yoke, "yoke", release.ToForge
 		cfg.Releases = "https://github.com/yoke-project/yoke/releases/tag/"
 		cfg.Repository = "yoke-project/yoke"
 		cfg.Forge = release.GitHub{Repository: cfg.Repository, Root: "."}
