@@ -96,7 +96,7 @@ func (c *call) serviceStatus() error {
 	fmt.Fprintf(c.out, "init system: %s is %s\n", Unit, said)
 
 	answers, why := false, ""
-	if o, err := c.dial("", false); err != nil {
+	if o, err := c.dialService(); err != nil {
 		why = err.Error()
 	} else {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

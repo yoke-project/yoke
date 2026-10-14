@@ -2,6 +2,7 @@ package manager
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,7 +33,7 @@ func TestAnExitStatusTellsARefusalFromAFault(t *testing.T) {
 
 // std: yoke:the-manager-command-line.02
 func TestTheInstanceIsASelector(t *testing.T) {
-	vars := map[string]string{"XDG_RUNTIME_DIR": "/run/user/1000"}
+	vars := map[string]string{"XDG_RUNTIME_DIR": "/run/user/1000", "XDG_STATE_HOME": t.TempDir()}
 	got, err := operatorAddress("bench", true, environment(vars))
 	if err != nil || got != "/run/user/1000/yoke/bench/operator.sock" {
 		t.Errorf("bench: %q %v", got, err)
@@ -48,5 +49,28 @@ func TestTheInstanceIsASelector(t *testing.T) {
 	got, err = operatorAddress("", false, environment(vars))
 	if err != nil || got != "/run/station/operator.sock" {
 		t.Errorf("no selector: %q %v", got, err)
+	}
+}
+
+// std: yoke:the-manager-command-line.13
+func TestWithNoSelectorTheAccountsOneInstanceIsAddressed(t *testing.T) {
+	state := t.TempDir()
+	core := filepath.Join(t.TempDir(), "core.yaml")
+	os.WriteFile(core, []byte("runtime_dir: /run/station\n"), 0o644)
+	vars := map[string]string{"XDG_RUNTIME_DIR": "/run/user/1000", "XDG_STATE_HOME": state, "YOKE_CONFIG": core}
+	instances := filepath.Join(state, "yoke", "instances")
+	os.MkdirAll(filepath.Join(instances, "bench-a"), 0o700)
+	if got, err := operatorAddress("", false, environment(vars)); err != nil || got != "/run/user/1000/yoke/bench-a/operator.sock" {
+		t.Errorf("one instance: %q %v", got, err)
+	}
+	os.MkdirAll(filepath.Join(instances, "bench-b"), 0o700)
+	_, err := operatorAddress("", false, environment(vars))
+	if !errors.As(err, new(refusal)) || !strings.Contains(err.Error(), "bench-a") || !strings.Contains(err.Error(), "bench-b") ||
+		!strings.Contains(err.Error(), "--instance") {
+		t.Errorf("two instances: %v", err)
+	}
+	os.RemoveAll(instances)
+	if got, err := operatorAddress("", false, environment(vars)); err != nil || got != "/run/station/operator.sock" {
+		t.Errorf("no instance: %q %v", got, err)
 	}
 }

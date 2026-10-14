@@ -60,9 +60,13 @@ func TestServiceStartStopAndRestartAskTheInitSystem(t *testing.T) {
 // std: yoke:the-service-regime.02
 func TestServiceStatusNamesADisagreement(t *testing.T) {
 	vars, _, _ := serviceForm(t)
+	// The account holds an instance record, and the deployment is still the one asked.
+	vars["XDG_STATE_HOME"] = t.TempDir()
+	os.MkdirAll(filepath.Join(vars["XDG_STATE_HOME"], "yoke", "instances", "bench-a"), 0o700)
 	fakeBin(t, vars, "systemctl", "echo active\n")
 	out := expectDone(t, vars, "service", "status")
-	for _, want := range []string{"yoke.service is active", "does not answer", "disagreement: active according to the init system, not answering on its surface"} {
+	for _, want := range []string{"yoke.service is active", "does not answer", "disagreement: active according to the init system, not answering on its surface",
+		filepath.Join(vars["XDG_RUNTIME_DIR"], "operator.sock")} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the status does not say %q:\n%s", want, out)
 		}
