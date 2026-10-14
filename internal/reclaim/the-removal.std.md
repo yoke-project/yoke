@@ -79,6 +79,6 @@
 | **Method** | test |
 | **Not applicable in** | container engine: docker |
 | **Label** | blocking |
-| **Precondition** | three OCI archives written by the test and loaded into the engine; the first tagged `yoke/com.yoke.reclaim:2.0.0`, the second `yoke/com.yoke.reclaim:2.1.0`, the third left under its own name; `2.0.0` and `2.1.0` of `com.yoke.reclaim` installed, nothing pointing at either. The engine's store is the account's and other cases use it meanwhile, so the case names an application no other case does |
+| **Precondition** | three OCI archives written by the test and loaded into the engine; the first tagged `yoke/com.yoke.reclaim:2.0.0`, the second `yoke/com.yoke.reclaim:2.1.0`, both through the engine's API as installing tags — where the engine qualifies the name its own way — the third left under its own name; `2.0.0` and `2.1.0` of `com.yoke.reclaim` installed, nothing pointing at either. The engine's store is the account's and other cases use it meanwhile, so the case names an application no other case does |
 | **Action** | run the pass with the engine, over `com.yoke.reclaim` |
 | **Expected** | `2.0.0` and its tag are gone and the pass names both; the tag of `2.1.0` and the third image are still in the store. Not applicable under Docker, whose classic store loads an archive with no digest |
