@@ -39,7 +39,7 @@ func browsing(t *testing.T) *browser {
 	t.Cleanup(func() { d.transports.CloseAll("acquire", streams.UnitExited) })
 	manifest := &gate.Manifest{ID: "com.example.station", Commands: []string{"calibrate"}, Streams: []gate.Stream{{ID: "station.spectra"}}}
 	ch := gate.Channel{Name: "remote", Transport: "http+ws", Clients: "multiple", Address: &gate.Address{Class: "loopback", Port: freePort(t)}}
-	b, err := interfaces.BindServing(d.root, mode, []gate.Channel{ch}, func(ch gate.Channel) interfacev1.InterfaceServer {
+	b, err := interfaces.BindServing(d.root, "", mode, []gate.Channel{ch}, func(ch gate.Channel) interfacev1.InterfaceServer {
 		return interfaces.NewSurface(interfaces.Config{
 			Channel: ch, Root: d.root, Bus: d.w.bus, Publish: d.w.publish, Units: bench{}, Sessions: &fakeSessions{}, Transports: d.transports,
 			Declared: func(id string) (*gate.Manifest, bool) { return manifest, benchUnits[id].kind == unit.Plugin },

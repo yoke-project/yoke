@@ -89,12 +89,13 @@ func TestBindingIsFatalAndARoutableChannelIsRefused(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(r, "interfaces", "panel.sock")); err == nil {
 		t.Error("the local channel bound before the failure is still there")
 	}
-	_, err = interfaces.Bind(r, mode, []gate.Channel{
+	material := t.TempDir()
+	_, err = interfaces.BindServing(r, material, mode, []gate.Channel{
 		{Name: "panel", Transport: "local", Clients: "single"},
-		{Name: "service", Transport: "http+ws", Clients: "multiple", Address: &gate.Address{Class: "routable", Host: "0.0.0.0", Port: freePort(t), Transport: "tls", Caller: "credential"}},
-	})
-	if err == nil || !strings.Contains(err.Error(), "service") || !strings.Contains(err.Error(), "routable") {
-		t.Errorf("binding a routable channel gave %v", err)
+		{Name: "service", Transport: "http+ws", Clients: "multiple", Address: &gate.Address{Class: "routable", Host: "127.0.0.1", Port: freePort(t), Transport: "encrypted", Caller: "authenticated"}},
+	}, nil)
+	if err == nil || !strings.Contains(err.Error(), "service") || !strings.Contains(err.Error(), filepath.Join(material, "service.crt")) {
+		t.Errorf("binding a routable channel with no material gave %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(r, "interfaces", "panel.sock")); err == nil {
 		t.Error("the local channel bound beside the routable one is still there")

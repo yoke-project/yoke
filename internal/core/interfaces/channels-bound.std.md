@@ -18,18 +18,18 @@
 | **Action** | bind the deployment's channels |
 | **Expected** | the first is a socket at `interfaces/<channel>.sock` with the form's mode; the second listens on the loopback address at its port and nowhere else; each channel's address is reported by its name |
 
-## yoke:channels-bound.02 — binding is fatal, and a routable channel is refused
+## yoke:channels-bound.02 — binding is fatal, and a routable channel without its material does not bind
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.17 · arch/70-interface-surface/01 §Managed and attached · arch/70-interface-surface/01 §Where a channel is bound |
+| **Cites** | specs/70.17 · arch/70-interface-surface/01 §Managed and attached · arch/70-interface-surface/01 §Where a channel is bound · arch/80-security/03 §Where the material comes from |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
-| **Precondition** | a deployment declaring a loopback channel on a port already in use; another declaring a channel on a routable address carrying both security fields |
+| **Precondition** | a deployment declaring a loopback channel on a port already in use; another declaring a channel on a routable address carrying both security fields, whose certificate and key are not in the store |
 | **Action** | bind each |
-| **Expected** | each binding fails with an error naming the channel; the routable one says this Core does not carry the authenticated transport and the credential such a channel requires; nothing of either deployment is left bound |
+| **Expected** | each binding fails with an error naming the channel; the routable one names the material it could not read; nothing of either deployment is left bound |
 
 ## yoke:channels-bound.03 — each channel answers in the projection it declares
 
@@ -69,3 +69,43 @@
 | **Precondition** | `yoke-core` built, with a composition declaring a local channel served by a managed interface — a program that connects to the address in `YOKE_SOCKET` and says so — and an attached channel on loopback |
 | **Action** | start the Core |
 | **Expected** | the Core reports the loopback channel as a weaker configuration, binds both channels before it launches the interface, and the interface reports having connected to its channel's socket |
+
+## yoke:channels-bound.06 — a routable channel speaks TLS 1.3 alone, with its projection's ALPN, presenting the chain from the store
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/80-security/03 §TLS 1.3 and nothing below it · arch/80-security/03 §Where the material comes from · arch/80-security/03 §What the two projections look like on a routable address · arch/80-security/03 §The caller's credential sits above the transport |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a certificate and key in the store's `tls/` for two routable channels on `127.0.0.1`, one carrying `local` and one `http+ws`, both bound |
+| **Action** | connect to each with TLS 1.2 at most; then with TLS 1.3, offering `h2` and `http/1.1`; then replace the material on disk and connect again |
+| **Expected** | the first connections fail at the handshake; with TLS 1.3, the `local` channel negotiates `h2` and the `http+ws` channel `http/1.1`, each presents the certificate from the store, and no client certificate is asked for; after the replacement both still present the certificate they were bound with |
+
+## yoke:channels-bound.07 — on a routable channel, a client that has established no caller is refused before anything is attached
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/70-interface-surface/03 §Who the client is · arch/70-interface-surface/04 §What an operation is refused by, and in what order |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | two routable channels bound with their material, one carrying `local` and one `http+ws` |
+| **Action** | attach to each over TLS presenting no credential |
+| **Expected** | each is refused `auth.required`, nothing is attached and no `channel.attached` is published |
+
+
+## yoke:channels-bound.08 — through the Core, a routable channel binds over TLS with the material in the store, and without it nothing is bound
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/80-security/03 §Where the material comes from · arch/15-gate/06 §Phase 4 — host facts · arch/30-core/03 §The steps |
+| **Level** | L3 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a real Core whose composition declares a routable `http+ws` channel `remote` on `127.0.0.1`; its state's `tls/` holding a certificate and key for `remote`; then another whose state holds none |
+| **Action** | start each, and connect to the first's channel over TLS 1.3 |
+| **Expected** | the first binds `remote`, presents the certificate from its store with ALPN `http/1.1`, and refuses `/v1/events` with `auth.required`; the second refuses its description, `channel.tls.missing` naming `remote`, and binds no channel: nothing answers on its port |

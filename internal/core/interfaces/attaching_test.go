@@ -73,7 +73,7 @@ func (w *world) of(typ string) []event.Event {
 // served binds the channels given, each with a surface reading the world.
 func (w *world) served(t *testing.T, channels []gate.Channel, confirm *interfaces.Confirmation) *interfaces.Bound {
 	t.Helper()
-	b, err := interfaces.BindServing(root(t), mode, channels, func(ch gate.Channel) interfacev1.InterfaceServer {
+	b, err := interfaces.BindServing(root(t), "", mode, channels, func(ch gate.Channel) interfacev1.InterfaceServer {
 		return interfaces.NewSurface(interfaces.Config{
 			Channel: ch, Bus: w.bus, Publish: w.publish, Confirm: confirm,
 			Instance: func() *interfacev1.InstanceRecord { return &interfacev1.InstanceRecord{Ready: true} },

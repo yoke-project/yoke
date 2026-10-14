@@ -4,7 +4,7 @@ package interfaces
 
 import (
 	"cmp"
-	"errors"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -32,16 +32,17 @@ type Bound struct {
 
 // Bind binds every channel declared, in the order of their names: a local socket at
 // interfaces/<channel>.sock under the instance root, given the mode; a loopback channel on its port on
-// the loopback address. A routable channel is refused, since this Core carries neither the authenticated
-// transport nor the credential such a channel requires. Binding is all or nothing: on any failure what
-// was bound is unbound, and the error names the channel.
+// the loopback address; a routable channel on its host and port, over TLS 1.3 with the certificate chain
+// and key at <material>/<channel>.crt and .key, read once here. Binding is all or nothing: on any failure
+// what was bound is unbound, and the error names the channel.
 func Bind(root string, mode os.FileMode, channels []gate.Channel) (*Bound, error) {
-	return BindServing(root, mode, channels, nil)
+	return BindServing(root, "", mode, channels, nil)
 }
 
 // BindServing is Bind, each channel carrying the local projection served by the surface the function
 // gives for it; with none, a local channel answers as the interface service and serves no operation.
-func BindServing(root string, mode os.FileMode, channels []gate.Channel, surface func(gate.Channel) interfacev1.InterfaceServer) (*Bound, error) {
+// material is the directory a routable channel's certificate and key are read from.
+func BindServing(root, material string, mode os.FileMode, channels []gate.Channel, surface func(gate.Channel) interfacev1.InterfaceServer) (*Bound, error) {
 	if surface == nil {
 		surface = func(ch gate.Channel) interfacev1.InterfaceServer { return NewSurface(Config{Channel: ch}) }
 	}
@@ -49,7 +50,7 @@ func BindServing(root string, mode os.FileMode, channels []gate.Channel, surface
 	ordered := slices.Clone(channels)
 	slices.SortFunc(ordered, func(x, y gate.Channel) int { return cmp.Compare(x.Name, y.Name) })
 	for _, ch := range ordered {
-		listener, address, err := listen(root, mode, ch)
+		listener, address, err := listen(root, material, mode, ch)
 		if err != nil {
 			b.Close()
 			return nil, fmt.Errorf("the channel %s: %w", ch.Name, err)
@@ -65,7 +66,7 @@ func BindServing(root string, mode os.FileMode, channels []gate.Channel, surface
 }
 
 // listen binds one channel by the class of its address.
-func listen(root string, mode os.FileMode, ch gate.Channel) (net.Listener, string, error) {
+func listen(root, material string, mode os.FileMode, ch gate.Channel) (net.Listener, string, error) {
 	if ch.Address == nil || ch.Address.Class == "local" {
 		path := filepath.Join(root, "interfaces", ch.Name+".sock")
 		if len(path) > ceiling {
@@ -97,9 +98,31 @@ func listen(root string, mode os.FileMode, ch gate.Channel) (net.Listener, strin
 		}
 		return listener, address, nil
 	case "routable":
-		return nil, "", errors.New("it is on a routable address, and this Core does not yet carry the authenticated transport and the credential such a channel requires")
+		chain, key := filepath.Join(material, ch.Name+".crt"), filepath.Join(material, ch.Name+".key")
+		pair, err := tls.LoadX509KeyPair(chain, key)
+		if err != nil {
+			return nil, "", fmt.Errorf("its certificate %s and key %s cannot be read: %w", chain, key, err)
+		}
+		address := net.JoinHostPort(ch.Address.Host, ch.Address.Port)
+		listener, err := net.Listen("tcp", address)
+		if err != nil {
+			return nil, "", err
+		}
+		return tls.NewListener(listener, transportSecurity(ch, pair)), listener.Addr().String(), nil
 	}
 	return nil, "", fmt.Errorf("the address class %q is not one a channel is bound by", ch.Address.Class)
+}
+
+// transportSecurity is what a routable channel speaks: TLS 1.3 and nothing below it, the chain it was
+// bound with, the ALPN its projection needs — HTTP/2 for gRPC, HTTP/1.1 for the WebSocket upgrade — and
+// no client certificate, the caller being established above the transport.
+func transportSecurity(ch gate.Channel, pair tls.Certificate) *tls.Config {
+	alpn := "h2"
+	if ch.Transport == "http+ws" {
+		alpn = "http/1.1"
+	}
+	return &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13, Certificates: []tls.Certificate{pair},
+		NextProtos: []string{alpn}, ClientAuth: tls.NoClientCert, SessionTicketsDisabled: true}
 }
 
 // serve starts the channel's terminator in the projection it declares, and returns what stops it.

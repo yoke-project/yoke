@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -199,6 +200,24 @@ func (c *checker) hostFacts() bool {
 				path := filepath.Join(h.StateDir, "secrets", n.Name)
 				if _, err := os.Stat(path); err != nil {
 					c.refuse("secret.missing", location, "the unit %s needs the secret %s, and the instance's store holds none at %s", name, n.Name, path)
+				}
+			}
+		}
+	}
+	// A routable channel presents the certificate chain and key the instance's store holds for it, read
+	// when the Core binds it: what is not there to read refuses the start, naming the channel.
+	if at(Starting) && h.StateDir != "" {
+		for _, name := range slices.Sorted(maps.Keys(c.deployment.Channels)) {
+			if a := c.deployment.Channels[name].Address; a == nil || a.Class != "routable" {
+				continue
+			}
+			for _, file := range [][2]string{{".crt", "certificate chain"}, {".key", "private key"}} {
+				ext, what := file[0], file[1]
+				path := filepath.Join(h.StateDir, "tls", name+ext)
+				if f, err := os.Open(path); err != nil {
+					c.refuse("channel.tls.missing", joined("channels", name), "the routable channel %s has no readable %s at %s", name, what, path)
+				} else {
+					f.Close()
 				}
 			}
 		}

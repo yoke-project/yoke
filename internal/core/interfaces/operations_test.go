@@ -126,7 +126,7 @@ func actingOn(t *testing.T) *acting {
 	t.Cleanup(func() { transports.CloseAll("acquire", streams.UnitExited) })
 	manifest := &gate.Manifest{ID: "com.example.station", Commands: []string{"calibrate", "zero"}, Queries: []string{"head-status"},
 		Streams: []gate.Stream{{ID: "station.spectra"}, {ID: "station.preview", ToleratesLoss: true}}}
-	b, err := interfaces.BindServing(r, mode, []gate.Channel{{Name: "panel", Transport: "local", Clients: "single"}}, func(ch gate.Channel) interfacev1.InterfaceServer {
+	b, err := interfaces.BindServing(r, "", mode, []gate.Channel{{Name: "panel", Transport: "local", Clients: "single"}}, func(ch gate.Channel) interfacev1.InterfaceServer {
 		return interfaces.NewSurface(interfaces.Config{
 			Channel: ch, Bus: w.bus, Publish: w.publish, Units: bench{}, Sessions: sessions, Transports: transports, Wait: 200 * time.Millisecond,
 			Declared: func(id string) (*gate.Manifest, bool) { return manifest, benchUnits[id].kind == unit.Plugin },

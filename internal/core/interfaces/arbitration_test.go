@@ -20,7 +20,7 @@ func (w *world) arbitrated(t *testing.T, channels []gate.Channel, rules []gate.R
 	arbiter := interfaces.NewArbiter(channels, rules, w.publish)
 	sessions := &fakeSessions{}
 	manifest := &gate.Manifest{ID: "com.example.station", Commands: []string{"calibrate"}, Queries: []string{"head-status"}}
-	b, err := interfaces.BindServing(root(t), mode, channels, func(ch gate.Channel) interfacev1.InterfaceServer {
+	b, err := interfaces.BindServing(root(t), "", mode, channels, func(ch gate.Channel) interfacev1.InterfaceServer {
 		return interfaces.NewSurface(interfaces.Config{
 			Channel: ch, Bus: w.bus, Publish: w.publish, Confirm: confirm, Arbiter: arbiter, Units: bench{}, Sessions: sessions,
 			Declared: func(id string) (*gate.Manifest, bool) { return manifest, benchUnits[id].kind == unit.Plugin },

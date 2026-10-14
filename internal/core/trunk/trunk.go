@@ -682,7 +682,7 @@ func interfaceChannels(st *State) error {
 			},
 		})
 	}
-	bound, err := interfaces.BindServing(st.Paths.Root, st.Form.SocketMode(), declared, surface)
+	bound, err := interfaces.BindServing(st.Paths.Root, filepath.Join(st.Paths.State, "tls"), st.Form.SocketMode(), declared, surface)
 	if err != nil {
 		return err
 	}
