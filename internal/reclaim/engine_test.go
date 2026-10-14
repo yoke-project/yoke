@@ -25,17 +25,27 @@ func TestThePassRemovesYokesImagesFromTheEngine(t *testing.T) {
 		}
 		refs[name] = ref
 	}
+	// Tagged through the engine's API, as installing tags: an engine qualifies the name its own way there,
+	// which its command line may not.
+	s := enginetest.Serve(t)
+	tagger, err := engine.Reach(context.Background(), "unix://"+s.Socket)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for name, ver := range map[string]string{"yoke-reclaim-old": "2.0.0", "yoke-reclaim-new": "2.1.0"} {
-		tag := "yoke/" + id + ":" + ver
-		if out, err := enginetest.CLI("tag", refs[name], tag).CombinedOutput(); err != nil {
-			t.Fatalf("tag %s: %v\n%s", tag, err, out)
+		if err := tagger.Tag(context.Background(), refs[name], id, ver); err != nil {
+			t.Fatalf("tag %s at %s: %v", name, ver, err)
 		}
-		t.Cleanup(func() { enginetest.CLI("rmi", "-f", tag).Run() })
+		tag := "yoke/" + id + ":" + ver
+		t.Cleanup(func() {
+			for _, q := range []string{"", "localhost/", "docker.io/"} {
+				enginetest.CLI("rmi", "-f", q+tag).Run()
+			}
+		})
 	}
 	o := setup(t)
 	installAs(t, o, id, "2.0.0", installroot.Complete)
 	installAs(t, o, id, "2.1.0", installroot.Complete)
-	s := enginetest.Serve(t)
 	o.Engine = func(ctx context.Context) (*engine.Engine, error) { return engine.Reach(ctx, "unix://"+s.Socket) }
 	r, err := Prune(o, id)
 	if err != nil {

@@ -69,3 +69,16 @@
 | **Precondition** | an OCI archive of one layer, written by the test and named in its index by its manifest's digest — not saved by an engine, which may re-encode the image and break the digest — and no image under that reference |
 | **Action** | load the archive through the engine's API, and ask for the reference |
 | **Expected** | the image is present under the name and digest the archive names. Not applicable under Docker, whose classic store loads an archive with no digest — which installing refuses as `image.undigested` |
+
+## yoke:the-engine-images.06 — a tag in the reserved namespace is read back however the engine qualifies it
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/10-manager/06 §Reclaiming · arch/10-manager/05 §Obtaining images |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the tag `yoke/com.yoke.station:2.1.0` as Docker lists it, as Podman 4 lists it (`localhost/`) and as Podman 6 lists it (`docker.io/`); and tags outside the namespace — another registry's `yoke/`, an image of another name, a tag with no version |
+| **Action** | read each back |
+| **Expected** | the three spellings each name `com.yoke.station` at `2.1.0`; none of the others names anything |

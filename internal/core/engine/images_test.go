@@ -168,3 +168,17 @@ func TestAnOCIArchiveSavedByDigestLoads(t *testing.T) {
 		t.Errorf("after the load, %s is held: %v %v", ref, ok, err)
 	}
 }
+
+// std: yoke:the-engine-images.06
+func TestAReservedTagIsReadBackHoweverTheEngineQualifiesIt(t *testing.T) {
+	for _, tag := range []string{"yoke/com.yoke.station:2.1.0", "localhost/yoke/com.yoke.station:2.1.0", "docker.io/yoke/com.yoke.station:2.1.0"} {
+		if id, version, ok := engine.Reserved(tag); !ok || id != "com.yoke.station" || version != "2.1.0" {
+			t.Errorf("%s reads as %q %q %v", tag, id, version, ok)
+		}
+	}
+	for _, tag := range []string{"registry.example/yoke/com.yoke.station:2.1.0", "docker.io/library/busybox:1.36", "yoke/com.yoke.station", "docker.io/yoke/:2.1.0"} {
+		if id, version, ok := engine.Reserved(tag); ok {
+			t.Errorf("%s reads as %q %q", tag, id, version)
+		}
+	}
+}

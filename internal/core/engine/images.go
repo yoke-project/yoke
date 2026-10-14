@@ -130,10 +130,17 @@ func (e *Engine) Images(ctx context.Context) ([]Image, error) {
 	return images, nil
 }
 
-// Reserved reads a tag in the reserved namespace back into the application and version it names. Podman
-// qualifies an unqualified name with `localhost/`, and Docker does not; both are the same tag.
+// Reserved reads a tag in the reserved namespace back into the application and version it names. The tag
+// is written unqualified, and an engine may list it qualified: Docker does not, Podman 4 with `localhost/`,
+// Podman 6 with `docker.io/`. All three are the same tag; any other registry is not.
 func Reserved(tag string) (id, version string, ok bool) {
-	name := strings.TrimPrefix(tag, "localhost/")
+	name := tag
+	for _, qualified := range []string{"localhost/", "docker.io/"} {
+		if rest, found := strings.CutPrefix(tag, qualified); found {
+			name = rest
+			break
+		}
+	}
 	rest, found := strings.CutPrefix(name, "yoke/")
 	if !found {
 		return "", "", false
