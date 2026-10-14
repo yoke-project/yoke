@@ -22,6 +22,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
 
@@ -107,10 +108,22 @@ func startCoreWith(t *testing.T, configured, composition string) (string, <-chan
 // startCoreIn is startCoreWith in a directory of the caller's, whose state/ the Core's state is.
 func startCoreIn(t *testing.T, dir, configured, composition string) (string, <-chan string) {
 	t.Helper()
-	binary := filepath.Join(t.TempDir(), "yoke-core")
-	if said, err := exec.Command("go", "build", "-o", binary, "github.com/yoke-project/yoke/cmd/yoke-core").CombinedOutput(); err != nil {
-		t.Fatalf("yoke-core does not build: %v\n%s", err, said)
+	// The Core, and beside it the program it asks the host's authentication service through, which asks
+	// a stack of the test's own: alice, with hunter2x.
+	bin := t.TempDir()
+	binary := filepath.Join(bin, "yoke-core")
+	for _, program := range []string{"yoke-core", "yoke-auth"} {
+		build := exec.Command("go", "build", "-o", filepath.Join(bin, program), "github.com/yoke-project/yoke/cmd/"+program)
+		build.Env = append(os.Environ(), "CGO_ENABLED=0")
+		if said, err := build.CombinedOutput(); err != nil {
+			t.Fatalf("%s does not build: %v\n%s", program, err, said)
+		}
 	}
+	stacks := filepath.Join(bin, "pam.d")
+	os.MkdirAll(stacks, 0o755)
+	check := filepath.Join(bin, "check.sh")
+	os.WriteFile(check, []byte("#!/bin/sh\nread -r secret\n[ \"$PAM_USER\" = alice ] && [ \"$secret\" = hunter2x ]\n"), 0o755)
+	os.WriteFile(filepath.Join(stacks, "yoke"), []byte("auth required pam_exec.so expose_authtok quiet "+check+"\naccount required pam_permit.so\n"), 0o644)
 	run, _ := os.MkdirTemp("", "yk")
 	t.Cleanup(func() { os.RemoveAll(run) })
 	manifests, executables := filepath.Join(dir, "plugins.d"), filepath.Join(dir, "plugins")
@@ -127,7 +140,7 @@ func startCoreIn(t *testing.T, dir, configured, composition string) (string, <-c
 	core := filepath.Join(dir, "core.yaml")
 	os.WriteFile(core, []byte(fmt.Sprintf("state_dir: %s/state\nruntime_dir: %s\nplugins:\n  manifests: %s\n  executables: %s\n", dir, run, manifests, executables)+configured), 0o644)
 	command := exec.Command(binary)
-	command.Env = append(os.Environ(), "YOKE_CONFIG="+core, "YOKE_COMPOSITION="+path)
+	command.Env = append(os.Environ(), "YOKE_CONFIG="+core, "YOKE_COMPOSITION="+path, "YOKE_AUTH_STACKS="+stacks)
 	out, _ := command.StderrPipe()
 	if err := command.Start(); err != nil {
 		t.Fatal(err)
@@ -724,5 +737,55 @@ channels:
 	if c, err := net.Dial("tcp", "127.0.0.1:"+other); err == nil {
 		c.Close()
 		t.Error("something answers on the port of a channel with no material")
+	}
+}
+
+// std: yoke:channels-bound.09
+func TestThroughTheCoreACallerIsEstablishedByTheHost(t *testing.T) {
+	port := freePort(t)
+	dir := t.TempDir()
+	material(t, filepath.Join(dir, "state", "tls"), "panel")
+	_, lines := startCoreIn(t, dir, "", `# The test binary, %s, runs nothing here; %s is unused.
+units: {}
+channels:
+  panel: { transport: local, clients: multiple, address: { class: routable, host: 127.0.0.1, port: "`+port+`", security: { transport: encrypted, caller: authenticated } } }
+`)
+	var said []string
+	deadline := time.After(20 * time.Second)
+	for bound := false; !bound; {
+		select {
+		case line, open := <-lines:
+			if !open {
+				t.Fatalf("the Core exited:\n%s", strings.Join(said, "\n"))
+			}
+			said = append(said, line)
+			bound = strings.Contains(line, "msg=channel") && strings.Contains(line, "name=panel")
+		case <-deadline:
+			t.Fatalf("within twenty seconds the Core said:\n%s", strings.Join(said, "\n"))
+		}
+	}
+	conn, err := grpc.NewClient("127.0.0.1:"+port, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	attach := func(secret string) (*interfacev1.CoreFrame, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		t.Cleanup(cancel)
+		stream, err := interfacev1.NewInterfaceClient(conn).Attach(ctx)
+		if err != nil {
+			return nil, err
+		}
+		stream.Send(&interfacev1.ClientFrame{Call: "a", Carries: &interfacev1.ClientFrame_Request{Request: password("alice", secret)}})
+		if _, err := stream.Recv(); err != nil {
+			return nil, err
+		}
+		return stream.Recv()
+	}
+	if f, err := attach("hunter2x"); err != nil || f.GetAnswer().GetAuthenticate().GetAccount() != "alice" {
+		t.Errorf("alice: %v %v", f, err)
+	}
+	if _, err := attach("wrong"); refusalIn(err).GetCode() != "auth.invalid" {
+		t.Errorf("a wrong secret: %v", err)
 	}
 }

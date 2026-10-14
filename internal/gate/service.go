@@ -222,6 +222,23 @@ func (c *checker) hostFacts() bool {
 			}
 		}
 	}
+	// A routable channel establishes its caller through the host's authentication service, so a host that
+	// cannot be asked refuses the start rather than binding a channel nobody can pass.
+	if at(Starting) && h.Authentication != nil {
+		var needing []string
+		for _, name := range slices.Sorted(maps.Keys(c.deployment.Channels)) {
+			if a := c.deployment.Channels[name].Address; a != nil && a.Class == "routable" && a.Caller == "authenticated" {
+				needing = append(needing, name)
+			}
+		}
+		if len(needing) > 0 {
+			if err := h.Authentication(); err != nil {
+				for _, name := range needing {
+					c.refuse("auth.unavailable", joined("channels", name), "the routable channel %s requires its caller to be authenticated, and the host's authentication service cannot be asked: %v", name, err)
+				}
+			}
+		}
+	}
 	// The engine is looked for where a unit names an image, and only there.
 	if h.Engine != nil && at(Installing, Creating, Starting) && slices.ContainsFunc(c.deployment.Order, func(name string) bool {
 		return c.deployment.Units[name].Image != ""

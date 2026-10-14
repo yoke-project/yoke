@@ -347,7 +347,7 @@ func TestAnArtifactCarriesFilesOfTheTreeAtTheirOwnPaths(t *testing.T) {
 // std: yoke:the-artifacts.09
 func TestYokesArtifactsHoldWhatEachAxisCarries(t *testing.T) {
 	want := map[string][2][]string{
-		"yoke": {{"./cmd/yoke-core", "./cmd/yoke", "./cmd/yoke-guardian"},
+		"yoke": {{"./cmd/yoke-core", "./cmd/yoke", "./cmd/yoke-guardian", "./cmd/yoke-auth"},
 			{"packaging/yoke.service", "packaging/core.yaml", "packaging/yoke.tmpfiles", "packaging/yoke.sysusers"}},
 		"yoke-conformance": {{"./cmd/yoke-conformance", "./cmd/yoke-core", "./cmd/yoke-compose"}, nil},
 		"yoke-verify":      {{"./cmd/yoke-verify"}, nil},

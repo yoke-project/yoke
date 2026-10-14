@@ -50,6 +50,7 @@ import (
 	"github.com/yoke-project/yoke/internal/core/unit"
 	"github.com/yoke-project/yoke/internal/gate"
 	guardianchannel "github.com/yoke-project/yoke/internal/guardian/channel"
+	"github.com/yoke-project/yoke/internal/hostauth"
 	"github.com/yoke-project/yoke/internal/version"
 )
 
@@ -542,7 +543,14 @@ func (st *State) composition() *composed {
 		plugins := st.Config.Plugins
 		var doc gate.Document
 		manifests, host := plugins.Manifests, &gate.Host{Executables: plugins.Executables, StateDir: st.Paths.State,
-			RuntimeRoot: st.Paths.Root, Instance: st.Paths.Name, Engine: st.reachEngine}
+			RuntimeRoot: st.Paths.Root, Instance: st.Paths.Name, Engine: st.reachEngine,
+			Authentication: func() error {
+				self, err := os.Executable()
+				if err != nil {
+					return err
+				}
+				return hostauth.Probe(self)
+			}}
 		if st.Form == Application {
 			doc, manifests, host.Executables, host.Bundle = *st.described, filepath.Join(st.Bundle, "manifests"), "", st.Bundle
 			host.NoDelegation = !confined(st.Paths.Name)
@@ -659,9 +667,20 @@ func interfaceChannels(st *State) error {
 	confirm := &interfaces.Confirmation{Every: interfaces.ConfirmEvery, Tolerance: interfaces.ConfirmTolerance, Required: required}
 	transports := st.transports()
 	arbiter := interfaces.NewArbiter(declared, st.Deployment.Arbitration, st.publish)
+	// A caller on a routable channel is the host's to establish, through the program beside this Core; a
+	// service that could not be asked is this host's fault, logged, and the caller hears a refusal.
+	self, _ := os.Executable()
+	asker := hostauth.Asker{Core: self}
+	authenticate := func(ctx context.Context, account, secret string) (hostauth.Verdict, error) {
+		verdict, err := asker.Ask(ctx, account, secret)
+		if verdict == hostauth.Unasked {
+			st.Log.Error("the host's authentication service cannot be asked", "error", err)
+		}
+		return verdict, err
+	}
 	surface := func(ch gate.Channel) interfacev1.InterfaceServer {
 		return interfaces.NewSurface(interfaces.Config{
-			Channel: ch, Root: st.Paths.Root, Bus: st.Bus, Publish: st.publish, Confirm: confirm, Units: supervised{st}, Active: transports.Active,
+			Channel: ch, Authenticate: authenticate, Root: st.Paths.Root, Bus: st.Bus, Publish: st.publish, Confirm: confirm, Units: supervised{st}, Active: transports.Active,
 			Sessions: held{st}, Transports: transports, Stopping: st.stopping.Load, Arbiter: arbiter,
 			Declared: func(id string) (*gate.Manifest, bool) {
 				u, ok := st.Deployment.Units[id]

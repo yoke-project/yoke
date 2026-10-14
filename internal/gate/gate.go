@@ -119,6 +119,10 @@ type Host struct {
 	// Engine reaches the container engine. It is asked only where a unit names an image, and at most
 	// once a pass; nil looks for none.
 	Engine func() (EngineFacts, error)
+	// Authentication says whether the host's authentication service can be asked for the Core about to
+	// be executed: the party executing it probes, and the gate executes nothing. Asked at starting, and
+	// only where a routable channel requires its caller to be authenticated.
+	Authentication func() error
 }
 
 // EngineFacts is what the gate learns of an engine it reached.

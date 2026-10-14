@@ -20,6 +20,7 @@ import (
 	"github.com/yoke-project/yoke/internal/core/supervisor"
 	"github.com/yoke-project/yoke/internal/core/unit"
 	"github.com/yoke-project/yoke/internal/gate"
+	"github.com/yoke-project/yoke/internal/hostauth"
 )
 
 // Version is the interface contract's version this Core speaks.
@@ -58,6 +59,9 @@ type Confirmation struct {
 
 // Config is what a surface serves.
 type Config struct {
+	// Authenticate asks the host's authentication service whether a secret is an account's, for a
+	// routable channel. Where it is nil, nothing can establish a caller and every credential is refused.
+	Authenticate func(ctx context.Context, account, secret string) (hostauth.Verdict, error)
 	// Operations are the members of the union served, by the name the contract writes them with.
 	Operations map[string]Operation
 	// Picture is the opening picture, where nothing below computes one. Optional.
@@ -182,6 +186,20 @@ func (s *Surface) Attach(stream interfacev1.Interface_AttachServer) error {
 	if !established {
 		client = "unestablished"
 	}
+	// On a routable channel the first frame establishes the caller, before anything is attached; its
+	// answer follows the opening, which stays the Core's first frame.
+	var first *interfacev1.ClientFrame
+	if s.routable() {
+		f, err := stream.Recv()
+		if err != nil {
+			return nil
+		}
+		account, ref := s.credential(stream.Context(), f.GetRequest())
+		if ref != nil {
+			return refusedStatus(ref)
+		}
+		client, first = account, f
+	}
 	a, ref := s.begin(stream.Context(), client, stream.Send)
 	if ref != nil {
 		return refusedStatus(ref)
@@ -190,6 +208,10 @@ func (s *Surface) Attach(stream interfacev1.Interface_AttachServer) error {
 	defer func() { a.finish(reason) }()
 	if err := a.start(); err != nil {
 		return err
+	}
+	if first != nil {
+		a.live(&interfacev1.CoreFrame{Call: first.GetCall(), Carries: &interfacev1.CoreFrame_Answer{Answer: &interfacev1.Response{
+			Answer: &interfacev1.Response_Authenticate{Authenticate: &interfacev1.Authenticated{Account: client}}}}})
 	}
 	for {
 		f, err := stream.Recv()
@@ -206,6 +228,31 @@ func (s *Surface) Attach(stream interfacev1.Interface_AttachServer) error {
 		}
 		a.handle(f.GetCall(), f.GetRequest(), a.live)
 	}
+}
+
+// routable says whether the channel is on a routable address, where a credential establishes the caller.
+func (s *Surface) routable() bool {
+	a := s.cfg.Channel.Address
+	return a != nil && a.Class == "routable"
+}
+
+// credential establishes the caller a request presents, on a routable channel: a request that is not
+// authenticate presents none; a password is the host's to judge, and whatever the host answers other than
+// accepted is the same refusal, carrying nothing about why.
+func (s *Surface) credential(ctx context.Context, r *interfacev1.Request) (string, *interfacev1.Refusal) {
+	invalid := refusal("auth.invalid", "the credential is not accepted")
+	auth := r.GetAuthenticate()
+	if auth == nil {
+		return "", refusal("auth.required", "the channel "+s.cfg.Channel.Name+" is on a routable address, and requires a credential establishing the caller")
+	}
+	p := auth.GetPassword()
+	if p == nil || p.GetAccount() == "" || s.cfg.Authenticate == nil {
+		return "", invalid
+	}
+	if verdict, _ := s.cfg.Authenticate(ctx, p.GetAccount(), p.GetSecret()); verdict != hostauth.Accepted {
+		return "", invalid
+	}
+	return p.GetAccount(), nil
 }
 
 func (s *Surface) publish(e event.Event) {

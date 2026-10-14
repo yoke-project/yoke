@@ -119,6 +119,10 @@ func TestOnARoutableChannelAClientWithNoCallerIsRefused(t *testing.T) {
 	defer cancel()
 	stream, err := interfacev1.NewInterfaceClient(conn).Attach(ctx)
 	if err == nil {
+		err = stream.Send(&interfacev1.ClientFrame{Call: "r", Carries: &interfacev1.ClientFrame_Request{Request: &interfacev1.Request{Version: 1,
+			Operation: &interfacev1.Request_Read{Read: &interfacev1.Read{Kind: "instance"}}}}})
+	}
+	if err == nil {
 		_, err = stream.Recv()
 	}
 	if refusalIn(err).GetCode() != "auth.required" {

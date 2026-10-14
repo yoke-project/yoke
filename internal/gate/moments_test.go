@@ -2,6 +2,7 @@ package gate_test
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -127,5 +128,38 @@ func TestARoutableChannelWithNoMaterialIsRefusedWhenItStarts(t *testing.T) {
 	os.Chmod(filepath.Join(tls, "panel.key"), 0o600)
 	if got := codes(checkAt(dir, gate.Starting, h())); slices.Contains(got, "channel.tls.missing") {
 		t.Errorf("with both readable, the findings are %v", got)
+	}
+}
+
+// std: yoke:the-moments.06
+func TestARoutableChannelOnAHostThatCannotBeAskedIsRefusedWhenItStarts(t *testing.T) {
+	routable := "channels:\n  panel: { transport: http+ws, clients: single, address: { class: routable, host: 0.0.0.0, port: 8443, security: { transport: encrypted, caller: authenticated } } }\n"
+	dir := bundleOf(t, "arch: x86_64\ncore: \">=0.1\"\n", routable, "")
+	state := t.TempDir()
+	os.MkdirAll(filepath.Join(state, "tls"), 0o700)
+	os.WriteFile(filepath.Join(state, "tls", "panel.crt"), []byte("chain"), 0o600)
+	os.WriteFile(filepath.Join(state, "tls", "panel.key"), []byte("key"), 0o600)
+	cannot := func() error { return errors.New("no libpam on this host") }
+	can := func() error { return nil }
+	host := func(answer func() error) *gate.Host {
+		return &gate.Host{StateDir: state, RuntimeRoot: t.TempDir(), Authentication: answer}
+	}
+	r := checkAt(dir, gate.Starting, host(cannot))
+	if !slices.ContainsFunc(r.Findings, func(f gate.Finding) bool {
+		return f.Code == "auth.unavailable" && strings.Contains(f.Message, "panel") && strings.Contains(f.Message, "no libpam")
+	}) {
+		t.Errorf("with a service that cannot be asked, the findings are %v", r.Findings)
+	}
+	if got := codes(checkAt(dir, gate.Starting, host(can))); slices.Contains(got, "auth.unavailable") {
+		t.Errorf("with a service that can be asked: %v", got)
+	}
+	for _, m := range []gate.Moment{gate.Installing, gate.Creating} {
+		if slices.Contains(codes(checkAt(dir, m, host(cannot))), "auth.unavailable") {
+			t.Errorf("refused at %v", m)
+		}
+	}
+	plain := bundleOf(t, "arch: x86_64\ncore: \">=0.1\"\n", "", "")
+	if slices.Contains(codes(checkAt(plain, gate.Starting, host(cannot))), "auth.unavailable") {
+		t.Error("a descriptor with no routable channel was refused")
 	}
 }

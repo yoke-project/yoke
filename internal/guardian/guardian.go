@@ -37,6 +37,7 @@ import (
 	"github.com/yoke-project/yoke/internal/core/supervisor"
 	"github.com/yoke-project/yoke/internal/gate"
 	"github.com/yoke-project/yoke/internal/guardian/channel"
+	"github.com/yoke-project/yoke/internal/hostauth"
 	"github.com/yoke-project/yoke/internal/instancerecord"
 	"github.com/yoke-project/yoke/internal/managerconf"
 	"github.com/yoke-project/yoke/internal/version"
@@ -440,7 +441,8 @@ func GateStart(o Options, rec instancerecord.Record, delegated bool) Gated {
 		Moment:    gate.Starting,
 		Manifests: filepath.Join(bundle, "manifests"),
 		Host: &gate.Host{Bundle: bundle, StateDir: stateDir, RuntimeRoot: filepath.Join(o.Runtime, rec.Name), Instance: rec.Name,
-			NoDelegation: !delegated, Arch: gate.HostArch(), Core: coreVersion(o.Config.Core), RuntimeDir: &runtimeDir},
+			NoDelegation: !delegated, Arch: gate.HostArch(), Core: coreVersion(o.Config.Core), RuntimeDir: &runtimeDir,
+			Authentication: func() error { return hostauth.Probe(resolved(o.Config.Core)) }},
 		Instance: &gate.Instance{DescriptorDigest: rec.DescriptorDigest, Stamp: strings.TrimSpace(string(stamp))},
 	})
 	out := Gated{Bundle: bundle, Deployment: dep, Findings: report.Findings}
@@ -833,15 +835,20 @@ func (g *guardian) empty(name string, pid int) {
 	}
 }
 
+// resolved is the Core's executable a configuration names: a path, or a program found on the search path.
+func resolved(core string) string {
+	if !filepath.IsAbs(core) {
+		if found, err := exec.LookPath(core); err == nil {
+			return found
+		}
+	}
+	return core
+}
+
 // coreVersion is the version of the Core the configuration names, read from the binary without
 // executing it; nil where it cannot be read, which leaves the range to the Core's own pass.
 func coreVersion(core string) *version.Version {
-	if !filepath.IsAbs(core) {
-		if found, err := exec.LookPath(core); err == nil {
-			core = found
-		}
-	}
-	v, err := version.OfBinary(core)
+	v, err := version.OfBinary(resolved(core))
 	if err != nil {
 		return nil
 	}

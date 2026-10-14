@@ -93,7 +93,7 @@
 | **Not applicable in** | — |
 | **Label** | blocking |
 | **Precondition** | two routable channels bound with their material, one carrying `local` and one `http+ws` |
-| **Action** | attach to each over TLS presenting no credential |
+| **Action** | attach to each over TLS presenting no credential: on the first, sending first an operation that is not `authenticate`; on the second, opening `/v1/events` |
 | **Expected** | each is refused `auth.required`, nothing is attached and no `channel.attached` is published |
 
 
@@ -109,3 +109,16 @@
 | **Precondition** | a real Core whose composition declares a routable `http+ws` channel `remote` on `127.0.0.1`; its state's `tls/` holding a certificate and key for `remote`; then another whose state holds none |
 | **Action** | start each, and connect to the first's channel over TLS 1.3 |
 | **Expected** | the first binds `remote`, presents the certificate from its store with ALPN `http/1.1`, and refuses `/v1/events` with `auth.required`; the second refuses its description, `channel.tls.missing` naming `remote`, and binds no channel: nothing answers on its port |
+
+## yoke:channels-bound.09 — through the Core, a caller on a routable channel is established by the host's authentication service
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/80-security/04 §The host's answer about a person · arch/70-interface-surface/03 §Who the client is |
+| **Level** | L3 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a real Core, `yoke-auth` beside it asking a stack of the test's own that accepts `alice` with `hunter2x`; its composition declares a routable `local` channel `panel` on `127.0.0.1`, its material in the store |
+| **Action** | attach over TLS, sending first `authenticate` with `alice` and `hunter2x`; then with `alice` and `wrong` |
+| **Expected** | the first is given the opening picture and the call's answer naming `alice`; the second is refused `auth.invalid` |

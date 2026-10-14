@@ -120,4 +120,4 @@
 | **Label** | blocking |
 | **Precondition** | the artifacts `yoke`'s release verb declares |
 | **Action** | read them against the tree |
-| **Expected** | three: `yoke`, holding `yoke-core`, `yoke` and `yoke-guardian` with `packaging/yoke.service`, `packaging/core.yaml`, `packaging/yoke.tmpfiles` and `packaging/yoke.sysusers`; `yoke-conformance`, holding the suite, `yoke-core` and `yoke-compose`; `yoke-verify`; every program and file named exists in the tree |
+| **Expected** | three: `yoke`, holding `yoke-core`, `yoke`, `yoke-guardian` and `yoke-auth` with `packaging/yoke.service`, `packaging/core.yaml`, `packaging/yoke.tmpfiles` and `packaging/yoke.sysusers`; `yoke-conformance`, holding the suite, `yoke-core` and `yoke-compose`; `yoke-verify`; every program and file named exists in the tree |

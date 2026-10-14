@@ -21,6 +21,7 @@ import (
 	"github.com/yoke-project/yoke/internal/core/engine"
 	"github.com/yoke-project/yoke/internal/core/instance"
 	"github.com/yoke-project/yoke/internal/gate"
+	"github.com/yoke-project/yoke/internal/hostauth"
 )
 
 // The system regime: it reads the description the service form already has — core.yaml, the scanned
@@ -142,6 +143,14 @@ func (c *call) composition(named string) (string, gate.Report, *gate.Deployment,
 		Moment:    gate.Starting,
 		Manifests: cfg.Plugins.Manifests,
 		Host: &gate.Host{Executables: cfg.Plugins.Executables, StateDir: paths.State, RuntimeRoot: paths.Root, Instance: paths.Name,
+			// The Core this verb would execute is the one asked about.
+			Authentication: func() error {
+				core, err := c.lookPath("yoke-core")
+				if err != nil {
+					return err
+				}
+				return hostauth.Probe(core)
+			},
 			Engine: func() (gate.EngineFacts, error) {
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
