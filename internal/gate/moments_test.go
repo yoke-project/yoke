@@ -90,3 +90,42 @@ func TestAnAccountWithNoRuntimeDirectoryIsRefused(t *testing.T) {
 		wants(t, checkAt(dir, gate.Installing, &gate.Host{RuntimeDir: &runtime}))
 	}
 }
+
+// std: yoke:the-moments.05
+func TestARoutableChannelWithNoMaterialIsRefusedWhenItStarts(t *testing.T) {
+	dir := bundleOf(t, "arch: x86_64\ncore: \">=0.1\"\n", "channels:\n"+
+		"  panel: { transport: http+ws, clients: single, address: { class: routable, host: 0.0.0.0, port: 8443, security: { transport: encrypted, caller: authenticated } } }\n"+
+		"  local: { transport: http+ws, clients: single }\n", "")
+	state := t.TempDir()
+	h := func() *gate.Host { return &gate.Host{StateDir: state, RuntimeRoot: t.TempDir()} }
+	tls := filepath.Join(state, "tls")
+	refused := func(when string) {
+		t.Helper()
+		r := checkAt(dir, gate.Starting, h())
+		found := slices.ContainsFunc(r.Findings, func(f gate.Finding) bool {
+			return f.Code == "channel.tls.missing" && strings.Contains(f.Message, "panel") && strings.Contains(f.Message, filepath.Join(tls, "panel"))
+		})
+		if !found || slices.ContainsFunc(r.Findings, func(f gate.Finding) bool {
+			return f.Code == "channel.tls.missing" && strings.Contains(f.Location, "local")
+		}) {
+			t.Errorf("%s: the findings are %v", when, r.Findings)
+		}
+		for _, m := range []gate.Moment{gate.Installing, gate.Creating} {
+			if slices.Contains(codes(checkAt(dir, m, h())), "channel.tls.missing") {
+				t.Errorf("%s: refused at %v", when, m)
+			}
+		}
+	}
+	refused("no tls directory")
+	os.MkdirAll(tls, 0o700)
+	os.WriteFile(filepath.Join(tls, "panel.crt"), []byte("chain"), 0o600)
+	refused("a chain and no key")
+	os.WriteFile(filepath.Join(tls, "panel.key"), []byte("key"), 0o000)
+	if os.Getuid() != 0 {
+		refused("a key that cannot be read")
+	}
+	os.Chmod(filepath.Join(tls, "panel.key"), 0o600)
+	if got := codes(checkAt(dir, gate.Starting, h())); slices.Contains(got, "channel.tls.missing") {
+		t.Errorf("with both readable, the findings are %v", got)
+	}
+}

@@ -39,6 +39,11 @@ type attachment struct {
 // begin attaches a client: a single channel already held refuses it; otherwise the attachment is
 // announced, counted as current, and its standing subscription opened before its picture is assembled.
 func (s *Surface) begin(parent context.Context, client string, live func(*interfacev1.CoreFrame) error) (*attachment, *interfacev1.Refusal) {
+	// A routable channel establishes its caller from a credential, before anything is attached; this Core
+	// accepts none yet, so every client is refused as presenting none.
+	if a := s.cfg.Channel.Address; a != nil && a.Class == "routable" {
+		return nil, refusal("auth.required", "the channel "+s.cfg.Channel.Name+" is on a routable address, and requires a credential establishing the caller")
+	}
 	if !s.attach(client) {
 		return nil, refusal("channel.in_use", "the channel "+s.cfg.Channel.Name+" takes one client, and one is attached")
 	}
@@ -187,8 +192,8 @@ func (a *attachment) handle(call string, r *interfacev1.Request, reply func(*int
 	}
 	switch name {
 	case "authenticate":
-		// On a channel whose class establishes the caller, the answer is who it established; a routable
-		// channel, which would take a credential here, is not bound by this Core.
+		// On a channel whose class establishes the caller, the answer is who it established; a client of a
+		// routable channel is refused before it is attached, and never reaches this.
 		answer(&interfacev1.Response{Answer: &interfacev1.Response_Authenticate{Authenticate: &interfacev1.Authenticated{Account: a.client}}})
 		return
 	case "confirm":

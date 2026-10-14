@@ -3,8 +3,10 @@ package interfaces_test
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -99,11 +101,16 @@ func startCore(t *testing.T, composition string) (string, <-chan string) {
 // startCoreWith is startCore with more lines of core.yaml.
 func startCoreWith(t *testing.T, configured, composition string) (string, <-chan string) {
 	t.Helper()
+	return startCoreIn(t, t.TempDir(), configured, composition)
+}
+
+// startCoreIn is startCoreWith in a directory of the caller's, whose state/ the Core's state is.
+func startCoreIn(t *testing.T, dir, configured, composition string) (string, <-chan string) {
+	t.Helper()
 	binary := filepath.Join(t.TempDir(), "yoke-core")
 	if said, err := exec.Command("go", "build", "-o", binary, "github.com/yoke-project/yoke/cmd/yoke-core").CombinedOutput(); err != nil {
 		t.Fatalf("yoke-core does not build: %v\n%s", err, said)
 	}
-	dir := t.TempDir()
 	run, _ := os.MkdirTemp("", "yk")
 	t.Cleanup(func() { os.RemoveAll(run) })
 	manifests, executables := filepath.Join(dir, "plugins.d"), filepath.Join(dir, "plugins")
@@ -647,5 +654,75 @@ channels:
 	status, resp, ref := b.post(t, "read", readOf("unit", ""))
 	if status != http.StatusOK || len(resp.GetRead().GetRecords()) != 1 || resp.GetRead().GetRecords()[0].GetUnit().GetDeclared().GetIdentity() != "calibrate-once" {
 		t.Errorf("the read was answered %d %v %v", status, resp, ref)
+	}
+}
+
+// std: yoke:channels-bound.08
+func TestThroughTheCoreARoutableChannelBindsOverTLS(t *testing.T) {
+	port := freePort(t)
+	composition := `# The test binary, %s, runs nothing here; %s is unused.
+units: {}
+channels:
+  remote: { transport: http+ws, clients: multiple, address: { class: routable, host: 127.0.0.1, port: "` + port + `", security: { transport: encrypted, caller: authenticated } } }
+`
+	dir := t.TempDir()
+	certs := material(t, filepath.Join(dir, "state", "tls"), "remote")
+	_, lines := startCoreIn(t, dir, "", composition)
+	var said []string
+	deadline := time.After(20 * time.Second)
+	for bound := false; !bound; {
+		select {
+		case line, open := <-lines:
+			if !open {
+				t.Fatalf("the Core exited:\n%s", strings.Join(said, "\n"))
+			}
+			said = append(said, line)
+			bound = strings.Contains(line, "msg=channel") && strings.Contains(line, "name=remote")
+		case <-deadline:
+			t.Fatalf("within twenty seconds the Core said:\n%s", strings.Join(said, "\n"))
+		}
+	}
+	trust := &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS13, NextProtos: []string{"h2", "http/1.1"}}
+	c, err := tls.Dial("tcp", "127.0.0.1:"+port, trust)
+	if err != nil {
+		t.Fatal(err)
+	}
+	st := c.ConnectionState()
+	c.Close()
+	if st.NegotiatedProtocol != "http/1.1" || !st.PeerCertificates[0].Equal(certs["remote"]) {
+		t.Errorf("the channel negotiated %q and presented %v", st.NegotiatedProtocol, st.PeerCertificates[0].Subject)
+	}
+	resp, err := (&http.Client{Transport: &http.Transport{TLSClientConfig: trust}}).Get("https://127.0.0.1:" + port + "/v1/events")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized || !strings.Contains(string(body), "auth.required") {
+		t.Errorf("attaching answered %d %s", resp.StatusCode, body)
+	}
+
+	other := freePort(t)
+	_, lines = startCoreIn(t, t.TempDir(), "", strings.Replace(composition, port, other, 1))
+	said = nil
+	for ready := false; !ready; {
+		select {
+		case line, open := <-lines:
+			if !open {
+				t.Fatalf("the Core exited:\n%s", strings.Join(said, "\n"))
+			}
+			said = append(said, line)
+			ready = strings.Contains(line, "type=instance.ready")
+		case <-time.After(20 * time.Second):
+			t.Fatalf("within twenty seconds the Core with no material said:\n%s", strings.Join(said, "\n"))
+		}
+	}
+	all := strings.Join(said, "\n")
+	if !strings.Contains(all, "code=channel.tls.missing location=channels.remote") || strings.Contains(all, "msg=channel ") {
+		t.Errorf("the Core with no material said:\n%s", all)
+	}
+	if c, err := net.Dial("tcp", "127.0.0.1:"+other); err == nil {
+		c.Close()
+		t.Error("something answers on the port of a channel with no material")
 	}
 }

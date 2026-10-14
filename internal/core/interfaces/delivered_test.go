@@ -45,7 +45,7 @@ func deliveringWith(t *testing.T, queue int, channels ...gate.Channel) *deliveri
 	d.transports = streams.New(streams.Config{Root: d.root, Log: slog.New(slog.NewTextHandler(io.Discard, nil)), Publish: d.w.publish})
 	t.Cleanup(func() { d.transports.CloseAll("acquire", streams.UnitExited) })
 	manifest := &gate.Manifest{ID: "com.example.station", Streams: []gate.Stream{{ID: "station.spectra"}, {ID: "station.preview"}}}
-	b, err := interfaces.BindServing(d.root, mode, channels, func(ch gate.Channel) interfacev1.InterfaceServer {
+	b, err := interfaces.BindServing(d.root, "", mode, channels, func(ch gate.Channel) interfacev1.InterfaceServer {
 		return interfaces.NewSurface(interfaces.Config{
 			Channel: ch, Root: d.root, Queue: d.queue, Bus: d.w.bus, Publish: d.w.publish, Units: bench{}, Sessions: &fakeSessions{}, Transports: d.transports,
 			Declared: func(id string) (*gate.Manifest, bool) { return manifest, benchUnits[id].kind == unit.Plugin },
