@@ -21,11 +21,11 @@ func TestAnExitStatusTellsARefusalFromAFault(t *testing.T) {
 		t.Errorf("help: %d %s", code, out)
 	}
 	code, out := yoke(map[string]string{"XDG_RUNTIME_DIR": run}, "core", "status", "--instance", "bench")
-	if code != 1 || !strings.Contains(out, "not running") {
+	if code != 2 || !strings.Contains(out, "not running") {
 		t.Errorf("an instance not running: %d %s", code, out)
 	}
 	code, out = yoke(map[string]string{"XDG_RUNTIME_DIR": run}, "frobnicate")
-	if code != 2 || !strings.Contains(out, "frobnicate") || !strings.Contains(out, "plugin") {
+	if code != 1 || !strings.Contains(out, "frobnicate") || !strings.Contains(out, "plugin") {
 		t.Errorf("no such verb: %d %s", code, out)
 	}
 }

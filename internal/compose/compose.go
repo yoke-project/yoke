@@ -38,6 +38,22 @@ var epoch = time.Date(1980, 1, 1, 0, 0, 0, 0, time.UTC)
 // ErrRefused is a build refused because the gate refused the project.
 var ErrRefused = errors.New("the project is refused")
 
+// Refusal is an answer that will not change until the project, or what the verb was given, is changed.
+// Any other failure is a fault: the attempt failed, and the same attempt may succeed.
+type Refusal struct{ err error }
+
+func (r Refusal) Error() string { return r.err.Error() }
+func (r Refusal) Unwrap() error { return r.err }
+
+func refusef(format string, args ...any) error { return Refusal{fmt.Errorf(format, args...)} }
+
+// IsRefusal says whether err is a refusal rather than a fault.
+func IsRefusal(err error) bool {
+	var r Refusal
+	var p *pkgfile.Refusal
+	return errors.As(err, &r) || errors.As(err, &p)
+}
+
 // InitOptions are the identity fields `init` writes besides the identifier. An empty one takes its
 // default: this host's architecture, version 0.1.0, and the Core from 0.5, the first with the application
 // form.
@@ -51,7 +67,7 @@ type InitOptions struct {
 // `components/` beside it. A descriptor already there is refused and left as it is.
 func Init(dir, id string, o InitOptions) error {
 	if !gate.IsIdentifier(id) {
-		return fmt.Errorf("the id %q is not a namespaced identifier of dot-separated lowercase labels", id)
+		return refusef("the id %q is not a namespaced identifier of dot-separated lowercase labels", id)
 	}
 	if o.Arch == "" {
 		o.Arch = HostArch()
@@ -64,7 +80,7 @@ func Init(dir, id string, o InitOptions) error {
 	}
 	descriptor := filepath.Join(dir, Descriptor)
 	if _, err := os.Lstat(descriptor); err == nil {
-		return fmt.Errorf("%s is already there: a project is made once", descriptor)
+		return refusef("%s is already there: a project is made once", descriptor)
 	}
 	for _, sub := range []string{Manifests, Components} {
 		if err := os.MkdirAll(filepath.Join(dir, sub), 0o755); err != nil {
@@ -124,7 +140,7 @@ func Build(dir string, o BuildOptions) (string, gate.Report, error) {
 				lines = append(lines, fmt.Sprintf("%s at %s: %s", f.Code, f.Location, f.Message))
 			}
 		}
-		return "", report, fmt.Errorf("%w: %s", ErrRefused, strings.Join(lines, "; "))
+		return "", report, refusef("%w: %s", ErrRefused, strings.Join(lines, "; "))
 	}
 	for _, name := range d.Order {
 		if exec := d.Units[name].Exec; exec != "" {
@@ -188,7 +204,7 @@ func pinnedArchives(dir string, d *gate.Deployment) error {
 	}
 	for _, e := range entries {
 		if !pinned[e.Name()] {
-			return fmt.Errorf("%s/images/%s is an image archive no image of the descriptor pins", Components, e.Name())
+			return refusef("%s/images/%s is an image archive no image of the descriptor pins", Components, e.Name())
 		}
 	}
 	return nil
@@ -198,14 +214,14 @@ func pinnedArchives(dir string, d *gate.Deployment) error {
 func inBundle(dir, unit, exec string) error {
 	clean := path.Clean(exec)
 	if path.IsAbs(exec) || clean != exec || !strings.HasPrefix(clean, Components+"/") {
-		return fmt.Errorf("the unit %s names %s, which is outside the bundle: a program is a path under %s/", unit, exec, Components)
+		return refusef("the unit %s names %s, which is outside the bundle: a program is a path under %s/", unit, exec, Components)
 	}
 	info, err := os.Lstat(filepath.Join(dir, filepath.FromSlash(clean)))
 	if err != nil {
-		return fmt.Errorf("the unit %s names %s, which is not there", unit, exec)
+		return refusef("the unit %s names %s, which is not there", unit, exec)
 	}
 	if !info.Mode().IsRegular() {
-		return fmt.Errorf("the unit %s names %s, which is not a regular file", unit, exec)
+		return refusef("the unit %s names %s, which is not a regular file", unit, exec)
 	}
 	return nil
 }
@@ -227,7 +243,7 @@ func archive(dir string) ([]byte, error) {
 				return nil
 			}
 			if !e.Type().IsRegular() {
-				return fmt.Errorf("%s is not a regular file, and a bundle holds only files", p)
+				return refusef("%s is not a regular file, and a bundle holds only files", p)
 			}
 			rel, err := filepath.Rel(dir, p)
 			if err != nil {

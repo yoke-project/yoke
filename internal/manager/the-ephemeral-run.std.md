@@ -29,7 +29,7 @@
 | **Label** | blocking |
 | **Precondition** | as in `.01`, a run of `com.yoke.station` followed until it is observable |
 | **Action** | kill the instance's Core; then run `yoke instance list`; then `yoke app prune com.yoke.station` |
-| **Expected** | the run exits 1 saying the instance failed and that its record is kept; the record is there with `outcome: failed` and its desired state still `running`; the list names it `failed`; the prune names it as removed, and its directory is gone |
+| **Expected** | the run exits 2 saying the instance failed and that its record is kept; the record is there with `outcome: failed` and its desired state still `running`; the list names it `failed`; the prune names it as removed, and its directory is gone |
 
 ## yoke:the-ephemeral-run.03 — a bundle being written runs unverified, and the instance says so of itself
 
@@ -55,7 +55,7 @@
 | **Label** | blocking |
 | **Precondition** | `com.yoke.station` `2.1.0` installed, and a working directory holding a bundle whose descriptor carries `verification: waived` beside its identity |
 | **Action** | create an ephemeral record for `com.yoke.station` with the unlaunched waiver; run `yoke instance create com.yoke.station --admit-unlaunched`; run `yoke app run --from` the directory |
-| **Expected** | the record names `admission: unlaunched-permitted`, and no source and no verification waiver; the create exits 2 naming the flag and writes no record; the run exits 2, the descriptor refused for a key it does not know, and writes no record |
+| **Expected** | the record names `admission: unlaunched-permitted`, and no source and no verification waiver; the create exits 1 naming the flag and writes no record; the run exits 2, the descriptor refused for a key it does not know, and writes no record |
 
 ## yoke:the-ephemeral-run.05 — what a run cannot be is refused before anything is written
 
@@ -68,7 +68,7 @@
 | **Label** | blocking |
 | **Precondition** | `com.yoke.station` `2.1.0` installed; no instance declared |
 | **Action** | run `yoke app run` with no subject; with `com.yoke.other`; with `--from` and an application's identifier; with `--from` a directory holding no descriptor |
-| **Expected** | each exits 2 and no instance directory exists afterwards |
+| **Expected** | each exits 1 and no instance directory exists afterwards |
 
 ## yoke:the-ephemeral-run.06 — a start that never happened takes its record with it
 
@@ -81,4 +81,4 @@
 | **Label** | blocking |
 | **Precondition** | as in `.01`, and a working directory holding a bundle whose one unit needs `secret:token`, which nothing supplies |
 | **Action** | run `yoke app run --from <dir>` |
-| **Expected** | it exits 2 naming `secret.missing`, says nothing ran, and no instance directory exists afterwards |
+| **Expected** | it exits 1 naming `secret.missing`, says nothing ran, and no instance directory exists afterwards |

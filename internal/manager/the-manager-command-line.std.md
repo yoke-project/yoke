@@ -16,7 +16,7 @@
 | **Label** | blocking |
 | **Precondition** | a verb that succeeds, a client verb against an instance that is not running, and a word that is no verb |
 | **Action** | run each |
-| **Expected** | the first exits 0; the second exits 1, reporting that the instance is not running; the third exits 2, naming the word and the verbs there are |
+| **Expected** | the first exits 0; the second exits 2, reporting that the instance is not running; the third exits 1, naming the word and the verbs there are |
 
 ## yoke:the-manager-command-line.02 — the instance is a selector, and an instance's name chooses nothing else
 
@@ -94,7 +94,7 @@
 | **Label** | blocking |
 | **Precondition** | a configuration naming an install root holding `com.yoke.station` at `2.0.0`, `2.1.0` and `2.2.0`, and an engine that does not answer; an instance `bench-a` pinned to `2.0.0` |
 | **Action** | run `yoke app remove com.yoke.station`, then `yoke app prune com.yoke.station`, then `yoke app remove com.yoke.station --version 2.2.0`, then `yoke app prune com.yoke.other` |
-| **Expected** | the first exits 2 naming `bench-a`, and removes nothing; the prune exits 0 naming `2.1.0` as removed and saying images were not considered, and leaves `2.0.0`, which `bench-a` points at, and `2.2.0`; the removal of `2.2.0` exits 0 naming it; the prune of an application not installed exits 2 |
+| **Expected** | the first exits 1 naming `bench-a`, and removes nothing; the prune exits 0 naming `2.1.0` as removed and saying images were not considered, and leaves `2.0.0`, which `bench-a` points at, and `2.2.0`; the removal of `2.2.0` exits 0 naming it; the prune of an application not installed exits 2 |
 
 ## yoke:the-manager-command-line.08 — `yoke instance start` and `stop` write the desired state and tell a guardian, starting one where nothing answers
 
@@ -120,7 +120,7 @@
 | **Label** | blocking |
 | **Precondition** | instances `bench-a`, stopped, whose state holds a file, and `bench-b`, whose claim another process holds |
 | **Action** | `yoke instance enable bench-a`, then `disable`; `yoke instance clear bench-b` and `remove bench-b`; `yoke instance clear bench-a`, then `remove bench-a` |
-| **Expected** | enable writes `autostart: true` and leaves the desired state, and disable writes it back; both verbs on `bench-b` exit 2 saying it is running, and remove nothing; clearing `bench-a` empties its state and keeps its record; removing it takes the record and the state together |
+| **Expected** | enable writes `autostart: true` and leaves the desired state, and disable writes it back; both verbs on `bench-b` exit 1 saying it is running, and remove nothing; clearing `bench-a` empties its state and keeps its record; removing it takes the record and the state together |
 
 ## yoke:the-manager-command-line.10 — `yoke instance list` answers without a guardian, and starts none
 

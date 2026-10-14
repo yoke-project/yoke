@@ -13,8 +13,8 @@ import (
 // The exit statuses: a refusal will not pass on the next attempt, a fault may.
 const (
 	Done    = 0
-	Fault   = 1
-	Refused = 2
+	Refused = 1
+	Fault   = 2
 )
 
 // refusal is an answer that will not change until something is changed.

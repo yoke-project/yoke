@@ -36,7 +36,7 @@ func TestTheCommandLine(t *testing.T) {
 	if code, out := run("init", "com.yoke.station", "--dir", d, "--arch", "aarch64"); code != 0 {
 		t.Fatalf("init: %d %s", code, out)
 	}
-	if code, out := run("check", "--dir", d); code == 0 || !strings.Contains(out, "field.required") {
+	if code, out := run("check", "--dir", d); code != 1 || !strings.Contains(out, "field.required") {
 		t.Errorf("check with no unit: %d %s", code, out)
 	}
 	body := "#!/bin/sh\n"
@@ -57,7 +57,12 @@ func TestTheCommandLine(t *testing.T) {
 	if err != nil || footer.Meta.SigID != pkgfile.SigEd25519 || footer.Meta.SealID != pkgfile.SealAES256GCM {
 		t.Errorf("the package: %v %+v", err, footer)
 	}
-	if code, out := run("publish"); code == 0 || !strings.Contains(out, "publish") || !strings.Contains(out, "build") {
+	if code, out := run("publish"); code != 1 || !strings.Contains(out, "publish") || !strings.Contains(out, "build") {
 		t.Errorf("an unknown verb: %d %s", code, out)
+	}
+	blocked := filepath.Join(t.TempDir(), "file")
+	os.WriteFile(blocked, nil, 0o644)
+	if code, out := run("build", "--dir", d, "--out", filepath.Join(blocked, "under")); code != 2 {
+		t.Errorf("a build that cannot write: %d %s", code, out)
 	}
 }
