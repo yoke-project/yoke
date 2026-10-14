@@ -35,8 +35,11 @@ jobs:
       - id: crates
         uses: rust-lang/crates-io-auth-action@v1
         continue-on-error: true
-      - run: just release > manifest-lines.jsonl
+      # The run publishes what the tag that invoked it names: a commit carrying a programs tag and a
+      # definitions tag runs this twice, and neither run steps on the other's release.
+      - run: just release "$TAG" > manifest-lines.jsonl
         env:
+          TAG: ${{ github.ref_name }}
           GH_TOKEN: ${{ github.token }}
           CARGO_REGISTRY_TOKEN: ${{ steps.crates.outputs.token }}
       - uses: actions/upload-artifact@v7

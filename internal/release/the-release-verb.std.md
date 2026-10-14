@@ -69,3 +69,16 @@
 | **Precondition** | the repository tagged `v0.1.0`, with a `NOTICE` beside its licence |
 | **Action** | run the verb at that commit |
 | **Expected** | the module's line names `NOTICE` among its notices |
+
+## yoke:the-release-verb.06 — a run invoked by one tag publishes what that tag names, and nothing the commit's other tags do
+
+| Field | Value |
+| --- | --- |
+| **Cites** | prj_structure/95 §Continuous integration · prj_structure/85 §The acts |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a commit tagged both `v0.1.0` and `proto/v0.2.0` |
+| **Action** | run the verb told it was invoked by `proto/v0.2.0`; then by `v0.1.0`; then by `v9.9.9`, which does not name the commit |
+| **Expected** | the first publishes the definitions module alone; the second the programs module alone; the third publishes nothing, exits non-zero and names the tag |
