@@ -27,9 +27,9 @@
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
-| **Precondition** | a `core.yaml` whose runtime directory holds no instance; a `systemctl` saying `yoke.service` is active, then one saying it is inactive |
+| **Precondition** | a `core.yaml` whose runtime directory holds no instance, and an account holding an instance record; a `systemctl` saying `yoke.service` is active, then one saying it is inactive |
 | **Action** | run `yoke service status` with each |
-| **Expected** | the first says the init system reports it active, that the instance does not answer, and names the disagreement; the second reports both as not running and names none; both exit 0 |
+| **Expected** | the first says the init system reports it active, that the instance does not answer at the deployment's own operator socket even though the account holds an instance record, and names the disagreement; the second reports both as not running and names none; both exit 0 |
 
 ## yoke:the-service-regime.03 — `check` runs the gate over the composition in force, and reports every refusal
 

@@ -22,6 +22,7 @@ import (
 
 	"github.com/yoke-project/yoke/internal/core/config"
 	"github.com/yoke-project/yoke/internal/gate"
+	"github.com/yoke-project/yoke/internal/instancerecord"
 )
 
 // The client verbs: one per operation of the administrative contract, on the operator projection. Each
@@ -68,9 +69,27 @@ func init() {
 }
 
 // operatorAddress is where the operator projection of the selected instance is. With a selector it is
-// derived from the instance's name, which chooses nothing else; with none it is the service form's,
-// under the runtime directory its `core.yaml` states.
+// derived from the instance's name, which chooses nothing else. With none, the account's one instance is
+// selected; several are refused, since choosing among them is the selector's; and an account with none
+// addresses the service form, under the runtime directory its `core.yaml` states.
 func operatorAddress(instance string, selected bool, getenv func(string) string) (string, error) {
+	if !selected {
+		listed, err := instancerecord.List(instancerecord.Root(getenv))
+		if err != nil {
+			return "", err
+		}
+		switch len(listed) {
+		case 0:
+		case 1:
+			instance, selected = listed[0].Name, true
+		default:
+			var names []string
+			for _, l := range listed {
+				names = append(names, l.Name)
+			}
+			return "", refusef("this account has %d instances, %s: name one with --instance", len(names), strings.Join(names, ", "))
+		}
+	}
 	if selected {
 		a, err := admin.Application(instance, getenv)
 		if err != nil {
@@ -78,6 +97,12 @@ func operatorAddress(instance string, selected bool, getenv func(string) string)
 		}
 		return a.Operator, nil
 	}
+	return serviceAddress(getenv)
+}
+
+// serviceAddress is the service form's operator projection, under the runtime directory its `core.yaml`
+// states, whatever instances the account holds.
+func serviceAddress(getenv func(string) string) (string, error) {
 	c, err := config.Load(getenv)
 	if err != nil {
 		return "", refusal{err}
@@ -131,6 +156,19 @@ func (c *call) dial(instance string, selected bool) (*admin.Operator, error) {
 	if err != nil {
 		return nil, err
 	}
+	return dialAt(path)
+}
+
+// dialService reaches the service form's operator projection.
+func (c *call) dialService() (*admin.Operator, error) {
+	path, err := serviceAddress(c.getenv)
+	if err != nil {
+		return nil, err
+	}
+	return dialAt(path)
+}
+
+func dialAt(path string) (*admin.Operator, error) {
 	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
 		return nil, fmt.Errorf("the instance is not running: nothing answers at %s", path)
 	}

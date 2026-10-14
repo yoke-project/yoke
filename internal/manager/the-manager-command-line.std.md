@@ -160,3 +160,17 @@
 | **Precondition** | `yoke-core` built; an instance `bench-a` running, of a version with a unit `keeper` needing `secret:token` and a unit `other` needing nothing, each running |
 | **Action** | run `yoke instance set-secret bench-a token` with a new value |
 | **Expected** | it exits 0 naming `keeper` as restarted; `keeper` is in its second incarnation and `other` still in its first |
+
+
+## yoke:the-manager-command-line.13 — with no selector, the account's one instance is the one addressed
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/10-manager/01 §The client verbs |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | `XDG_RUNTIME_DIR` and `XDG_STATE_HOME` set, `YOKE_CONFIG` naming a `core.yaml`; the account holding one instance `bench-a`, then a second `bench-b`, then none |
+| **Action** | resolve the operator projection with no `--instance`, each time |
+| **Expected** | with one, the address is `bench-a`'s, under `$XDG_RUNTIME_DIR/yoke/`; with two, a refusal naming both and the selector; with none, the address is under the `runtime_dir` that `core.yaml` states |
