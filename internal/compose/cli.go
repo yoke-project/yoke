@@ -30,6 +30,7 @@ const usage = `usage: yoke-compose <verb> [options]
   block save <unit> <destination> [--dir D]                 write a unit as a block
   waive <code> --at <location> --reason <text> [--dir D]    silence one advisory item, recorded in advisories.yaml
   waivers [--dir D]                                         every waiver, its reason, and whether it is stale
+  migrate [--to M] [--dir D]                                carry the descriptor to model M, by default the newest
 
   An authoring verb writes the project's descriptor in --dir, or the composition document --file names,
   checked against the Manifests in --manifests.
@@ -114,6 +115,21 @@ func Run(args []string, stdout, stderr io.Writer) int {
 				fmt.Fprintf(stdout, "%s at %s, waived %s: %s%s\n", w.Code, w.At, w.WaivedAt, w.Reason, mark)
 			}
 		}
+	case "migrate":
+		to := fs.Int("to", ToNewest, "the model to carry the descriptor to, by default the newest this composer implements")
+		if fs.Parse(rest) != nil {
+			return Refused
+		}
+		var m Migration
+		m, err = Migrate(*dir, *to)
+		m.report(stdout)
+		if err == nil {
+			if m.From == m.To {
+				fmt.Fprintf(stdout, "the project is already at model %d; nothing changed\n", m.To)
+			} else {
+				fmt.Fprintf(stdout, "carried the project from model %d to %d\n", m.From, m.To)
+			}
+		}
 	case "build":
 		out := fs.String("out", ".", "where the package is written")
 		key := fs.String("sign", "", "a private key in PEM to sign with; none builds an unsigned package")
@@ -161,7 +177,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 			return Refused
 		}
 	default:
-		fmt.Fprintf(stderr, "yoke-compose has no verb %q; the verbs are init, check, build, add, set, arbitrate, block, waive and waivers\n", verb)
+		fmt.Fprintf(stderr, "yoke-compose has no verb %q; the verbs are init, check, build, add, set, arbitrate, block, waive, waivers and migrate\n", verb)
 		return Refused
 	}
 	if err != nil {
