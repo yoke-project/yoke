@@ -1,12 +1,16 @@
 package manager
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"os/signal"
 	"sort"
 	"strings"
 
+	"github.com/yoke-project/yoke-sdk-go/admin"
 	"github.com/yoke-project/yoke-sdk-go/base"
 )
 
@@ -36,6 +40,10 @@ type call struct {
 	args   []string
 	getenv func(string) string
 	out    io.Writer
+	// held is the connection a shell holds, and line the context of the line being performed on it; both
+	// nil outside a shell.
+	held *admin.Shell
+	line context.Context
 }
 
 // verbs are the command line's acts, by subject and operation. Each lifecycle namespace adds its own.
@@ -54,6 +62,12 @@ func Run(args []string, getenv func(string) string, stdout, stderr io.Writer) in
 		fmt.Fprint(stdout, Usage())
 		return Done
 	}
+	if args[0] == "shell" {
+		interrupts := make(chan os.Signal, 1)
+		signal.Notify(interrupts, os.Interrupt)
+		defer signal.Stop(interrupts)
+		return shell(args[1:], getenv, os.Stdin, stdout, stderr, interrupts)
+	}
 	subject, ops := args[0], verbs[args[0]]
 	if ops == nil {
 		fmt.Fprintf(stderr, "yoke has no verb %q; the subjects are %s\n", subject, strings.Join(subjects(), ", "))
@@ -67,7 +81,11 @@ func Run(args []string, getenv func(string) string, stdout, stderr io.Writer) in
 		fmt.Fprintf(stderr, "yoke %s has no operation%s; it has %s\n", subject, named, strings.Join(operations(subject), ", "))
 		return Refused
 	}
-	err := ops[args[1]].run(&call{args: args[2:], getenv: getenv, out: stdout})
+	return reported(ops[args[1]].run(&call{args: args[2:], getenv: getenv, out: stdout}), stderr)
+}
+
+// reported prints what a verb answered where it failed, and is its exit status.
+func reported(err error, stderr io.Writer) int {
 	if err == nil {
 		return Done
 	}
@@ -84,6 +102,7 @@ func Run(args []string, getenv func(string) string, stdout, stderr io.Writer) in
 func Usage() string {
 	var b strings.Builder
 	b.WriteString("usage: yoke <subject> <operation> [arguments] [--instance <name>]\n\n")
+	b.WriteString("  yoke shell [--instance <name>]\n")
 	for _, s := range subjects() {
 		for _, o := range operations(s) {
 			fmt.Fprintf(&b, "  yoke %s %s %s\n", s, o, verbs[s][o].usage)

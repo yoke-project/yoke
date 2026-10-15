@@ -25,58 +25,65 @@ import (
 	"github.com/yoke-project/yoke/internal/instancerecord"
 )
 
-// The client verbs: one per operation of the administrative contract, on the operator projection. Each
-// reaches the instance the way any other client would; the manager holds no path of its own inwards.
+// The client verbs: one per operation of the administrative contract, on the operator projection, or on
+// the connection a shell holds. Each reaches the instance the way any other client would; the manager
+// holds no path of its own inwards.
 func init() {
 	register("core", "status", verb{"", func(c *call) error { return c.read("instance", 0) }})
 	register("core", "read", verb{"<kind> [<identity>]", func(c *call) error { return c.readAny() }})
 	register("core", "subscribe", verb{"[--kind K] [--identity I] [--floor N] [--type T]", (*call).subscribe})
 	register("plugin", "list", verb{"", func(c *call) error { return c.read("plugin", 0) }})
 	register("plugin", "show", verb{"<plugin>", func(c *call) error { return c.read("plugin", 1) }})
-	register("plugin", "enable", verb{"<plugin>", change(1, "one subject", "enabled", func(o *admin.Operator, ctx context.Context, a []string) (admin.Changed, error) {
+	register("plugin", "enable", verb{"<plugin>", change(1, "one subject", "enabled", func(o admin.Operations, ctx context.Context, a []string) (admin.Changed, error) {
 		return o.EnablePlugin(ctx, a[0])
 	})})
-	register("plugin", "disable", verb{"<plugin>", change(1, "one subject", "disabled", func(o *admin.Operator, ctx context.Context, a []string) (admin.Changed, error) {
+	register("plugin", "disable", verb{"<plugin>", change(1, "one subject", "disabled", func(o admin.Operations, ctx context.Context, a []string) (admin.Changed, error) {
 		return o.DisablePlugin(ctx, a[0])
 	})})
-	register("plugin", "grant", verb{"<plugin> <capability>", change(2, "two subjects", "granted", func(o *admin.Operator, ctx context.Context, a []string) (admin.Changed, error) {
+	register("plugin", "grant", verb{"<plugin> <capability>", change(2, "two subjects", "granted", func(o admin.Operations, ctx context.Context, a []string) (admin.Changed, error) {
 		return o.Grant(ctx, a[0], a[1])
 	})})
-	register("plugin", "withdraw", verb{"<plugin> <capability>", change(2, "two subjects", "not granted", func(o *admin.Operator, ctx context.Context, a []string) (admin.Changed, error) {
+	register("plugin", "withdraw", verb{"<plugin> <capability>", change(2, "two subjects", "not granted", func(o admin.Operations, ctx context.Context, a []string) (admin.Changed, error) {
 		return o.Withdraw(ctx, a[0], a[1])
 	})})
 	register("unit", "list", verb{"", func(c *call) error { return c.read("unit", 0) }})
 	register("unit", "show", verb{"<unit>", func(c *call) error { return c.read("unit", 1) }})
-	register("unit", "start", verb{"<unit>", c1(func(o *admin.Operator, ctx context.Context, a []string) (admin.Changed, error) {
+	register("unit", "start", verb{"<unit>", c1(func(o admin.Operations, ctx context.Context, a []string) (admin.Changed, error) {
 		return o.StartUnit(ctx, a[0])
 	})})
-	register("unit", "stop", verb{"<unit>", c1(func(o *admin.Operator, ctx context.Context, a []string) (admin.Changed, error) {
+	register("unit", "stop", verb{"<unit>", c1(func(o admin.Operations, ctx context.Context, a []string) (admin.Changed, error) {
 		return o.StopUnit(ctx, a[0])
 	})})
-	register("unit", "restart", verb{"<unit>", c1(func(o *admin.Operator, ctx context.Context, a []string) (admin.Changed, error) {
+	register("unit", "restart", verb{"<unit>", c1(func(o admin.Operations, ctx context.Context, a []string) (admin.Changed, error) {
 		return o.RestartUnit(ctx, a[0])
 	})})
 	register("unit", "ask", verb{"<unit> <type> [--input <file>|-]", (*call).ask})
 	register("unit", "retention", verb{"<unit> [--age D] [--bytes S] [--entries N] | --clear", (*call).retention})
-	register("stream", "start", verb{"<unit> <stream>", c2(func(o *admin.Operator, ctx context.Context, a []string) (admin.Changed, error) {
+	register("stream", "start", verb{"<unit> <stream>", c2(func(o admin.Operations, ctx context.Context, a []string) (admin.Changed, error) {
 		return o.StartStream(ctx, a[0], a[1])
 	})})
-	register("stream", "stop", verb{"<unit> <stream>", c2(func(o *admin.Operator, ctx context.Context, a []string) (admin.Changed, error) {
+	register("stream", "stop", verb{"<unit> <stream>", c2(func(o admin.Operations, ctx context.Context, a []string) (admin.Changed, error) {
 		return o.StopStream(ctx, a[0], a[1])
 	})})
 	register("log", "query", verb{"[--unit U] [--incarnation N] [--floor N]", func(c *call) error { return c.log(false) }})
 	register("log", "follow", verb{"[--unit U] [--incarnation N] [--floor N]", func(c *call) error { return c.log(true) }})
 }
 
-// operatorAddress is where the operator projection of the selected instance is. With a selector it is
-// derived from the instance's name, which chooses nothing else. With none, the account's one instance is
-// selected; several are refused, since choosing among them is the selector's; and an account with none
-// addresses the service form, under the runtime directory its `core.yaml` states.
+// operatorAddress is where the operator projection of the selected instance is.
 func operatorAddress(instance string, selected bool, getenv func(string) string) (string, error) {
+	a, err := addresses(instance, selected, getenv)
+	return a.Operator, err
+}
+
+// addresses are the selected instance's two projections. With a selector they are derived from the
+// instance's name, which chooses nothing else. With none, the account's one instance is selected;
+// several are refused, since choosing among them is the selector's; and an account with none addresses
+// the service form, under the runtime directory its `core.yaml` states.
+func addresses(instance string, selected bool, getenv func(string) string) (admin.Addresses, error) {
 	if !selected {
 		listed, err := instancerecord.List(instancerecord.Root(getenv))
 		if err != nil {
-			return "", err
+			return admin.Addresses{}, err
 		}
 		switch len(listed) {
 		case 0:
@@ -87,17 +94,21 @@ func operatorAddress(instance string, selected bool, getenv func(string) string)
 			for _, l := range listed {
 				names = append(names, l.Name)
 			}
-			return "", refusef("this account has %d instances, %s: name one with --instance", len(names), strings.Join(names, ", "))
+			return admin.Addresses{}, refusef("this account has %d instances, %s: name one with --instance", len(names), strings.Join(names, ", "))
 		}
 	}
 	if selected {
 		a, err := admin.Application(instance, getenv)
 		if err != nil {
-			return "", refusal{err}
+			return admin.Addresses{}, refusal{err}
 		}
-		return a.Operator, nil
+		return a, nil
 	}
-	return serviceAddress(getenv)
+	c, err := config.Load(getenv)
+	if err != nil {
+		return admin.Addresses{}, refusal{err}
+	}
+	return admin.Service(c.RuntimeDir), nil
 }
 
 // serviceAddress is the service form's operator projection, under the runtime directory its `core.yaml`
@@ -168,6 +179,39 @@ func (c *call) dialService() (*admin.Operator, error) {
 	return dialAt(path)
 }
 
+// link is what a verb performs its operation on: in a shell, the connection it holds, which already names
+// its instance; otherwise the selected instance's operator projection, let go when the verb is done.
+func (c *call) link(instance string, selected bool) (admin.Operations, func(), error) {
+	if c.held != nil {
+		if selected {
+			return admin.Operations{}, nil, refusef("--instance %s names an instance, and this shell's connection already names its own", instance)
+		}
+		return c.held.Operations, func() {}, nil
+	}
+	o, err := c.dial(instance, selected)
+	if err != nil {
+		return admin.Operations{}, nil, err
+	}
+	return o.Operations, func() { o.Close() }, nil
+}
+
+// context is what a verb's operation runs under: in a shell, the line's, which an interrupt ends.
+func (c *call) context() context.Context {
+	if c.line != nil {
+		return c.line
+	}
+	return context.Background()
+}
+
+// interruptible is what a following verb runs under, ended by an interrupt: in a shell, the line's,
+// which leaves the connection; otherwise the process's.
+func (c *call) interruptible() (context.Context, func()) {
+	if c.line != nil {
+		return c.line, func() {}
+	}
+	return signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+}
+
 func dialAt(path string) (*admin.Operator, error) {
 	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
 		return nil, fmt.Errorf("the instance is not running: nothing answers at %s", path)
@@ -183,7 +227,7 @@ func (c *call) positional(n int, usage string) error {
 }
 
 // change is a verb whose operation changes something, printed as the contract answers it.
-func change(n int, usage, asked string, op func(*admin.Operator, context.Context, []string) (admin.Changed, error)) func(*call) error {
+func change(n int, usage, asked string, op func(admin.Operations, context.Context, []string) (admin.Changed, error)) func(*call) error {
 	return func(c *call) error {
 		_, instance, selected, err := c.flags(nil)
 		if err != nil {
@@ -192,12 +236,12 @@ func change(n int, usage, asked string, op func(*admin.Operator, context.Context
 		if err := c.positional(n, usage); err != nil {
 			return err
 		}
-		o, err := c.dial(instance, selected)
+		o, done, err := c.link(instance, selected)
 		if err != nil {
 			return err
 		}
-		defer o.Close()
-		ch, err := op(o, context.Background(), c.args)
+		defer done()
+		ch, err := op(o, c.context(), c.args)
 		if err != nil {
 			return unreached(err)
 		}
@@ -206,11 +250,11 @@ func change(n int, usage, asked string, op func(*admin.Operator, context.Context
 	}
 }
 
-func c1(op func(*admin.Operator, context.Context, []string) (admin.Changed, error)) func(*call) error {
+func c1(op func(admin.Operations, context.Context, []string) (admin.Changed, error)) func(*call) error {
 	return change(1, "one subject", "", op)
 }
 
-func c2(op func(*admin.Operator, context.Context, []string) (admin.Changed, error)) func(*call) error {
+func c2(op func(admin.Operations, context.Context, []string) (admin.Changed, error)) func(*call) error {
 	return change(2, "two subjects", "", op)
 }
 
@@ -298,12 +342,12 @@ func (c *call) readAny() error {
 }
 
 func (c *call) records(instance string, selected bool, kind, identity string) error {
-	o, err := c.dial(instance, selected)
+	o, done, err := c.link(instance, selected)
 	if err != nil {
 		return err
 	}
-	defer o.Close()
-	records, err := o.Read(context.Background(), kind, identity)
+	defer done()
+	records, err := o.Read(c.context(), kind, identity)
 	if err != nil {
 		return unreached(err)
 	}
@@ -339,6 +383,9 @@ func (c *call) ask() error {
 	switch *input {
 	case "":
 	case "-":
+		if c.held != nil {
+			return refusef("--input - reads the standard input, and in a shell that is where the lines come from")
+		}
 		question, err = io.ReadAll(os.Stdin)
 	default:
 		question, err = os.ReadFile(*input)
@@ -346,12 +393,12 @@ func (c *call) ask() error {
 	if err != nil {
 		return err
 	}
-	o, err := c.dial(instance, selected)
+	o, done, err := c.link(instance, selected)
 	if err != nil {
 		return err
 	}
-	defer o.Close()
-	answer, err := o.Ask(context.Background(), c.args[0], c.args[1], question)
+	defer done()
+	answer, err := o.Ask(c.context(), c.args[0], c.args[1], question)
 	if err != nil {
 		return unreached(err)
 	}
@@ -397,16 +444,16 @@ func (c *call) retention() error {
 		}
 		r.Entries = &n
 	}
-	o, err := c.dial(instance, selected)
+	o, done, err := c.link(instance, selected)
 	if err != nil {
 		return err
 	}
-	defer o.Close()
+	defer done()
 	var ch admin.Changed
 	if *clear {
-		ch, err = o.ClearRetention(context.Background(), c.args[0])
+		ch, err = o.ClearRetention(c.context(), c.args[0])
 	} else {
-		ch, err = o.SetRetention(context.Background(), c.args[0], r)
+		ch, err = o.SetRetention(c.context(), c.args[0], r)
 	}
 	if err != nil {
 		return unreached(err)
@@ -435,12 +482,12 @@ func (c *call) log(follow bool) error {
 	if err := c.positional(0, "no subject"); err != nil {
 		return err
 	}
-	o, err := c.dial(instance, selected)
+	o, done, err := c.link(instance, selected)
 	if err != nil {
 		return err
 	}
-	defer o.Close()
-	ctx := context.Background()
+	defer done()
+	ctx := c.context()
 	if !follow {
 		q := &administrativev1.LogQuery{Unit: *unit, Incarnation: *incarnation, Floor: uint32(*floor)}
 		for {
@@ -457,7 +504,7 @@ func (c *call) log(follow bool) error {
 			q.Cursor = page.GetNext()
 		}
 	}
-	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	ctx, stop := c.interruptible()
 	defer stop()
 	f, err := o.FollowLog(ctx, &administrativev1.LogFollow{Unit: *unit, Incarnation: *incarnation, Floor: uint32(*floor)})
 	if err != nil {
@@ -496,14 +543,14 @@ func (c *call) subscribe() error {
 	if err != nil {
 		return err
 	}
-	o, err := c.dial(instance, selected)
+	o, done, err := c.link(instance, selected)
 	if err != nil {
 		return err
 	}
-	defer o.Close()
+	defer done()
 	filter := &administrativev1.Filter{SubjectKind: *kind, SubjectIdentity: *identity, Floor: uint32(*floor),
 		Type: strings.TrimSuffix(*typ, "."), TypePrefix: strings.HasSuffix(*typ, ".")}
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	ctx, stop := c.interruptible()
 	defer stop()
 	s, err := o.Subscribe(ctx, filter)
 	if err != nil {
