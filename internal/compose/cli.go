@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/yoke-project/yoke/internal/gate"
 )
@@ -25,6 +26,8 @@ const usage = `usage: yoke-compose <verb> [options]
   add parameter <group>.<name> --type T [--range R] [--pattern P] [--values A,B] [--required] [--default V] [--label L]
   set <path> <value>                                        write any field, by the path a finding carries
   arbitrate <channel> over <channel>...                     write one precedence relation
+  block add <source> --as <name> [--dir D]                  place a block, recorded in blocks.yaml
+  block save <unit> <destination> [--dir D]                 write a unit as a block
 
   An authoring verb writes the project's descriptor in --dir, or the composition document --file names,
   checked against the Manifests in --manifests.
@@ -99,8 +102,27 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		}
 	case "add", "set", "arbitrate":
 		return author(verb, rest, stdout, stderr)
+	case "block":
+		as := fs.String("as", "", "the name the block's unit is placed as")
+		positional, flags := positionals(rest, fs)
+		if fs.Parse(flags) != nil {
+			return Refused
+		}
+		switch {
+		case len(positional) == 2 && positional[0] == "add" && *as != "":
+			if err = AddBlock(*dir, positional[1], *as, time.Now()); err == nil {
+				fmt.Fprintf(stdout, "placed %s as %s, recorded in %s\n", positional[1], *as, Blocks)
+			}
+		case len(positional) == 3 && positional[0] == "save" && *as == "":
+			if err = SaveBlock(*dir, positional[1], positional[2]); err == nil {
+				fmt.Fprintf(stdout, "wrote %s as a block in %s\n", positional[1], positional[2])
+			}
+		default:
+			fmt.Fprint(stderr, "yoke-compose block takes add <source> --as <name>, or save <unit> <destination>\n"+usage)
+			return Refused
+		}
 	default:
-		fmt.Fprintf(stderr, "yoke-compose has no verb %q; the verbs are init, check, build, add, set and arbitrate\n", verb)
+		fmt.Fprintf(stderr, "yoke-compose has no verb %q; the verbs are init, check, build, add, set, arbitrate and block\n", verb)
 		return Refused
 	}
 	if err != nil {
