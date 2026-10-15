@@ -38,6 +38,12 @@ func CompositionDocument(path, manifests string) Document {
 // beneath the path written: a verb never accepts what the gate refuses, and a refused write leaves the
 // document byte for byte as it was. What the gate finds elsewhere is the rest of the project's business.
 func (d Document) edit(written string, change func(root *yaml.Node) error) error {
+	return d.editAt([]string{written}, change)
+}
+
+// editAt is edit for a change that writes under several paths, kept only where the gate refuses nothing
+// at or beneath any of them.
+func (d Document) editAt(written []string, change func(root *yaml.Node) error) error {
 	before, err := os.ReadFile(d.Path)
 	if err != nil {
 		return err
@@ -75,12 +81,15 @@ func (d Document) edit(written string, change func(root *yaml.Node) error) error
 	r, _ := gate.Check(gate.Input{Document: gate.Read(tmp.Name(), d.Kind), Moment: gate.Composing, Manifests: d.Manifests})
 	var refused []string
 	for _, f := range r.Findings {
-		if f.Class == gate.Refusal && (f.Location == written || strings.HasPrefix(f.Location, written+".")) {
-			refused = append(refused, fmt.Sprintf("%s at %s: %s", f.Code, f.Location, f.Message))
+		for _, w := range written {
+			if f.Class == gate.Refusal && (f.Location == w || strings.HasPrefix(f.Location, w+".")) {
+				refused = append(refused, fmt.Sprintf("%s at %s: %s", f.Code, f.Location, f.Message))
+				break
+			}
 		}
 	}
 	if len(refused) > 0 {
-		return refusef("%s is not written: %s", written, strings.Join(refused, "; "))
+		return refusef("%s is not written: %s", strings.Join(written, ", "), strings.Join(refused, "; "))
 	}
 	if info, err := os.Stat(d.Path); err == nil {
 		os.Chmod(tmp.Name(), info.Mode().Perm())
