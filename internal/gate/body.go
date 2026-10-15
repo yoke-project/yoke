@@ -800,8 +800,11 @@ func (c *checker) joins() bool {
 			if a.Class == "routable" && (a.Transport == "" || a.Caller == "") {
 				c.refuse("channel.address.security", joined(at, "address"), "the routable address of %s must state both security.transport and security.caller", name)
 			}
-			for _, ref := range reference.FindAllString(a.Port, -1) {
-				c.refuse("substitution.unresolved", joined(at, "address.port"), "the reference %s in the channel %s resolves in neither scope", ref, name)
+			for _, m := range reference.FindAllStringSubmatch(a.Port, -1) {
+				if c.declared(name, m[1]) {
+					continue
+				}
+				c.refuse("substitution.unresolved", joined(at, "address.port"), "the reference %s in the channel %s resolves in neither scope", m[0], name)
 			}
 		}
 	}
@@ -843,7 +846,7 @@ func (c *checker) resolve(u Unit) {
 				if _, bound := u.Bind[key]; bound || secrets[key] || u.Kind == "plugin" {
 					continue
 				}
-			} else if c.doc.Kind == Descriptor {
+			} else if c.declared(u.Name, name) {
 				continue
 			}
 			c.refuse("substitution.unresolved", at, "the reference %s in the unit %s resolves in neither scope", ref, u.Name)
@@ -858,6 +861,19 @@ func (c *checker) resolve(u Unit) {
 	for _, k := range sortedKeys(u.Bind) {
 		check(u.Bind[k], fmt.Sprintf("units.%s.bind.%s", u.Name, k))
 	}
+}
+
+// declared says whether a parameter resolves for the unit or channel named group: in its own group, then
+// in shared. A composition document declares none, so nothing resolves in one.
+func (c *checker) declared(group, name string) bool {
+	if c.doc.Kind != Descriptor {
+		return false
+	}
+	if _, in := c.deployment.Parameters[group][name]; in {
+		return true
+	}
+	_, shared := c.deployment.Parameters["shared"][name]
+	return shared
 }
 
 // weaker is phase 5: arrangements that give something up, reported and never refusing.
