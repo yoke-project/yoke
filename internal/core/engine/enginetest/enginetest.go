@@ -15,6 +15,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -57,9 +59,48 @@ type Service struct {
 	running *exec.Cmd
 }
 
-// Serve returns the engine's API, once it answers.
+// held is this process's hold on the host's engine: the file locked, and how many cases hold it.
+var held struct {
+	sync.Mutex
+	file  *os.File
+	cases int
+}
+
+// exclusive holds the host's engine for the case, until it ends. The engine's containers, and the label
+// space a Core in the service form owns — the instance `yoke`, whose containers every such Core removes
+// as it starts — are the host's and not the case's, and the packages of one run execute at once: a case
+// in one package would otherwise remove what a case in another is waiting on.
+func exclusive(t *testing.T) {
+	t.Helper()
+	held.Lock()
+	defer held.Unlock()
+	if held.cases == 0 {
+		f, err := os.OpenFile(filepath.Join(os.TempDir(), "yoke-enginetest.lock"), os.O_CREATE|os.O_RDWR, 0o666)
+		if err != nil {
+			t.Fatalf("the engine's lock cannot be opened: %v", err)
+		}
+		if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
+			f.Close()
+			t.Fatalf("the engine cannot be held: %v", err)
+		}
+		held.file = f
+	}
+	held.cases++
+	t.Cleanup(func() {
+		held.Lock()
+		defer held.Unlock()
+		if held.cases--; held.cases == 0 {
+			syscall.Flock(int(held.file.Fd()), syscall.LOCK_UN)
+			held.file.Close()
+			held.file = nil
+		}
+	})
+}
+
+// Serve returns the engine's API, once it answers, held by the case alone among the cases on this host.
 func Serve(t *testing.T) *Service {
 	t.Helper()
+	exclusive(t)
 	if Under() == Docker {
 		socket := "/var/run/docker.sock"
 		if host, ok := strings.CutPrefix(os.Getenv("DOCKER_HOST"), "unix://"); ok {
