@@ -11,8 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/yoke-project/yoke/internal/gate"
-	"github.com/yoke-project/yoke/internal/guardian"
 	"github.com/yoke-project/yoke/internal/guardian/channel"
 	"github.com/yoke-project/yoke/internal/instancerecord"
 	"github.com/yoke-project/yoke/internal/instances"
@@ -65,16 +63,9 @@ func (c *call) appRun() error {
 	}
 	// The gate the guardian will run, run first: a start it refuses is said here, to whoever typed the
 	// command, rather than only where the guardian's output goes.
-	cfg, err := LoadConfig(c.getenv)
-	if err != nil {
-		return refusal{err}
-	}
-	if gated := guardian.GateStart(guardian.Options{Runtime: o.Runtime, Instances: o.Instances, Config: cfg}, r, true); gated.Refused() {
-		for _, f := range gated.Findings {
-			if f.Class == gate.Refusal {
-				fmt.Fprintf(c.out, "  refused: %s at %s: %s\n", f.Code, f.Location, f.Message)
-			}
-		}
+	if refused, err := c.gateStart(o, r); err != nil {
+		return err
+	} else if refused {
 		return c.unrun(o, nil, name, refusef("%s was refused at its start, and nothing ran", name))
 	}
 	return c.follow(o, name)

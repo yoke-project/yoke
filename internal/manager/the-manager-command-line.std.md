@@ -174,3 +174,16 @@
 | **Precondition** | `XDG_RUNTIME_DIR` and `XDG_STATE_HOME` set, `YOKE_CONFIG` naming a `core.yaml`; the account holding one instance `bench-a`, then a second `bench-b`, then none |
 | **Action** | resolve the operator projection with no `--instance`, each time |
 | **Expected** | with one, the address is `bench-a`'s, under `$XDG_RUNTIME_DIR/yoke/`; with two, a refusal naming both and the selector; with none, the address is under the `runtime_dir` that `core.yaml` states |
+
+## yoke:the-manager-command-line.14 — a start the gate refuses is said to whoever asked, and no guardian is started for it
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/17.34 · arch/10-manager/01 §What it reports · arch/25-guardian/04 §When a start is refused |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | `yoke-core` and `yoke-guardian` built from this tree, the guardian on the `PATH`; `com.yoke.station` `2.1.0` installed with a unit needing a secret, and an instance `bench-a` of it with no secret set; no guardian running |
+| **Action** | run `yoke instance start bench-a`; then `yoke instance restart bench-a` |
+| **Expected** | each exits 1, naming `secret.missing` and the unit's need, and saying nothing ran; the record says `running`, since that is what was asked; no guardian is running |

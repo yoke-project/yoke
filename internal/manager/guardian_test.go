@@ -139,6 +139,35 @@ func TestYokeInstanceStartAndStopTellAGuardianStartingOne(t *testing.T) {
 	})
 }
 
+// std: yoke:the-manager-command-line.14
+func TestAStartTheGateRefusesIsSaidAndStartsNoGuardian(t *testing.T) {
+	_, vars := runAccount(t)
+	cfg, err := LoadConfig(environment(vars))
+	if err != nil {
+		t.Fatal(err)
+	}
+	descriptor := filepath.Join(cfg.InstallRoot, "com.yoke.station", "2.1.0", "bundle", "yoke.yaml")
+	data, err := os.ReadFile(descriptor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(descriptor, []byte(strings.Replace(string(data), `" }`+"\n", `", needs: [ "secret:token" ] }`+"\n", 1)), 0o644)
+	expectDone(t, vars, "instance", "create", "com.yoke.station", "--name", "bench-a")
+
+	for _, verb := range []string{"start", "restart"} {
+		code, out := yoke(vars, "instance", verb, "bench-a")
+		if code != Refused || !strings.Contains(out, "secret.missing") || !strings.Contains(out, "nothing ran") {
+			t.Errorf("yoke instance %s exited %d:\n%s", verb, code, out)
+		}
+	}
+	if r, _ := instancerecord.Read(instancerecord.Root(environment(vars)), "bench-a"); r.DesiredState != instancerecord.Running {
+		t.Errorf("the record says %q", r.DesiredState)
+	}
+	if pid := holder(vars, "guardian.lock"); pid != 0 {
+		t.Errorf("a guardian was started for a start the gate refuses: %d", pid)
+	}
+}
+
 // std: yoke:the-manager-command-line.09
 func TestEnableAndDisableAndClearAndRemove(t *testing.T) {
 	vars := account(t, "")

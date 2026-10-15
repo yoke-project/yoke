@@ -13,6 +13,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/yoke-project/yoke/internal/gate"
+	"github.com/yoke-project/yoke/internal/guardian"
 	"github.com/yoke-project/yoke/internal/guardian/channel"
 	"github.com/yoke-project/yoke/internal/instancerecord"
 	"github.com/yoke-project/yoke/internal/instances"
@@ -134,12 +136,53 @@ func (c *call) named() (instances.Options, string, error) {
 	return o, c.args[0], nil
 }
 
+// gateStart runs the gate the guardian will run before it executes a Core, and says each refusal to
+// whoever typed the command: a start it refuses is said here, rather than only where the guardian's
+// output goes. Refused is whether it refused.
+func (c *call) gateStart(o instances.Options, r instancerecord.Record) (refused bool, err error) {
+	cfg, err := LoadConfig(c.getenv)
+	if err != nil {
+		return false, refusal{err}
+	}
+	gated := guardian.GateStart(guardian.Options{Runtime: o.Runtime, Instances: o.Instances, Config: cfg}, r, true)
+	if !gated.Refused() {
+		return false, nil
+	}
+	for _, f := range gated.Findings {
+		if f.Class == gate.Refusal {
+			fmt.Fprintf(c.out, "  refused: %s at %s: %s\n", f.Code, f.Location, f.Message)
+		}
+	}
+	return true, nil
+}
+
+// startRefused is a start the gate refuses, said, with the desired state left as it was asked. A guardian
+// already running is still told, so its account of the instance carries the reason; none is started for
+// a start it would refuse.
+func (c *call) startRefused(o instances.Options, name string) error {
+	r, err := instancerecord.Read(o.Instances, name)
+	if err != nil {
+		return refused(err)
+	}
+	if refused, err := c.gateStart(o, r); err != nil || !refused {
+		return err
+	}
+	if client, done := c.guardian(); client != nil {
+		client.Reconcile(context.Background(), &channel.ReconcileRequest{Name: name})
+		done()
+	}
+	return refusef("%s should be running, and its start is refused: nothing ran", name)
+}
+
 func (c *call) instanceStart() error {
 	o, name, err := c.named()
 	if err != nil {
 		return err
 	}
 	if err := instances.SetDesired(o, name, instancerecord.Running); err != nil {
+		return err
+	}
+	if err := c.startRefused(o, name); err != nil {
 		return err
 	}
 	if err := c.tell(name); err != nil {
@@ -196,6 +239,9 @@ func (c *call) instanceRestart() error {
 		}
 	}
 	if err := instances.SetDesired(o, name, instancerecord.Running); err != nil {
+		return err
+	}
+	if err := c.startRefused(o, name); err != nil {
 		return err
 	}
 	if err := c.tell(name); err != nil {
