@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"maps"
 	"os"
@@ -94,6 +95,9 @@ type State struct {
 	Stderr   io.Writer
 	Channels []Channel
 	Units    []supervisor.Unit // the units the deployment declares, launched at step 11
+	// lastRan is the version the stamp held when step 10 read it, before writing its own; empty where there
+	// was none. What `migrates_from` is weighed against.
+	lastRan string
 
 	// Composition is the composition document in force, in the service form; empty reads none.
 	Composition string
@@ -1011,7 +1015,7 @@ func units(st *State) error {
 	s := supervisor.New(cfg)
 	st.Supervisor = s
 	st.OnStop(s.Stop)
-	s.Start(st.Units)
+	s.Start(Migrations(st.Units, st.lastRan))
 	return nil
 }
 
@@ -1096,6 +1100,32 @@ func RetentionOf(logs *logstore.Store, deployment func() *gate.Deployment) func(
 	}
 }
 
+// Migrations marks skipped each unit whose `migrates_from` does not admit the version that last ran
+// against the state, lastRan, or that finds none: state no version wrote was not written by an older one.
+func Migrations(units []supervisor.Unit, lastRan string) []supervisor.Unit {
+	out := slices.Clone(units)
+	for i, u := range out {
+		if u.MigratesFrom == "" {
+			continue
+		}
+		// The gate refuses a range it cannot read; one that reaches here unread is skipped, not guessed at.
+		if r, err := version.ParseRange(u.MigratesFrom); err == nil {
+			if v, err := version.Parse(lastRan); err == nil && r.Contains(v) {
+				continue
+			}
+		}
+		out[i].Skipped = &supervisor.Skipped{Range: u.MigratesFrom, Version: orNone(lastRan)}
+	}
+	return out
+}
+
+func orNone(v string) string {
+	if v == "" {
+		return "none"
+	}
+	return v
+}
+
 // stamp writes the version that last ran against this state, in the application form: the last point
 // before any unit of the deployment can have written anything. The service form has nothing to write.
 func (st *State) stamp() error {
@@ -1106,6 +1136,12 @@ func (st *State) stamp() error {
 		return nil
 	}
 	path := filepath.Join(st.Paths.State, "version")
+	// The version that last ran is read once, before it is replaced, and held for step 11.
+	if was, err := os.ReadFile(path); err == nil {
+		st.lastRan = strings.TrimSpace(string(was))
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
 	if err := os.WriteFile(path+".new", []byte(dep.Head.Version+"\n"), 0o600); err != nil {
 		return err
 	}

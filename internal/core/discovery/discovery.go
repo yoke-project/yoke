@@ -219,7 +219,7 @@ func units(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), s
 			}
 			return value
 		}
-		s := supervisor.Unit{ID: name, Kind: kinds[u.Kind], Plugin: u.Plugin, Image: u.Image, RestartOnFailure: u.OnFailure, DependsOn: u.DependsOn, Env: map[string]string{}}
+		s := supervisor.Unit{ID: name, Kind: kinds[u.Kind], Plugin: u.Plugin, Image: u.Image, RestartOnFailure: u.OnFailure, DependsOn: u.DependsOn, MigratesFrom: u.MigratesFrom, Env: map[string]string{}}
 		for _, n := range needs {
 			switch n.Class {
 			case "device":

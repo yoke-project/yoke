@@ -86,6 +86,10 @@ type Machine struct {
 // NewMachine is a machine for a unit just launched.
 func NewMachine(kind Kind) *Machine { return &Machine{kind: kind, state: Starting} }
 
+// Skipped is the machine of a unit that runs to completion and was not launched, its migration range not
+// admitting the version that last ran: already Completed, which is where a unit of its kind is ready.
+func Skipped(kind Kind) *Machine { return &Machine{kind: kind, state: Completed} }
+
 func (m *Machine) State() State { return m.state }
 
 // Condition is the unit's last report, if it ever made one: silence is not a claim.
