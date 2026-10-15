@@ -265,3 +265,16 @@
 | **Precondition** | the fields the gate names for a descriptor and for a composition document; for each, a document of that kind writing it, under a unit, a channel, a rule or a group of the kind the field belongs to |
 | **Action** | check each document; then, under every object the schema names, write a key it does not name |
 | **Expected** | no field the schema names is refused as unknown in either document; every key it does not name is refused `key.unknown` at its path; and a descriptor-only field is refused in a composition document |
+
+## yoke:the-gate.21 — in a descriptor a parameter resolves in its group and then `shared`, in a unit and in a channel's port alike
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/15-gate/05 §Where substitution is permitted · arch/15-gate/05 §How a name is resolved |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a descriptor declaring `shared.site_label`, `panel.depth` and `remote.listen_port`; its unit `panel` has `args` `["${depth}", "${site_label}", "${missing}"]`; its channel `remote` takes its port from `${listen_port}`, and its channel `extra` from `${nowhere}`; a composition document whose channel takes its port from `${listen_port}` |
+| **Action** | check each |
+| **Expected** | in the descriptor, `substitution.unresolved` for `${missing}`, naming `panel`, and for `${nowhere}`, naming `extra`, and for nothing else; in the composition document, `substitution.unresolved` for `${listen_port}` |

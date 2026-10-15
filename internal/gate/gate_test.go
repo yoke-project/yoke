@@ -488,3 +488,45 @@ func TestAKeyWrittenTwiceIsNotYAML(t *testing.T) {
 		t.Errorf("a Manifest writing id twice gives %v", m.Findings)
 	}
 }
+
+// std: yoke:the-gate.21
+func TestInADescriptorAParameterResolvesInItsGroupThenShared(t *testing.T) {
+	r, _ := descriptor(t, identity+`parameters:
+  shared:
+    site_label: { type: string, required: true, label: "Site" }
+  panel:
+    depth: { type: integer, required: true, label: "Depth" }
+  remote:
+    listen_port: { type: integer, required: false, default: 8080, label: "Port" }
+units:
+  panel:
+    kind: interface
+    exec: components/panel
+    digest: "sha256:abababababababababababababababababababababababababababababababab"
+    args: [ "${depth}", "${site_label}", "${missing}" ]
+channels:
+  remote: { transport: http+ws, clients: single, address: { class: loopback, port: "${listen_port}" } }
+  extra: { transport: http+ws, clients: single, address: { class: loopback, port: "${nowhere}" } }
+`)
+	unresolved := found(r, "substitution.unresolved")
+	if len(unresolved) != 2 {
+		t.Fatalf("the unresolved references are %v", unresolved)
+	}
+	for _, want := range [][2]string{{"${missing}", "panel"}, {"${nowhere}", "extra"}} {
+		named := false
+		for _, f := range unresolved {
+			named = named || strings.Contains(f.Message, want[0]) && strings.Contains(f.Message, want[1])
+		}
+		if !named {
+			t.Errorf("no refusal names %s and %s: %v", want[0], want[1], unresolved)
+		}
+	}
+	r, _ = composition(t, `
+units: {}
+channels:
+  remote: { transport: http+ws, clients: single, address: { class: loopback, port: "${listen_port}" } }
+`)
+	if u := found(r, "substitution.unresolved"); len(u) != 1 || !strings.Contains(u[0].Message, "${listen_port}") {
+		t.Errorf("in a composition document the port's reference is %v", u)
+	}
+}
