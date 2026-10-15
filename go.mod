@@ -6,8 +6,8 @@ require (
 	github.com/BurntSushi/toml v1.5.0
 	github.com/ebitengine/purego v0.11.1
 	github.com/gorilla/websocket v1.5.3
-	github.com/yoke-project/yoke-sdk-go v0.4.0
-	github.com/yoke-project/yoke/proto v0.3.1-0.20261011164235-877de27e0f27
+	github.com/yoke-project/yoke-sdk-go v0.5.1-0.20261015095315-3a5af931e42e
+	github.com/yoke-project/yoke/proto v0.4.0
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/mod v0.41.0
 	golang.org/x/sys v0.47.0
