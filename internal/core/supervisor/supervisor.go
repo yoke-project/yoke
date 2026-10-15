@@ -43,6 +43,15 @@ type Unit struct {
 	Policy           *Policy  // the unit's own figures; nil takes the deployment's
 	Channel          string   // a managed interface's: the address of the channel that names it
 	Needs            []Need   // what each launch expands, on the host or in a container
+	MigratesFrom     string   // a oneshot's `migrates_from`: the range of versions it runs after
+	Skipped          *Skipped // where the range does not admit the version that last ran: never launched
+}
+
+// Skipped is why a oneshot is not launched: its `migrates_from` range, and the version that last ran
+// against the state, or `none` where nothing did.
+type Skipped struct {
+	Range   string
+	Version string
 }
 
 // Need is one declared need as a launch expands it: its class, and the path a device is bound to, a
@@ -249,16 +258,22 @@ func (s *Supervisor) Start(units []Unit) {
 		s.units[u.ID] = m
 		waiting = append(waiting, m)
 	}
+	// Every dependent is held before anything is launched, since a unit can be ready at once — a oneshot
+	// its migration range skips — and its dependants must already be waiting for it.
+	var free []*managed
 	for _, m := range waiting {
 		if len(m.decl.DependsOn) == 0 {
-			s.order = append(s.order, m.decl.ID)
-			s.attempt(m)
+			free = append(free, m)
 			continue
 		}
 		m.held = true
 		m.status.Awaiting = append([]string(nil), m.decl.DependsOn...)
 		m.hold = time.AfterFunc(s.policy(m).StartupWindow, func() { s.neverArrived(m) })
 		s.held = append(s.held, m)
+	}
+	for _, m := range free {
+		s.order = append(s.order, m.decl.ID)
+		s.attempt(m)
 	}
 }
 
@@ -361,6 +376,10 @@ func (s *Supervisor) Declare(unitID string, change func(*Unit)) {
 
 // attempt performs one launch: a new machine, a new incarnation, a new token. Called with the lock held.
 func (s *Supervisor) attempt(m *managed) {
+	if m.decl.Skipped != nil {
+		s.skip(m)
+		return
+	}
 	m.machine = unit.NewMachine(m.decl.Kind)
 	// Until the launch is counted, this attempt's life has no number.
 	m.incarnation = 0
@@ -532,6 +551,19 @@ func (s *Supervisor) ended(m *managed, incarnation, status int) {
 		s.apply(m, unit.ProcessExited{Status: status})
 	}
 	s.settle(m)
+}
+
+// skip is a oneshot its `migrates_from` does not admit: no process and no incarnation, straight to
+// Completed, which is its readiness, so what depends on it starts. Lock held.
+func (s *Supervisor) skip(m *managed) {
+	m.machine = unit.Skipped(m.decl.Kind)
+	m.incarnation = 0
+	m.status.Waiting, m.status.Failure, m.windowOut = false, "", false
+	m.exitStatus, m.hasExit = 0, false
+	m.running, m.exited = nil, nil
+	m.status.State, m.status.Since = unit.Completed, time.Now()
+	s.publish(event.SkippedOf(m.decl.ID, m.decl.Skipped.Range, m.decl.Skipped.Version))
+	s.release(m.decl.ID)
 }
 
 // pluginOf is the plugin a unit is a copy of, which its lifecycle events name; none for another kind.
