@@ -18,7 +18,7 @@ import (
 const usage = `usage: yoke-compose <verb> [options]
 
   init <id> [--dir D] [--arch A] [--version V] [--core R]   make a project
-  check [--dir D]                                           run the gate over it
+  check [--dir D]                                           run the gate over it, then the advice
   build [--dir D] [--out O] [--sign KEY] [--seal FILE]      make a package from it
 
   add unit <name> --kind K [--exec P | --image R | --plugin ID] [--arg A]... [--depends-on U]...
@@ -28,6 +28,8 @@ const usage = `usage: yoke-compose <verb> [options]
   arbitrate <channel> over <channel>...                     write one precedence relation
   block add <source> --as <name> [--dir D]                  place a block, recorded in blocks.yaml
   block save <unit> <destination> [--dir D]                 write a unit as a block
+  waive <code> --at <location> --reason <text> [--dir D]    silence one advisory item, recorded in advisories.yaml
+  waivers [--dir D]                                         every waiver, its reason, and whether it is stale
 
   An authoring verb writes the project's descriptor in --dir, or the composition document --file names,
   checked against the Manifests in --manifests.
@@ -69,12 +71,49 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		if fs.Parse(rest) != nil {
 			return Refused
 		}
-		r := Check(*dir)
+		r, advised := Advise(*dir)
 		show(stdout, r)
+		shown, waived, werr := Unwaived(*dir, advised)
+		if werr != nil {
+			err = werr
+			break
+		}
+		show(stdout, gate.Report{Findings: shown})
+		if waived > 0 {
+			fmt.Fprintf(stdout, "waived: %d advisory items, listed by waivers\n", waived)
+		}
 		if r.Refused() {
 			return Refused
 		}
 		return Done
+	case "waive":
+		at := fs.String("at", "", "the location the finding points at")
+		reason := fs.String("reason", "", "why the author keeps the combination")
+		code, flags := split(rest)
+		if fs.Parse(flags) != nil {
+			return Refused
+		}
+		if code == "" || *at == "" {
+			fmt.Fprint(stderr, "waive takes a code, --at and --reason\n"+usage)
+			return Refused
+		}
+		if err = Waive(*dir, code, *at, *reason, time.Now()); err == nil {
+			fmt.Fprintf(stdout, "waived %s at %s, recorded in %s\n", code, *at, Advisories)
+		}
+	case "waivers":
+		if fs.Parse(rest) != nil {
+			return Refused
+		}
+		var listed []Waiver
+		if listed, err = Waivers(*dir); err == nil {
+			for _, w := range listed {
+				mark := ""
+				if w.Stale {
+					mark = "  stale: it matches nothing advised now"
+				}
+				fmt.Fprintf(stdout, "%s at %s, waived %s: %s%s\n", w.Code, w.At, w.WaivedAt, w.Reason, mark)
+			}
+		}
 	case "build":
 		out := fs.String("out", ".", "where the package is written")
 		key := fs.String("sign", "", "a private key in PEM to sign with; none builds an unsigned package")
@@ -122,7 +161,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 			return Refused
 		}
 	default:
-		fmt.Fprintf(stderr, "yoke-compose has no verb %q; the verbs are init, check, build, add, set, arbitrate and block\n", verb)
+		fmt.Fprintf(stderr, "yoke-compose has no verb %q; the verbs are init, check, build, add, set, arbitrate, block, waive and waivers\n", verb)
 		return Refused
 	}
 	if err != nil {
