@@ -187,3 +187,16 @@
 | **Precondition** | `yoke-core` and `yoke-guardian` built from this tree, the guardian on the `PATH`; `com.yoke.station` `2.1.0` installed with a unit needing a secret, and an instance `bench-a` of it with no secret set; no guardian running |
 | **Action** | run `yoke instance start bench-a`; then `yoke instance restart bench-a` |
 | **Expected** | each exits 1, naming `secret.missing` and the unit's need, and saying nothing ran; the record says `running`, since that is what was asked; no guardian is running |
+
+## yoke:the-manager-command-line.15 — a guardian the manager starts carries the session's display and audio, and nothing else of its environment
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/35-units/05 §What each expansion reads, and what it hands over · arch/25-guardian/02 §How it comes to be running · specs/97.12 |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | `yoke-core` and `yoke-guardian` built from this tree, the guardian found on the `PATH` through a program that records the environment it was started with and then becomes the guardian; an instance `bench-a`, stopped; no guardian running; an invocation whose environment holds `WAYLAND_DISPLAY`, `DISPLAY`, `XAUTHORITY`, `PIPEWIRE_REMOTE` and `PULSE_SERVER`, and `SESSION_SECRET` |
+| **Action** | run `yoke instance start bench-a`, then `yoke instance stop bench-a` |
+| **Expected** | the guardian was started with each of the five variables the display and audio needs are read from, at the value the invocation held, and without `SESSION_SECRET` |
