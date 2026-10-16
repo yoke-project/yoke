@@ -231,3 +231,50 @@ func TestYokeInstanceListAnswersWithoutAGuardian(t *testing.T) {
 const setupProgram = "#!/bin/sh\nexit 0\n"
 
 var setupDigest = fmt.Sprintf("sha256:%x", sha256.Sum256([]byte(setupProgram)))
+
+// std: yoke:the-manager-command-line.15
+func TestAGuardianTheManagerStartsCarriesTheSessionsDisplayAndAudio(t *testing.T) {
+	bin := t.TempDir()
+	for _, program := range []string{"yoke-core", "yoke-guardian"} {
+		if said, err := exec.Command("go", "build", "-o", filepath.Join(bin, program), "github.com/yoke-project/yoke/cmd/"+program).CombinedOutput(); err != nil {
+			t.Fatalf("%s does not build: %v\n%s", program, err, said)
+		}
+	}
+	// The guardian on the PATH records the environment it was started with, and becomes the real one.
+	front, recorded := t.TempDir(), filepath.Join(t.TempDir(), "environment")
+	os.WriteFile(filepath.Join(front, "yoke-guardian"), []byte("#!/bin/sh\nenv > "+recorded+"\nexec "+filepath.Join(bin, "yoke-guardian")+"\n"), 0o755)
+	vars := account(t, "core: "+filepath.Join(bin, "yoke-core")+"\n")
+	vars["PATH"] = front + string(os.PathListSeparator) + os.Getenv("PATH")
+	session := map[string]string{"WAYLAND_DISPLAY": "wayland-1", "DISPLAY": ":1", "XAUTHORITY": "/run/user/1000/xauth",
+		"PIPEWIRE_REMOTE": "/run/user/1000/pipewire-0", "PULSE_SERVER": "unix:/run/user/1000/pulse/native"}
+	for k, v := range session {
+		vars[k] = v
+	}
+	vars["SESSION_SECRET"] = "not for the guardian"
+	t.Cleanup(func() {
+		if pid := holder(vars, "guardian.lock"); pid != 0 {
+			syscall.Kill(pid, syscall.SIGTERM)
+		}
+	})
+	expectDone(t, vars, "instance", "create", "com.yoke.station", "--name", "bench-a")
+	expectDone(t, vars, "instance", "start", "bench-a")
+	expectDone(t, vars, "instance", "stop", "bench-a")
+	data, err := os.ReadFile(recorded)
+	if err != nil {
+		t.Fatalf("the guardian recorded no environment: %v", err)
+	}
+	got := map[string]string{}
+	for _, line := range strings.Split(string(data), "\n") {
+		if k, v, ok := strings.Cut(line, "="); ok {
+			got[k] = v
+		}
+	}
+	for k, v := range session {
+		if got[k] != v {
+			t.Errorf("the guardian was started with %s=%q, not %q", k, got[k], v)
+		}
+	}
+	if _, there := got["SESSION_SECRET"]; there {
+		t.Error("the guardian was started with SESSION_SECRET")
+	}
+}
