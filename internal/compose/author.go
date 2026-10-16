@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -44,6 +45,26 @@ func (d Document) edit(written string, change func(root *yaml.Node) error) error
 // editAt is edit for a change that writes under several paths, kept only where the gate refuses nothing
 // at or beneath any of them.
 func (d Document) editAt(written []string, change func(root *yaml.Node) error) error {
+	return d.apply(change, func(r gate.Report) error {
+		var refused []string
+		for _, f := range r.Findings {
+			for _, w := range written {
+				if f.Class == gate.Refusal && (f.Location == w || strings.HasPrefix(f.Location, w+".")) {
+					refused = append(refused, fmt.Sprintf("%s at %s: %s", f.Code, f.Location, f.Message))
+					break
+				}
+			}
+		}
+		if len(refused) > 0 {
+			return refusef("%s is not written: %s", strings.Join(written, ", "), strings.Join(refused, "; "))
+		}
+		return nil
+	})
+}
+
+// apply applies change to the document and keeps the result only where judge, given what the gate
+// reports of it, refuses nothing; a refused change leaves the document byte for byte as it was.
+func (d Document) apply(change func(root *yaml.Node) error, judge func(gate.Report) error) error {
 	before, err := os.ReadFile(d.Path)
 	if err != nil {
 		return err
@@ -79,17 +100,8 @@ func (d Document) editAt(written []string, change func(root *yaml.Node) error) e
 	}
 	tmp.Close()
 	r, _ := gate.Check(gate.Input{Document: gate.Read(tmp.Name(), d.Kind), Moment: gate.Composing, Manifests: d.Manifests})
-	var refused []string
-	for _, f := range r.Findings {
-		for _, w := range written {
-			if f.Class == gate.Refusal && (f.Location == w || strings.HasPrefix(f.Location, w+".")) {
-				refused = append(refused, fmt.Sprintf("%s at %s: %s", f.Code, f.Location, f.Message))
-				break
-			}
-		}
-	}
-	if len(refused) > 0 {
-		return refusef("%s is not written: %s", strings.Join(written, ", "), strings.Join(refused, "; "))
+	if err := judge(r); err != nil {
+		return err
 	}
 	if info, err := os.Stat(d.Path); err == nil {
 		os.Chmod(tmp.Name(), info.Mode().Perm())
@@ -203,6 +215,99 @@ func Set(d Document, path, raw string) error {
 		put(m, parts[len(parts)-1], v)
 		return nil
 	})
+}
+
+// Remove takes away the node at path, which names it by the path a finding carries, and everything
+// beneath it; a mapping it leaves empty below the document's own keys goes with it, and so does a
+// parameter group named after the unit or channel removed once neither of the two is left. The result is kept
+// only where the gate refuses nothing it did not refuse already, and a path that names nothing is
+// refused as one. A unit placed from a block loses its line in blocks.yaml; a waiver at the place
+// removed is left, and is stale from then on. No file beside the document is deleted.
+func Remove(d Document, path string) error {
+	parts := strings.Split(path, ".")
+	if path == "" || slices.Contains(parts, "") {
+		return refusef("%q names no place in the document", path)
+	}
+	already := map[string]bool{}
+	if r, err := gate.Check(gate.Input{Document: gate.Read(d.Path, d.Kind), Moment: gate.Composing, Manifests: d.Manifests}); err == nil {
+		for _, f := range r.Findings {
+			if f.Class == gate.Refusal {
+				already[f.Code+" "+f.Location] = true
+			}
+		}
+	}
+	err := d.apply(func(root *yaml.Node) error {
+		chain := []*yaml.Node{root}
+		n := root
+		for _, p := range parts {
+			next := child(n, p)
+			if next == nil {
+				return refusef("nothing is at %s", path)
+			}
+			chain = append(chain, next)
+			n = next
+		}
+		// Taken away from its parent, then every mapping emptied by that below the document's own keys.
+		for i := len(parts) - 1; i >= 0; i-- {
+			takeAway(chain[i], parts[i])
+			if i < 2 || !empty(chain[i]) {
+				break
+			}
+		}
+		// A parameter group named after a unit or a channel goes with the last of the two.
+		if len(parts) == 2 && (parts[0] == "units" || parts[0] == "channels") {
+			name := parts[1]
+			held := func(key string) bool { m := at(root, key); return m != nil && child(m, name) != nil }
+			if params := at(root, "parameters"); params != nil && !held("units") && !held("channels") {
+				takeAway(params, name)
+			}
+		}
+		return nil
+	}, func(r gate.Report) error {
+		var refused []string
+		for _, f := range r.Findings {
+			if f.Class == gate.Refusal && !already[f.Code+" "+f.Location] {
+				refused = append(refused, fmt.Sprintf("%s at %s: %s", f.Code, f.Location, f.Message))
+			}
+		}
+		if len(refused) > 0 {
+			return refusef("%s is not removed: %s", path, strings.Join(refused, "; "))
+		}
+		return nil
+	})
+	if err != nil || d.Project == "" || len(parts) != 2 || parts[0] != "units" {
+		return err
+	}
+	return unrecord(d.Project, parts[1])
+}
+
+// child is the node under key in a mapping, or at the index key names in a sequence, or nil.
+func child(n *yaml.Node, key string) *yaml.Node {
+	switch n.Kind {
+	case yaml.MappingNode:
+		return at(n, key)
+	case yaml.SequenceNode:
+		if i, err := strconv.Atoi(key); err == nil && i >= 0 && i < len(n.Content) {
+			return n.Content[i]
+		}
+	}
+	return nil
+}
+
+// takeAway takes the node under key away from a mapping, or the one at the index key names from a
+// sequence.
+func takeAway(n *yaml.Node, key string) {
+	if n.Kind == yaml.MappingNode {
+		drop(n, key)
+		return
+	}
+	if i, err := strconv.Atoi(key); err == nil && n.Kind == yaml.SequenceNode && i >= 0 && i < len(n.Content) {
+		n.Content = append(n.Content[:i], n.Content[i+1:]...)
+	}
+}
+
+func empty(n *yaml.Node) bool {
+	return (n.Kind == yaml.MappingNode || n.Kind == yaml.SequenceNode) && len(n.Content) == 0
 }
 
 // UnitOptions are what `add unit` writes besides the name.
