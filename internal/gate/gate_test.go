@@ -530,3 +530,25 @@ channels:
 		t.Errorf("in a composition document the port's reference is %v", u)
 	}
 }
+
+// std: yoke:the-gate.22
+func TestAPluginUnitsReferencesResolveAsAnyUnits(t *testing.T) {
+	manifests := t.TempDir()
+	os.WriteFile(filepath.Join(manifests, "com.yoke.station.pipeline.yaml"),
+		[]byte("manifest: 1\nid: com.yoke.station.pipeline\nprotocol: 1\nneeds:\n  - storage:cache\n"), 0o644)
+	r, _ := gate.Check(gate.Input{Moment: gate.Composing, Manifests: manifests, Document: gate.Document{Path: "yoke.yaml", Kind: gate.Descriptor, Bytes: []byte(identity + `parameters:
+  shared:
+    site_label: { type: string, required: true, label: "Site" }
+  pipeline:
+    depth: { type: integer, required: true, label: "Depth" }
+units:
+  pipeline:
+    kind: plugin
+    plugin: com.yoke.station.pipeline
+    image: "ghcr.io/yoke/station-pipeline@sha256:7d21abababababababababababababababababababababababababababababab"
+    args: [ "--site", "${site_label}", "${depth}", "${bind.cache}" ]
+`)}})
+	if len(r.Findings) != 0 {
+		t.Errorf("the findings are %v", r.Findings)
+	}
+}
