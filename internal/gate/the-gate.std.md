@@ -278,3 +278,16 @@
 | **Precondition** | a descriptor declaring `shared.site_label`, `panel.depth` and `remote.listen_port`; its unit `panel` has `args` `["${depth}", "${site_label}", "${missing}"]`; its channel `remote` takes its port from `${listen_port}`, and its channel `extra` from `${nowhere}`; a composition document whose channel takes its port from `${listen_port}` |
 | **Action** | check each |
 | **Expected** | in the descriptor, `substitution.unresolved` for `${missing}`, naming `panel`, and for `${nowhere}`, naming `extra`, and for nothing else; in the composition document, `substitution.unresolved` for `${listen_port}` |
+
+## yoke:the-gate.22 — a plugin unit's references resolve as any unit's: its parameters, its bindings and what its Manifest needs
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/14.45 · arch/15-gate/05 §How a name is resolved · specs/97.2 |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a descriptor declaring `shared.site_label` and `pipeline.depth`, whose unit `pipeline` of kind `plugin` runs an image and has `args` `["--site", "${site_label}", "${depth}", "${bind.cache}"]`; `pipeline`'s Manifest, in the project, needing `storage:cache` |
+| **Action** | check it as it is composed, the Manifest read |
+| **Expected** | nothing is refused: the shared parameter, the unit's own and the storage its Manifest needs each resolve |
