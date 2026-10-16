@@ -70,7 +70,8 @@ func (c *checker) crossDocument() bool {
 }
 
 // bindings joins a plugin unit's binding to what its Manifest needs: every need but a secret is bound,
-// nothing is bound that is not needed, a secret is never bound, and every reference resolves.
+// nothing is bound that is not needed, a secret is never bound, and every reference resolves — a binding
+// against the unit's own and its Manifest's needs, a parameter as in any unit.
 func (c *checker) bindings(u Unit, m *Manifest) {
 	at := fmt.Sprintf("units.%s.bind", u.Name)
 	needs := map[string]Need{}
@@ -98,6 +99,9 @@ func (c *checker) bindings(u Unit, m *Manifest) {
 				if n, needed := needs[key]; needed && materialised(n) {
 					continue
 				}
+			} else if c.declared(u.Name, match[1]) {
+				// A parameter resolves for a plugin unit as for any unit: in its group, then in shared.
+				continue
 			}
 			c.refuse("substitution.unresolved", location, "the reference %s in the unit %s resolves in neither scope", match[0], u.Name)
 		}
