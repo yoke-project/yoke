@@ -185,6 +185,41 @@ func AddBlock(dir, source, as string, now time.Time) error {
 	})
 }
 
+// unrecord takes the placement made as unit out of blocks.yaml, where there is one: the record says what
+// the project holds and where it came from, and the unit is no longer held.
+func unrecord(dir, unit string) error {
+	path := filepath.Join(dir, Blocks)
+	data, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	var doc yaml.Node
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return refusef("%s does not parse: %v", path, err)
+	}
+	if len(doc.Content) == 0 {
+		return nil
+	}
+	list := at(doc.Content[0], "placements")
+	if list == nil || list.Kind != yaml.SequenceNode {
+		return nil
+	}
+	kept := list.Content[:0]
+	for _, p := range list.Content {
+		if as := at(p, "placed_as"); as == nil || as.Value != unit {
+			kept = append(kept, p)
+		}
+	}
+	if len(kept) == len(list.Content) {
+		return nil
+	}
+	list.Content = kept
+	return writeBlocks(path, &doc)
+}
+
 // record appends one placement to blocks.yaml, written whole and then renamed into place.
 func record(dir string, placement map[string]string) error {
 	path := filepath.Join(dir, Blocks)
@@ -209,10 +244,15 @@ func record(dir string, placement map[string]string) error {
 		put(entry, k, scalar(placement[k]))
 	}
 	list.Content = append(list.Content, entry)
+	return writeBlocks(path, &doc)
+}
+
+// writeBlocks writes blocks.yaml whole, and then renames it into place.
+func writeBlocks(path string, doc *yaml.Node) error {
 	var out strings.Builder
 	enc := yaml.NewEncoder(&out)
 	enc.SetIndent(2)
-	if err := enc.Encode(&doc); err != nil {
+	if err := enc.Encode(doc); err != nil {
 		return err
 	}
 	enc.Close()

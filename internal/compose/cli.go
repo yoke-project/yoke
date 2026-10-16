@@ -25,6 +25,7 @@ const usage = `usage: yoke-compose <verb> [options]
   add channel <name> --transport T --clients C [--unit U] [--class C [--host H] [--port N]] [--on-suspend G]
   add parameter <group>.<name> --type T [--range R] [--pattern P] [--values A,B] [--required] [--default V] [--label L]
   set <path> <value>                                        write any field, by the path a finding carries
+  remove <path>                                             take away a unit, a channel, a parameter or any field, by its path
   arbitrate <channel> over <channel>...                     write one precedence relation
   block add <source> --as <name> [--dir D]                  place a block, recorded in blocks.yaml
   block save <unit> <destination> [--dir D]                 write a unit as a block
@@ -155,7 +156,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		if err == nil {
 			fmt.Fprintln(stdout, path)
 		}
-	case "add", "set", "arbitrate":
+	case "add", "set", "remove", "arbitrate":
 		return author(verb, rest, stdout, stderr)
 	case "block":
 		as := fs.String("as", "", "the name the block's unit is placed as")
@@ -177,7 +178,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 			return Refused
 		}
 	default:
-		fmt.Fprintf(stderr, "yoke-compose has no verb %q; the verbs are init, check, build, add, set, arbitrate, block, waive, waivers and migrate\n", verb)
+		fmt.Fprintf(stderr, "yoke-compose has no verb %q; the verbs are init, check, build, add, set, remove, arbitrate, block, waive, waivers and migrate\n", verb)
 		return Refused
 	}
 	if err != nil {
@@ -309,6 +310,11 @@ func author(verb string, args []string, stdout, stderr io.Writer) int {
 		err, wrote = AddParameter(d, positional[1], p), "parameters."+positional[1]
 	case verb == "set" && len(positional) == 2:
 		err, wrote = Set(d, positional[0], positional[1]), positional[0]
+	case verb == "remove" && len(positional) == 1:
+		if err = Remove(d, positional[0]); err == nil {
+			fmt.Fprintf(stdout, "removed %s from %s\n", positional[0], d.Path)
+			return Done
+		}
 	case verb == "arbitrate" && len(positional) >= 3 && positional[1] == "over":
 		err, wrote = Arbitrate(d, positional[0], positional[2:]), "arbitration"
 	default:
