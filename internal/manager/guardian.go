@@ -80,7 +80,10 @@ func (c *call) summon() (channel.GuardianClient, func(), error) {
 	cmd := exec.Command(program)
 	cmd.Stdout, cmd.Stderr = log, log
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
-	for _, key := range []string{"PATH", "HOME", "XDG_RUNTIME_DIR", "XDG_STATE_HOME", "XDG_CONFIG_HOME"} {
+	// What the guardian needs to find its account, and what the display and audio needs of the instances
+	// it starts are read from, which only the session that summoned it has.
+	for _, key := range []string{"PATH", "HOME", "XDG_RUNTIME_DIR", "XDG_STATE_HOME", "XDG_CONFIG_HOME",
+		"WAYLAND_DISPLAY", "DISPLAY", "XAUTHORITY", "PIPEWIRE_REMOTE", "PULSE_SERVER"} {
 		if v := c.getenv(key); v != "" {
 			cmd.Env = append(cmd.Env, key+"="+v)
 		}
