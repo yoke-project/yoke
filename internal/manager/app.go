@@ -155,8 +155,13 @@ func (c *call) appShow() error {
 				fmt.Fprintf(c.out, "  %s  unreadable record: %v\n", v.Version, err)
 				continue
 			}
-			fmt.Fprintf(c.out, "  %s  %s  verified by %s  sealed %t  %s  shared %t  %s\n", v.Version, rec.State,
-				rec.VerifiedBy, rec.Sealed, rec.Digest, rec.Shared, rec.InstalledAt.Format("2006-01-02T15:04:05Z"))
+			// An unsigned package was verified by no key.
+			verified := "verified by " + rec.VerifiedBy
+			if rec.VerifiedBy == "unsigned" {
+				verified = "unsigned"
+			}
+			fmt.Fprintf(c.out, "  %s  %s  %s  sealed %t  %s  shared %t  %s\n", v.Version, rec.State,
+				verified, rec.Sealed, rec.Digest, rec.Shared, rec.InstalledAt.Format("2006-01-02T15:04:05Z"))
 		}
 		return nil
 	}

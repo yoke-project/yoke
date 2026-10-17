@@ -129,14 +129,19 @@ func (o Options) pinnable(id, ver, name string) (pinned, error) {
 	return pinned{version: ver, bundle: bundle, digest: "sha256:" + hex.EncodeToString(sum[:]), d: d}, nil
 }
 
-func refused(what string, findings []gate.Finding) error {
+func refused(what string, findings []gate.Finding) error { return refusedAs(what, "is", findings) }
+
+// refusedAll is refused, for what is named in the plural.
+func refusedAll(what string, findings []gate.Finding) error { return refusedAs(what, "are", findings) }
+
+func refusedAs(what, is string, findings []gate.Finding) error {
 	var lines []string
 	for _, f := range findings {
 		if f.Class == gate.Refusal {
 			lines = append(lines, fmt.Sprintf("%s at %s: %s", f.Code, f.Location, f.Message))
 		}
 	}
-	return fmt.Errorf("%s is refused: %s", what, strings.Join(lines, "; "))
+	return fmt.Errorf("%s %s refused: %s", what, is, strings.Join(lines, "; "))
 }
 
 // readValues reads a values file: TOML, one table per group, each value a scalar.
@@ -177,7 +182,7 @@ func Create(o Options, id, name, ver, valuesFile string) (string, error) {
 	}
 	resolved, findings := gate.Values(p.d, supplied)
 	if len(findings) > 0 {
-		return "", refused("the values supplied", findings)
+		return "", refusedAll("the values supplied", findings)
 	}
 	r := instancerecord.Record{ID: id, Version: p.version, DesiredState: instancerecord.Stopped, Owner: o.me(),
 		CreatedAt: o.now().UTC(), DescriptorDigest: p.digest, Parameters: resolved}
@@ -253,7 +258,7 @@ func Ephemeral(o Options, run Run) (string, error) {
 	}
 	resolved, findings := gate.Values(d, nil)
 	if len(findings) > 0 {
-		return "", refused("the declared defaults", findings)
+		return "", refusedAll("the declared defaults", findings)
 	}
 	r.Parameters = resolved
 	if run.AdmitUnlaunched {

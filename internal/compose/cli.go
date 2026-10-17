@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -68,7 +69,9 @@ func Run(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprint(stderr, "init takes the application's identifier\n"+usage)
 			return Refused
 		}
-		err = Init(*dir, id, InitOptions{Arch: *arch, Version: *ver, Core: *core})
+		if err = Init(*dir, id, InitOptions{Arch: *arch, Version: *ver, Core: *core}); err == nil {
+			fmt.Fprintf(stdout, "%s made: %s, with %s/ and %s/ beside it\n", id, filepath.Join(*dir, Descriptor), Manifests, Components)
+		}
 	case "check":
 		if fs.Parse(rest) != nil {
 			return Refused
