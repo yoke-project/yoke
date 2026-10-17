@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/25.49 · arch/30-core/03 §Cleanup belongs to the next start · arch/15-gate/06 §Phase 4 — host facts |
+| **Cites** | specs/15.27 · specs/25.49 · arch/30-core/03 §Cleanup belongs to the next start · arch/15-gate/06 §Phase 4 — host facts |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.25 · arch/10-manager/07 §Creating an instance, and naming it · arch/15-gate/06 §The moments |
+| **Cites** | specs/15.17 · specs/15.18 · specs/15.25 · specs/15.45 · arch/10-manager/07 §Creating an instance, and naming it · arch/15-gate/06 §The moments |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

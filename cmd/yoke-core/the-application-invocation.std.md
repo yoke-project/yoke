@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/20.5 · specs/20.44 · arch/30-core/03 §The fatal boundary is a rule and not a number · arch/15-gate/06 §The phases |
+| **Cites** | specs/15.14 · specs/15.15 · specs/20.5 · specs/20.44 · arch/30-core/03 §The fatal boundary is a rule and not a number · arch/15-gate/06 §The phases |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

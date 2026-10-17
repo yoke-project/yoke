@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/10-manager/02 §Where it is and what it is |
+| **Cites** | specs/15.43 · arch/10-manager/02 §Where it is and what it is |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

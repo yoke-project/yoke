@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/42.1 · specs/42.2 · specs/14.52 · arch/15-gate/04 §The third document · arch/15-gate/06 §Phase 3 — cross-document |
+| **Cites** | specs/13.1 · specs/14.52 · specs/42.1 · specs/42.2 · arch/15-gate/04 §The third document · arch/15-gate/06 §Phase 3 — cross-document |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/12.35 · specs/40.13 · specs/14.16 · specs/14.17 · specs/14.18 · arch/15-gate/06 §Phase 3 — cross-document · arch/15-gate/03 §`units` |
+| **Cites** | specs/12.35 · specs/14.16 · specs/14.17 · specs/14.18 · specs/15.28 · specs/40.13 · arch/15-gate/06 §Phase 3 — cross-document · arch/15-gate/03 §`units` |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/12.38 · specs/12.44 · arch/15-gate/06 §Phase 4 — host facts |
+| **Cites** | specs/12.38 · specs/12.44 · specs/15.60 · arch/15-gate/06 §Phase 4 — host facts |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/25.36 · arch/15-gate/06 §The two ceilings · arch/30-core/04 §The two ceilings |
+| **Cites** | specs/15.27 · specs/25.36 · arch/15-gate/06 §The two ceilings · arch/30-core/04 §The two ceilings |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
