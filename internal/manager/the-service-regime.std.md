@@ -14,7 +14,7 @@
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
-| **Precondition** | a `systemctl` the test puts on the `PATH`, recording its arguments, and failing when told to |
+| **Precondition** | a composition in force that passes; a `systemctl` the test puts on the `PATH`, recording its arguments, and failing when told to |
 | **Action** | run `yoke service start`, `stop` and `restart`; then `start` with the `systemctl` failing |
 | **Expected** | each of the three exits 0, having asked `systemctl` for `start`, `stop` and `restart` of `yoke.service` and nothing else; the failing one exits 1 and says what `systemctl` said |
 
@@ -95,3 +95,17 @@
 | **Precondition** | `packaging/yoke.service` as shipped |
 | **Action** | read its `[Service]` section |
 | **Expected** | `Restart=on-failure`, and `RestartPreventExitStatus=` names exactly the status `yoke` exits with on a refusal, `1` |
+
+## yoke:the-service-regime.08 — a start the gate refuses is said to whoever asked, and the init system is not asked
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/15.15 · specs/15.17 · arch/10-manager/01 §`yoke service` — the system regime |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a composition in force that the gate refuses, two of its units naming programs that are not there; a `systemctl` on the `PATH` recording its arguments |
+| **Action** | run `yoke service start`, then `restart`, then `stop` |
+| **Expected** | `start` and `restart` each exit 1 naming both findings and saying the init system was not asked; `systemctl` was asked only to `stop` |
+
