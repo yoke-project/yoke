@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/10-manager/04 §The install record |
+| **Cites** | specs/17.21 · arch/10-manager/04 §The install record |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

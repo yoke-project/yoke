@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.67 · specs/15.68 · arch/10-manager/01 §`yoke instance` — records · arch/10-manager/07 §Creating an instance, and naming it |
+| **Cites** | specs/15.67 · specs/15.68 · specs/17.3 · arch/10-manager/01 §`yoke instance` — records · arch/10-manager/07 §Creating an instance, and naming it |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/17.34 · specs/17.36 · specs/17.37 · arch/10-manager/01 §`yoke instance` — records · arch/25-guardian/07 §2 — A manager arrives and nothing is running · arch/25-guardian/02 §Where its own account goes |
+| **Cites** | specs/17.3 · specs/17.34 · specs/17.36 · specs/17.37 · specs/17.66 · arch/10-manager/01 §`yoke instance` — records · arch/25-guardian/07 §2 — A manager arrives and nothing is running · arch/25-guardian/02 §Where its own account goes |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -126,7 +126,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/17.42 · arch/10-manager/01 §`yoke instance` — records · arch/25-guardian/07 §2 — A manager arrives and nothing is running |
+| **Cites** | specs/17.9 · specs/17.42 · arch/10-manager/01 §`yoke instance` — records · arch/25-guardian/07 §2 — A manager arrives and nothing is running |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

@@ -152,7 +152,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/12.36 · specs/14.15 · specs/14.17 · arch/15-gate/03 §`units` · arch/35-units/05 §What each declared need expands into |
+| **Cites** | specs/12.36 · specs/14.15 · specs/14.17 · specs/17.26 · arch/15-gate/03 §`units` · arch/35-units/05 §What each declared need expands into |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -165,7 +165,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/14.43 · specs/12.46 · arch/15-gate/05 §Where substitution is permitted |
+| **Cites** | specs/12.46 · specs/14.43 · specs/17.26 · arch/15-gate/05 §Where substitution is permitted |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -270,7 +270,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/15-gate/05 §Where substitution is permitted · arch/15-gate/05 §How a name is resolved |
+| **Cites** | specs/17.23 · arch/15-gate/05 §Where substitution is permitted · arch/15-gate/05 §How a name is resolved |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

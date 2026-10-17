@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/17.33 · specs/17.62 · arch/25-guardian/04 §When a start fails · arch/25-guardian/02 §How it comes to be running |
+| **Cites** | specs/17.33 · specs/17.62 · specs/17.65 · arch/25-guardian/04 §When a start fails · arch/25-guardian/02 §How it comes to be running |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/17.34 · specs/17.35 · specs/17.38 · arch/25-guardian/03 §What it carries · arch/25-guardian/03 §What carries it |
+| **Cites** | specs/17.34 · specs/17.35 · specs/17.38 · specs/17.39 · arch/25-guardian/03 §What it carries · arch/25-guardian/03 §What carries it |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -134,3 +134,16 @@
 | **Precondition** | `yoke-core` built from this tree and named by the configuration, with the engine's address; `com.yoke.station` `2.1.0` installed, a unit naming an image not started automatically; a record `bench-a` pinned to it, desired `running` |
 | **Action** | start the guardian; wait for the report to say `bench-a` is observable; write it stopped and tell the guardian |
 | **Expected** | the Core is executed with `--engine`, becomes ready and says it is alive; the instance's state holds `version` saying `2.1.0`; once stopped the Core has ended and the guardian exits zero |
+
+## yoke:the-guardian.12 — values stored in a record are checked again at every start, and a hand-edited one is refused
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/17.24 · specs/17.25 · arch/25-guardian/01 §Who writes it, and how · arch/15-gate/06 §The moments |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an instance whose record was edited by hand after it was created: one holding a value for a parameter the descriptor does not declare, one missing the value a required parameter needs |
+| **Action** | run the gate each start runs |
+| **Expected** | both are refused, each naming the parameter, and neither is honoured — what a record stores was valid when it was written and is checked again before it is used |

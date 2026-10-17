@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | prj_structure/95 §The built binaries · arch/80-security/04 §The host's answer about a person |
+| **Cites** | specs/17.67 · prj_structure/95 §The built binaries · arch/80-security/04 §The host's answer about a person |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

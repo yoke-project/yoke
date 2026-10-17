@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.16 · arch/00-system/06 §1 — The service form, from boot · arch/10-manager/01 §`yoke service` — the system regime |
+| **Cites** | specs/15.16 · specs/17.1 · arch/00-system/06 §1 — The service form, from boot · arch/10-manager/01 §`yoke service` — the system regime |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
