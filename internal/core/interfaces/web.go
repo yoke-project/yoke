@@ -186,7 +186,11 @@ func (s *Surface) control(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if named := strings.TrimPrefix(r.URL.Path, "/v1/"); Name(req) != named {
-		writeRefusal(w, refusal("operation.malformed", "the path names "+named+" and the request "+Name(req)))
+		carries := "the request " + Name(req)
+		if Name(req) == "" {
+			carries = "the request names no operation"
+		}
+		writeRefusal(w, refusal("operation.malformed", "the path names "+named+" and "+carries))
 		return
 	}
 	// On a routable channel a browser authenticates before it attaches: the credential is asked of the

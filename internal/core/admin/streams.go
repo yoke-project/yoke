@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	administrativev1 "github.com/yoke-project/yoke/proto/yoke/administrative/v1"
 	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
@@ -44,6 +45,11 @@ func (c *Core) stream(id, stream string) (streams.Tolerances, uint64, *administr
 	}
 	if !c.Sessions.Open(id) {
 		return streams.Tolerances{}, 0, about("unit.no_session", "unit", id, id+" is running and holds no Session")
+	}
+	// The scope is the Session's, and is asked before anything is created for the stream.
+	if granted, _, _ := c.Sessions.Granted(id); !slices.Contains(granted, stream) {
+		return streams.Tolerances{}, 0, &administrativev1.Refusal{Code: "scope.withheld", Message: stream + " is declared and not granted to that plugin",
+			Detail: &administrativev1.Refusal_Item{Item: stream}}
 	}
 	return *declared, uint64(st.Incarnation), nil
 }

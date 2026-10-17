@@ -52,6 +52,8 @@ type Sessions interface {
 	Revoke(unit string, cause pluginv1.SessionMessage_Revoked_Cause, line string) error
 	// Instruct hands a unit a control instruction on its Session, and returns its acknowledgement.
 	Instruct(ctx context.Context, unit string, c *pluginv1.Control) (*pluginv1.Ack, error)
+	// Granted is the scope a unit's Session holds: the streams, commands and queries it was granted.
+	Granted(unit string) (streams, commands, queries []string)
 }
 
 // Transports are the streams' own transports.

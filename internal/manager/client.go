@@ -221,6 +221,9 @@ func dialAt(path string) (*admin.Operator, error) {
 
 func (c *call) positional(n int, usage string) error {
 	if len(c.args) != n {
+		if c.verb != "" {
+			return refusef("%s: expected %s", strings.TrimSpace("yoke "+c.verb+" "+c.takes), usage)
+		}
 		return refusef("expected %s", usage)
 	}
 	return nil

@@ -287,8 +287,8 @@ func (c *call) instanceRemove() error {
 }
 
 // derived is what is known of each instance now: the guardian's account where one answers, otherwise
-// what the claims say.
-func (c *call) derived(o instances.Options, names []string) map[string]*channel.Watched {
+// what the claims say, and that no guardian answered.
+func (c *call) derived(o instances.Options, names []string) (map[string]*channel.Watched, bool) {
 	out := map[string]*channel.Watched{}
 	if client, done := c.guardian(); client != nil {
 		defer done()
@@ -296,7 +296,7 @@ func (c *call) derived(o instances.Options, names []string) map[string]*channel.
 			for _, w := range r.GetInstances() {
 				out[w.GetName()] = w
 			}
-			return out
+			return out, true
 		}
 	}
 	for _, name := range names {
@@ -308,5 +308,5 @@ func (c *call) derived(o instances.Options, names []string) map[string]*channel.
 		}
 		out[name] = &channel.Watched{Name: name, State: state}
 	}
-	return out
+	return out, false
 }

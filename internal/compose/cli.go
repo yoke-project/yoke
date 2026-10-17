@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -38,6 +39,39 @@ const usage = `usage: yoke-compose <verb> [options]
   checked against the Manifests in --manifests.
 `
 
+// authoring are the verbs that write the descriptor or a composition document.
+var authoring = []string{"add", "set", "remove", "arbitrate"}
+
+// synopsis is a verb's own lines of the usage, and what an authoring verb writes; nothing for a verb
+// the usage does not name.
+func synopsis(verb string) string {
+	var b strings.Builder
+	for _, line := range strings.Split(usage, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), verb+" ") {
+			b.WriteString(line + "\n")
+		}
+	}
+	if b.Len() == 0 {
+		return ""
+	}
+	said := "usage: yoke-compose\n" + b.String()
+	if slices.Contains(authoring, verb) {
+		said += "\n  It writes the project's descriptor in --dir, or the composition document --file names, checked\n" +
+			"  against the Manifests in --manifests.\n"
+	}
+	return said
+}
+
+// asksHelp says whether a verb's arguments ask for its synopsis rather than for the verb.
+func asksHelp(args []string) bool {
+	for _, a := range args {
+		if a == "-h" || a == "-help" || a == "--help" {
+			return true
+		}
+	}
+	return false
+}
+
 // The exit statuses: a refusal will not pass on the next attempt, a fault may.
 const (
 	Done    = 0
@@ -52,6 +86,12 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return Refused
 	}
 	verb, rest := args[0], args[1:]
+	if asksHelp(rest) {
+		if said := synopsis(verb); said != "" {
+			fmt.Fprint(stdout, said)
+			return Done
+		}
+	}
 	fs := flag.NewFlagSet("yoke-compose "+verb, flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	dir := fs.String("dir", ".", "the project's directory")
@@ -85,7 +125,11 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		}
 		show(stdout, gate.Report{Findings: shown})
 		if waived > 0 {
-			fmt.Fprintf(stdout, "waived: %d advisory items, listed by waivers\n", waived)
+			noun := "advisory items"
+			if waived == 1 {
+				noun = "advisory item"
+			}
+			fmt.Fprintf(stdout, "waived: %d %s, listed by waivers\n", waived, noun)
 		}
 		if r.Refused() {
 			return Refused
