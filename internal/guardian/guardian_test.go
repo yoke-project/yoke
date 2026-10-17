@@ -601,3 +601,24 @@ func TestAStartIsCheckedAgainstTheDigestsAndNeverTheTrustStore(t *testing.T) {
 		t.Errorf("the start of an unsigned installed version was refused under a policy requiring signatures: %v", gated.Findings)
 	}
 }
+// std: yoke:the-guardian.12
+func TestStoredValuesAreCheckedAgainAtEveryStart(t *testing.T) {
+	h := newHost(t, "")
+	h.declare("bench-a", instancerecord.Stopped, "beat", func(r *instancerecord.Record) {
+		r.Parameters = map[string]map[string]string{"shared": {"label": "Bench A", "operator": "nobody declared me"}}
+	})
+	h.declare("bench-b", instancerecord.Stopped, "beat", func(r *instancerecord.Record) {
+		r.Parameters = map[string]map[string]string{"shared": {"site": "Bench"}}
+	})
+	for name, parameter := range map[string]string{"bench-a": "operator", "bench-b": "label"} {
+		rec, err := instancerecord.Read(h.instances, name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		gated := guardian.GateStart(h.o, rec, false)
+		if !gated.Refused() || !slices.ContainsFunc(gated.Findings, func(f gate.Finding) bool { return strings.Contains(f.Location+" "+f.Message, parameter) }) {
+			t.Errorf("%s's hand-edited values were not refused naming %s: %v", name, parameter, gated.Findings)
+		}
+	}
+}
+

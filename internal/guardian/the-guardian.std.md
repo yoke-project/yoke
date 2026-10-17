@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/17.33 · specs/17.62 · arch/25-guardian/04 §When a start fails · arch/25-guardian/02 §How it comes to be running |
+| **Cites** | specs/17.33 · specs/17.62 · specs/17.65 · arch/25-guardian/04 §When a start fails · arch/25-guardian/02 §How it comes to be running |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/17.34 · specs/17.35 · specs/17.38 · arch/25-guardian/03 §What it carries · arch/25-guardian/03 §What carries it |
+| **Cites** | specs/17.34 · specs/17.35 · specs/17.38 · specs/17.39 · arch/25-guardian/03 §What it carries · arch/25-guardian/03 §What carries it |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -140,6 +140,11 @@
 | Field | Value |
 | --- | --- |
 | **Cites** | specs/00.26 · specs/15.19 · specs/80.27 · arch/10-manager/03 §The order · arch/15-gate/06 §The moments |
+## yoke:the-guardian.12 — values stored in a record are checked again at every start, and a hand-edited one is refused
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/17.24 · specs/17.25 · arch/25-guardian/01 §Who writes it, and how · arch/15-gate/06 §The moments |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -147,3 +152,6 @@
 | **Precondition** | an installed version whose record names no verifying key — installed unsigned — and an instance of it; the host's policy tightened by `YOKE_REQUIRE_SIGNATURE` to refuse every unsigned package |
 | **Action** | run the gate the instance's start runs |
 | **Expected** | it refuses nothing: what the start checks is that the bundle is what was installed, which the descriptor's digests say, and the policy that would refuse the package at installing is not consulted |
+| **Precondition** | an instance whose record was edited by hand after it was created: one holding a value for a parameter the descriptor does not declare, one missing the value a required parameter needs |
+| **Action** | run the gate each start runs |
+| **Expected** | both are refused, each naming the parameter, and neither is honoured — what a record stores was valid when it was written and is checked again before it is used |

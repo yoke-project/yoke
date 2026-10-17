@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/17.59 · arch/25-guardian/06 §The signal |
+| **Cites** | specs/17.59 · specs/17.65 · arch/25-guardian/06 §The signal |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

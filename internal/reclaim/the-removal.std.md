@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.55 · arch/10-manager/06 §Removing |
+| **Cites** | specs/15.55 · specs/17.49 · arch/10-manager/06 §Removing |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/10-manager/06 §Removing · arch/10-manager/04 §The install record |
+| **Cites** | specs/17.21 · arch/10-manager/06 §Removing · arch/10-manager/04 §The install record |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

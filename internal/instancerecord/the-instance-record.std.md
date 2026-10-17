@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/17.5 · specs/17.6 · specs/17.11 · arch/25-guardian/01 §What it holds |
+| **Cites** | specs/17.5 · specs/17.6 · specs/17.7 · specs/17.8 · specs/17.11 · specs/17.25 · arch/25-guardian/01 §What it holds |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/10.36 · specs/17.14 · specs/17.20 · arch/10-manager/06 §Removing |
+| **Cites** | specs/10.36 · specs/17.14 · specs/17.20 · specs/17.21 · arch/10-manager/06 §Removing |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
