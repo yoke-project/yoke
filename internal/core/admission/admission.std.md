@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.9 · specs/50.18 · specs/50.19 · specs/50.23 · specs/50.25 · arch/50-plugin-surface/03 §The nine stages · arch/50-plugin-surface/03 §The stage travels with the refusal |
+| **Cites** | specs/50.9 · specs/50.18 · specs/50.19 · specs/50.23 · specs/50.25 · specs/80.2 · arch/50-plugin-surface/03 §The nine stages · arch/50-plugin-surface/03 §The stage travels with the refusal |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/28.24 · specs/50.7 · specs/50.12 · specs/50.13 · arch/50-plugin-surface/03 §The four inputs · arch/50-plugin-surface/01 §The startup window, and its three uses |
+| **Cites** | specs/28.24 · specs/50.7 · specs/50.12 · specs/50.13 · specs/80.6 · specs/80.7 · arch/50-plugin-surface/03 §The four inputs · arch/50-plugin-surface/01 §The startup window, and its three uses |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.23 · arch/50-plugin-surface/03 §The stage travels with the refusal |
+| **Cites** | specs/50.23 · specs/80.7 · arch/50-plugin-surface/03 §The stage travels with the refusal |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.24 · specs/50.26 · specs/50.29 · specs/50.30 · specs/50.33 · arch/50-plugin-surface/03 §The grant is an intersection, computed once · arch/50-plugin-surface/03 §Three outcomes · arch/97-trace/03 §The intersection does something here |
+| **Cites** | specs/50.24 · specs/50.26 · specs/50.29 · specs/50.30 · specs/50.33 · specs/80.2 · specs/80.10 · specs/80.42 · arch/50-plugin-surface/03 §The grant is an intersection, computed once · arch/50-plugin-surface/03 §Three outcomes · arch/97-trace/03 §The intersection does something here |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/45.8 · specs/45.9 · specs/45.10 · arch/35-units/05 §Identity across the boundary |
+| **Cites** | specs/45.8 · specs/45.9 · specs/45.10 · specs/80.40 · arch/35-units/05 §Identity across the boundary |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

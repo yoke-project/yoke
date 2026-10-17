@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/80-security/04 §The host's answer about a person |
+| **Cites** | specs/80.8 · specs/80.54 · arch/80-security/04 §The host's answer about a person |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

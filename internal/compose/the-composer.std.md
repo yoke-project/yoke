@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/20-composer/02 §Building a package |
+| **Cites** | specs/80.41 · arch/20-composer/02 §Building a package |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

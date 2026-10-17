@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/45.38 · specs/45.30 · specs/45.31 · arch/15-gate/06 §Phase 4 — host facts · arch/15-gate/06 §Phase 5 — weaker arrangements |
+| **Cites** | specs/45.30 · specs/45.31 · specs/45.38 · specs/80.40 · arch/15-gate/06 §Phase 4 — host facts · arch/15-gate/06 §Phase 5 — weaker arrangements |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

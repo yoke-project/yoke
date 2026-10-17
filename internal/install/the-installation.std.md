@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.23 · specs/15.33 · arch/10-manager/05 §The order |
+| **Cites** | specs/15.23 · specs/15.33 · specs/80.41 · arch/10-manager/05 §The order |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

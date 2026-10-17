@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.2 · specs/50.39 · specs/50.47 · specs/50.48 · arch/50-plugin-surface/04 §Opening and closing |
+| **Cites** | specs/50.2 · specs/50.39 · specs/50.47 · specs/50.48 · specs/80.6 · arch/50-plugin-surface/04 §Opening and closing |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

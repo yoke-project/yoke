@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.64 · specs/50.30 · arch/50-plugin-surface/05 §The event family is where a unit declares a severity · arch/50-plugin-surface/08 §This surface's error codes |
+| **Cites** | specs/50.30 · specs/50.64 · specs/80.10 · arch/50-plugin-surface/05 §The event family is where a unit declares a severity · arch/50-plugin-surface/08 §This surface's error codes |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

@@ -152,7 +152,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/12.36 · specs/14.15 · specs/14.17 · arch/15-gate/03 §`units` · arch/35-units/05 §What each declared need expands into |
+| **Cites** | specs/12.36 · specs/14.15 · specs/14.17 · specs/80.45 · specs/80.46 · arch/15-gate/03 §`units` · arch/35-units/05 §What each declared need expands into |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

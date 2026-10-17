@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/12.38 · specs/12.44 · specs/15.60 · arch/15-gate/06 §Phase 4 — host facts |
+| **Cites** | specs/12.38 · specs/12.44 · specs/15.60 · specs/80.50 · arch/15-gate/06 §Phase 4 — host facts |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/14.1 · specs/14.2 · arch/15-gate/04 §At a glance · arch/97-trace/07 §The composition document |
+| **Cites** | specs/14.1 · specs/14.2 · specs/80.15 · specs/80.34 · arch/15-gate/04 §At a glance · arch/97-trace/07 §The composition document |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.25 · arch/15-gate/06 §Phase 4 — host facts · arch/15-gate/06 §The identifying code, and what computing it costs |
+| **Cites** | specs/15.25 · specs/80.39 · arch/15-gate/06 §Phase 4 — host facts · arch/15-gate/06 §The identifying code, and what computing it costs |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.17 · specs/15.18 · specs/15.25 · specs/15.45 · arch/10-manager/07 §Creating an instance, and naming it · arch/15-gate/06 §The moments |
+| **Cites** | specs/15.17 · specs/15.18 · specs/15.25 · specs/15.45 · specs/80.19 · specs/80.37 · arch/10-manager/07 §Creating an instance, and naming it · arch/15-gate/06 §The moments |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/80-security/03 §Where the material comes from · arch/15-gate/06 §Phase 4 — host facts |
+| **Cites** | specs/80.15 · arch/80-security/03 §Where the material comes from · arch/15-gate/06 §Phase 4 — host facts |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/15-gate/06 §Phase 4 — host facts · arch/80-security/04 §The host's answer about a person |
+| **Cites** | specs/80.55 · arch/15-gate/06 §Phase 4 — host facts · arch/80-security/04 §The host's answer about a person |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.40 · specs/15.41 · specs/15.42 · specs/15.74 · arch/10-manager/02 §What is checked, and what is not |
+| **Cites** | specs/15.40 · specs/15.41 · specs/15.42 · specs/15.74 · specs/80.37 · arch/10-manager/02 §What is checked, and what is not |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.21 · specs/13.23 · arch/10-manager/04 §The install record |
+| **Cites** | specs/13.23 · specs/15.21 · specs/80.29 · arch/10-manager/04 §The install record |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

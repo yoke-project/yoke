@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/13.7 · specs/13.10 · arch/10-manager/03 §Three checks, three different things |
+| **Cites** | specs/13.7 · specs/13.10 · specs/80.22 · arch/10-manager/03 §Three checks, three different things |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -165,7 +165,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/13.14 · specs/13.15 · specs/13.16 · arch/10-manager/03 §Sealing |
+| **Cites** | specs/13.14 · specs/13.15 · specs/13.16 · specs/80.18 · arch/10-manager/03 §Sealing |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

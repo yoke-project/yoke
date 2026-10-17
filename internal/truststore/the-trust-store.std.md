@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/80.24 · specs/13.21 · specs/13.23 · arch/80-security/05 §Rotation is an addition followed by a removal |
+| **Cites** | specs/13.21 · specs/13.23 · specs/80.24 · specs/80.27 · arch/80-security/05 §Rotation is an addition followed by a removal |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

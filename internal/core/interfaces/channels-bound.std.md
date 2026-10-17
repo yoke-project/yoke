@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.2 · specs/70.16 · specs/70.17 · arch/70-interface-surface/01 §Where a channel is bound · arch/30-core/04 §Who binds what |
+| **Cites** | specs/70.2 · specs/70.16 · specs/70.17 · specs/80.34 · arch/70-interface-surface/01 §Where a channel is bound · arch/30-core/04 §Who binds what |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -87,7 +87,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/70-interface-surface/03 §Who the client is · arch/70-interface-surface/04 §What an operation is refused by, and in what order |
+| **Cites** | specs/80.43 · specs/80.44 · arch/70-interface-surface/03 §Who the client is · arch/70-interface-surface/04 §What an operation is refused by, and in what order |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -114,7 +114,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/80-security/04 §The host's answer about a person · arch/70-interface-surface/03 §Who the client is |
+| **Cites** | specs/80.43 · arch/80-security/04 §The host's answer about a person · arch/70-interface-surface/03 §Who the client is |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | — |

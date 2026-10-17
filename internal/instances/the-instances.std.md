@@ -87,7 +87,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.63 · specs/15.64 · specs/15.65 · arch/10-manager/07 §Copying an instance's state |
+| **Cites** | specs/15.63 · specs/15.64 · specs/15.65 · specs/80.52 · arch/10-manager/07 §Copying an instance's state |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

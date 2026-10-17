@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/45.13 · arch/80-security/06 §How it reaches the unit · arch/35-units/05 §What each declared need expands into |
+| **Cites** | specs/45.13 · specs/80.47 · specs/80.48 · specs/80.49 · arch/80-security/06 §How it reaches the unit · arch/35-units/05 §What each declared need expands into |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -113,7 +113,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/45.13 · arch/80-security/06 §How it reaches the unit · arch/35-units/05 §What each declared need expands into |
+| **Cites** | specs/45.13 · specs/80.48 · arch/80-security/06 §How it reaches the unit · arch/35-units/05 §What each declared need expands into |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | — |
