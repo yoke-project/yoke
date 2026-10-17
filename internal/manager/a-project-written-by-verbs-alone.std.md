@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/20-composer/06 §1 — Composing an application · arch/20-composer/01 §The verbs · arch/20-composer/03 §Placing one · arch/20-composer/04 §Waiving an item · arch/10-manager/08 §1 — From a package to a running instance |
+| **Cites** | specs/95.1 · specs/95.7 · arch/20-composer/06 §1 — Composing an application · arch/20-composer/01 §The verbs · arch/20-composer/03 §Placing one · arch/20-composer/04 §Waiving an item · arch/10-manager/08 §1 — From a package to a running instance |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | — |

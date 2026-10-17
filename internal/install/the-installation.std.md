@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/10.4 · specs/10.16 · specs/10.17 · specs/13.23 · specs/15.21 · specs/15.42 · specs/15.46 · specs/15.47 · arch/10-manager/05 §The order |
+| **Cites** | specs/10.4 · specs/10.16 · specs/10.17 · specs/12.2 · specs/13.23 · specs/15.21 · specs/15.42 · specs/15.46 · specs/15.47 · arch/10-manager/05 §The order |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.17 · specs/15.18 · specs/15.24 · arch/10-manager/05 §The order · arch/15-gate/06 §Phase 4 — host facts |
+| **Cites** | specs/12.18 · specs/15.17 · specs/15.18 · specs/15.24 · arch/10-manager/05 §The order · arch/15-gate/06 §Phase 4 — host facts |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
