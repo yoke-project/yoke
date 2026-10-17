@@ -530,6 +530,11 @@ func TestTheGrantAndTheWithheldCarryOccurrences(t *testing.T) {
 	if !slices.Contains(resp.Withheld.GetCapabilities(), "event.head-fault.report") {
 		t.Errorf("the withheld capabilities are %v", resp.Withheld.GetCapabilities())
 	}
+	w := resp.Withheld
+	count := len(w.GetCapabilities()) + len(w.GetStreams()) + len(w.GetCommands()) + len(w.GetQueries()) + len(w.GetOccurrences())
+	if want := fmt.Sprintf("withheld=%d", count); !strings.Contains(b.log.String(), want) {
+		t.Errorf("the admission's line does not say %s:\n%s", want, b.log.String())
+	}
 }
 
 // std: yoke:admission.14

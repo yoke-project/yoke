@@ -41,5 +41,5 @@
 | **Not applicable in** | — |
 | **Label** | blocking |
 | **Precondition** | the project of `.01` after the block was placed as `acquire-2` |
-| **Action** | `block save acquire-2` to a new file; save it again to that same file; then `block add` the saved file `--as acquire-4` |
-| **Expected** | the saved file names the block `acquire-2`, states the project's model, and holds the unit, the group's `instrument` and the channel served by `acquire-2`; the project is byte for byte what it was; the second save is refused, naming the file; the placement declares `acquire-4`, its group and its channel exactly as `acquire-2`'s are declared, under the new name |
+| **Action** | `block save acquire-2` to a new file; save it again to that same file, and to a file in a directory that does not exist; then `block add` the saved file `--as acquire-4` |
+| **Expected** | the saved file names the block `acquire-2`, states the project's model, and holds the unit, the group's `instrument` and the channel served by `acquire-2`; the project is byte for byte what it was; the second save is refused, naming the file, and the third is refused, exit 1, naming the directory that is not there; the placement declares `acquire-4`, its group and its channel exactly as `acquire-2`'s are declared, under the new name |

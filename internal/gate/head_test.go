@@ -112,3 +112,15 @@ func TestInsideABundleAManifestIsNamedByItsPlugin(t *testing.T) {
 		t.Errorf("without it: %v", r.Findings)
 	}
 }
+
+// std: yoke:the-descriptor-head.05
+func TestAStampOutsideTheRangeIsRefusedNamingTheRangeAsRead(t *testing.T) {
+	err := gate.Readable(">=1.0", "1.1.0", "1.0.0")
+	if err == nil || !strings.Contains(err.Error(), ">=1.0 up to 1.0.0") || !strings.Contains(err.Error(), "1.1.0") {
+		t.Errorf("an open range: %v", err)
+	}
+	err = gate.Readable(">=1.0 <2.1", "2.1.0", "2.0.0")
+	if err == nil || !strings.Contains(err.Error(), ">=1.0 <2.1,") || strings.Contains(err.Error(), "up to") || !strings.Contains(err.Error(), "2.1.0") {
+		t.Errorf("a closed range: %v", err)
+	}
+}

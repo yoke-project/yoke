@@ -92,3 +92,19 @@ func TestHelpAfterAVerbIsItsUsage(t *testing.T) {
 		}
 	}
 }
+
+// std: yoke:the-manager-command-line.17
+func TestTheWrongSubjectsAreAnsweredWithTheRightOnes(t *testing.T) {
+	vars := map[string]string{"XDG_RUNTIME_DIR": t.TempDir(), "XDG_STATE_HOME": t.TempDir()}
+	for _, c := range []struct {
+		args  []string
+		names string
+	}{
+		{[]string{"plugin", "grant"}, "yoke plugin grant <plugin> <capability>"},
+		{[]string{"unit", "restart", "a", "b"}, "yoke unit restart <unit>"},
+	} {
+		if code, out := yoke(vars, c.args...); code != Refused || !strings.Contains(out, c.names) {
+			t.Errorf("%v exited %d:\n%s", c.args, code, out)
+		}
+	}
+}
