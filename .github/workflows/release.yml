@@ -11,6 +11,11 @@ on:
   push:
     tags: ['v*', 'proto/v*']
   workflow_dispatch:
+    inputs:
+      heads:
+        description: measure each family's default branch rather than its newest publication
+        type: boolean
+        default: false
 
 # The verb uploads the release's files to the tag's release, and publishes the definitions packages under
 # credentials the run's identity is exchanged for: nothing is stored.
@@ -34,10 +39,23 @@ jobs:
         with:
           go-version: '1.26'
       # What each family last published, read from the manifest as it stands on the default branch.
+      # Dispatched with heads, each family's default branch stands in for its newest publication, which is
+      # how a change to a family's conformance script is tried before the family publishes it.
       - id: plan
+        env:
+          HEADS: ${{ inputs.heads }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           curl -fsSL --retry 5 https://raw.githubusercontent.com/yoke-project/yoke/main/releases/manifest.jsonl -o manifest.jsonl
-          echo "measured=$(go run ./cmd/yoke-release -measure manifest.jsonl)" >> "$GITHUB_OUTPUT"
+          measured="$(go run ./cmd/yoke-release -measure manifest.jsonl)"
+          if [[ "$HEADS" == true ]]; then
+            measured="$(jq -c '.[]' <<<"$measured" | while read -r one; do
+              repository="$(jq -r .repository <<<"$one")"
+              head="$(gh api "repos/yoke-project/$repository/commits/HEAD" --jq .sha)"
+              jq -c --arg head "$head" '.commit = $head | .version = "head"' <<<"$one"
+            done | jq -cs .)"
+          fi
+          echo "measured=$measured" >> "$GITHUB_OUTPUT"
 
   measure:
     needs: plan
