@@ -155,13 +155,20 @@ func Install(o Options) (Result, error) {
 }
 
 // obtain holds every image the descriptor names under its pinned reference, tagged in the reserved
-// namespace. The engine is reached only where a unit names an image, and once.
+// namespace once for each unit that runs it. The engine is reached only where a unit names an image, and
+// once; an image two units name is obtained once.
 func obtain(o Options, bundle string, d *gate.Deployment, m pkgfile.Meta) error {
 	var refs []string
+	runs := map[string][]string{}
 	for _, name := range d.Order {
-		if ref := d.Units[name].Image; ref != "" && !slices.Contains(refs, ref) {
+		ref := d.Units[name].Image
+		if ref == "" {
+			continue
+		}
+		if !slices.Contains(refs, ref) {
 			refs = append(refs, ref)
 		}
+		runs[ref] = append(runs[ref], name)
 	}
 	if len(refs) == 0 {
 		return nil
@@ -213,8 +220,10 @@ func obtain(o Options, bundle string, d *gate.Deployment, m pkgfile.Meta) error 
 			}
 			fmt.Fprintf(out, "%s: pulled\n", ref)
 		}
-		if err := e.Tag(ctx, ref, m.ID, m.Version); err != nil {
-			return err
+		for _, unit := range runs[ref] {
+			if err := e.Tag(ctx, ref, m.ID, unit, m.Version); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
