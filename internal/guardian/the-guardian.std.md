@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/00.6 · specs/00.19 · specs/10.22 · specs/10.23 · specs/12.19 · specs/15.15 · specs/15.26 · specs/15.45 · specs/17.41 · specs/17.63 · specs/20.11 · specs/25.63 · specs/31.25 · arch/25-guardian/04 §When a start is refused · arch/15-gate/06 §The phases |
+| **Cites** | specs/00.6 · specs/00.19 · specs/10.22 · specs/10.23 · specs/12.19 · specs/15.15 · specs/15.26 · specs/15.45 · specs/17.41 · specs/17.63 · specs/20.11 · specs/25.63 · specs/31.25 · specs/80.19 · specs/80.31 · specs/80.41 · arch/25-guardian/04 §When a start is refused · arch/15-gate/06 §The phases |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

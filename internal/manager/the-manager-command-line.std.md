@@ -139,7 +139,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.57 · specs/15.58 · specs/15.59 · arch/10-manager/07 §Supplying a secret · arch/80-security/06 §Where the value lives |
+| **Cites** | specs/15.57 · specs/15.58 · specs/15.59 · specs/80.45 · specs/80.47 · specs/80.52 · arch/10-manager/07 §Supplying a secret · arch/80-security/06 §Where the value lives |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -152,7 +152,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.61 · arch/80-security/06 §What is refused, and what is restarted · arch/10-manager/07 §Supplying a secret |
+| **Cites** | specs/15.61 · specs/80.51 · arch/80-security/06 §What is refused, and what is restarted · arch/10-manager/07 §Supplying a secret |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -179,7 +179,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.3 · specs/15.14 · specs/15.60 · specs/17.34 · specs/31.25 · arch/10-manager/01 §What it reports · arch/25-guardian/04 §When a start is refused |
+| **Cites** | specs/15.3 · specs/15.14 · specs/15.60 · specs/17.34 · specs/31.25 · specs/80.32 · specs/80.50 · arch/10-manager/01 §What it reports · arch/25-guardian/04 §When a start is refused |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

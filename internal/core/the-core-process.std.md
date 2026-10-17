@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/00.22 · specs/10.29 · specs/10.30 · specs/10.31 · specs/10.38 · specs/20.1 · specs/20.4 · specs/25.3 · specs/25.5 · specs/25.8 · specs/25.23 · specs/25.24 · arch/30-core/01 §The application form has no equivalent, and needs none |
+| **Cites** | specs/00.22 · specs/10.29 · specs/10.30 · specs/10.31 · specs/10.38 · specs/20.1 · specs/20.4 · specs/25.3 · specs/25.5 · specs/25.8 · specs/25.23 · specs/25.24 · specs/80.36 · arch/30-core/01 §The application form has no equivalent, and needs none |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

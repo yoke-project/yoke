@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/31.46 · specs/70.17 · arch/70-interface-surface/03 §Who the client is · arch/45-events/06 §`channel` |
+| **Cites** | specs/31.46 · specs/70.17 · specs/80.12 · arch/70-interface-surface/03 §Who the client is · arch/45-events/06 §`channel` |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/70-interface-surface/03 §Who the client is · arch/80-security/04 §The host's answer about a person · arch/70-interface-surface/08 §`local` — the typed projection |
+| **Cites** | specs/80.43 · arch/70-interface-surface/03 §Who the client is · arch/80-security/04 §The host's answer about a person · arch/70-interface-surface/08 §`local` — the typed projection |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

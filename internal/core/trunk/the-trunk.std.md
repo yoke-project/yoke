@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/25.41 · specs/25.42 · specs/25.43 · arch/30-core/04 §Permissions are an outcome of the form |
+| **Cites** | specs/25.41 · specs/25.42 · specs/25.43 · specs/80.3 · arch/30-core/04 §Permissions are an outcome of the form |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -113,7 +113,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/10.38 · specs/25.25 · specs/25.36 · specs/25.41 · specs/25.42 · arch/30-core/04 §The two ceilings · arch/30-core/04 §Permissions are an outcome of the form |
+| **Cites** | specs/10.38 · specs/25.25 · specs/25.36 · specs/25.41 · specs/25.42 · specs/80.1 · specs/80.3 · specs/80.4 · arch/30-core/04 §The two ceilings · arch/30-core/04 §Permissions are an outcome of the form |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

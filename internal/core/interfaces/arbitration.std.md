@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/12.13 · specs/14.34 · specs/70.36 · specs/70.37 · specs/70.38 · specs/70.39 · specs/70.40 · arch/70-interface-surface/06 §A local channel may always reclaim control |
+| **Cites** | specs/12.13 · specs/14.34 · specs/70.36 · specs/70.37 · specs/70.38 · specs/70.39 · specs/70.40 · specs/80.16 · arch/70-interface-surface/06 §A local channel may always reclaim control |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
