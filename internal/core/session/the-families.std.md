@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.61 · specs/50.62 · specs/50.63 · arch/50-plugin-surface/05 §The eight |
+| **Cites** | specs/42.19 · specs/50.61 · specs/50.62 · specs/50.63 · arch/50-plugin-surface/05 §The eight |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.61 · specs/50.69 · specs/50.102 · arch/50-plugin-surface/08 §The eight payloads |
+| **Cites** | specs/42.19 · specs/50.61 · specs/50.69 · specs/50.102 · arch/50-plugin-surface/08 §The eight payloads |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/00.17 · specs/28.6 · specs/45.17 · specs/45.18 · arch/35-units/05 §No network by default · arch/35-units/05 §Arbitration, a container, and two subjects |
+| **Cites** | specs/00.17 · specs/28.6 · specs/45.17 · specs/45.18 · specs/70.23 · arch/35-units/05 §No network by default · arch/35-units/05 §Arbitration, a container, and two subjects |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | — |

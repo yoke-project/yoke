@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/20.38 · specs/20.39 · arch/30-core/06 §Subscription is a projection, never an extension |
+| **Cites** | specs/20.38 · specs/20.39 · specs/50.44 · arch/30-core/06 §Subscription is a projection, never an extension |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

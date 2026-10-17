@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/12.30 · specs/14.40 · arch/15-gate/04 §The third document |
+| **Cites** | specs/12.30 · specs/14.40 · specs/40.17 · arch/15-gate/04 §The third document |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

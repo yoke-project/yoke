@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/60.26 · specs/60.27 · specs/60.59 · arch/60-administrative-surface/04 §The four names, applied · arch/60-administrative-surface/08 §How this contract states its version · arch/00-system/05 §How a contract states its version |
+| **Cites** | specs/60.3 · specs/60.26 · specs/60.27 · specs/60.59 · arch/60-administrative-surface/04 §The four names, applied · arch/60-administrative-surface/08 §How this contract states its version · arch/00-system/05 §How a contract states its version |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/60.19 · specs/60.23 · arch/60-administrative-surface/08 §The frame a held connection adds · arch/60-administrative-surface/06 §Who subscribes differs; what is promised does not |
+| **Cites** | specs/60.19 · specs/60.23 · specs/60.52 · arch/60-administrative-surface/08 §The frame a held connection adds · arch/60-administrative-surface/06 §Who subscribes differs; what is promised does not |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
