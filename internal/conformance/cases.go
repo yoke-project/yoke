@@ -14,7 +14,7 @@ import (
 func Cases() []Case {
 	return []Case{
 		{Contract: "plugin", ID: "yoke:plugin.01", Title: "the Manifest a library generates is one the Core reads",
-			Cites:        []string{"specs/90.36", "specs/90.38", "specs/42.1", "arch/90-sdks/06 §The declaration a plugin library produces"},
+			Cites:        []string{"specs/42.1", "specs/90.36", "specs/90.37", "specs/90.38", "arch/90-sdks/06 §The declaration a plugin library produces"},
 			Precondition: "the harness, launched by the suite with no deployment around it",
 			Issues:       "`describe`, then the Manifest written into the Plugin directory of a Core that is started",
 			Requires:     "a Manifest; the Core reads it, becomes ready and launches the harness as a unit, which says hello with its unit",

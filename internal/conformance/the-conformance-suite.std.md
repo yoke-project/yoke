@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/90.19 · specs/90.25 · arch/90-sdks/03 §What a run produces |
+| **Cites** | specs/90.14 · specs/90.19 · specs/90.25 · arch/90-sdks/03 §What a run produces |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/90.17 · arch/90-sdks/04 §How it is reached · arch/90-sdks/03 §The shape of a run |
+| **Cites** | specs/90.3 · specs/90.17 · arch/90-sdks/04 §How it is reached · arch/90-sdks/03 §The shape of a run |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

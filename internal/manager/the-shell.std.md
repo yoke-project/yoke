@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/10-manager/01 §`yoke shell` — the terminal · arch/60-administrative-surface/02 §Interleaving, correlation and completion |
+| **Cites** | specs/90.39 · arch/10-manager/01 §`yoke shell` — the terminal · arch/60-administrative-surface/02 §Interleaving, correlation and completion |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | — |

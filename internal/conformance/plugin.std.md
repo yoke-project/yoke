@@ -10,7 +10,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/90.36 · specs/90.38 · specs/42.1 · arch/90-sdks/06 §The declaration a plugin library produces |
+| **Cites** | specs/42.1 · specs/90.36 · specs/90.37 · specs/90.38 · arch/90-sdks/06 §The declaration a plugin library produces |
 | **Level** | L2 |
 | **Method** | test |
 | **Not applicable in** | — |
