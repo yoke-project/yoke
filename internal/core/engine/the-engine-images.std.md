@@ -44,7 +44,7 @@
 | **Action** | load an archive into each |
 | **Expected** | the first is sent the archive's bytes as a tar and its line is handed on; the second fails, naming its answer |
 
-## yoke:the-engine-images.04 — an image is tagged in the reserved namespace
+## yoke:the-engine-images.04 — an image is tagged in the reserved namespace, by the unit that runs it
 
 | Field | Value |
 | --- | --- |
@@ -54,8 +54,8 @@
 | **Not applicable in** | — |
 | **Label** | blocking |
 | **Precondition** | an engine holding an image |
-| **Action** | tag it for `com.yoke.station` at `2.1.0` |
-| **Expected** | the engine is asked to tag that reference as `yoke/com.yoke.station:2.1.0` |
+| **Action** | tag it for the unit `pipeline` of `com.yoke.station` at `2.1.0` |
+| **Expected** | the engine is asked to tag that reference as `yoke/com.yoke.station/pipeline:2.1.0` |
 
 ## yoke:the-engine-images.05 — an OCI archive named by its digest loads, and the image is present by that reference
 
@@ -79,6 +79,6 @@
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
-| **Precondition** | the tag `yoke/com.yoke.station:2.1.0` as Docker lists it, as Podman 4 lists it (`localhost/`) and as Podman 6 lists it (`docker.io/`); and tags outside the namespace — another registry's `yoke/`, an image of another name, a tag with no version |
+| **Precondition** | the tag `yoke/com.yoke.station/pipeline:2.1.0` as Docker lists it, as Podman 4 lists it (`localhost/`) and as Podman 6 lists it (`docker.io/`); the tag an earlier installation wrote, with no unit, `yoke/com.yoke.station:2.1.0`; and tags outside the namespace — another registry's `yoke/`, an image of another name, a tag with no version, a tag with an empty unit or a unit holding a slash |
 | **Action** | read each back |
-| **Expected** | the three spellings each name `com.yoke.station` at `2.1.0`; none of the others names anything |
+| **Expected** | the three spellings and the earlier tag each name `com.yoke.station` at `2.1.0`; none of the others names anything |

@@ -118,9 +118,9 @@
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
-| **Precondition** | an engine that holds one image already; a package whose descriptor names that image, one it carries as `components/images/<algorithm>-<hex>.tar`, and one it does not carry |
+| **Precondition** | an engine that holds one image already; a package whose descriptor names that image, one it carries as `components/images/<algorithm>-<hex>.tar`, and one it does not carry, each for a unit of its own, and the carried one for a second unit too |
 | **Action** | install it |
-| **Expected** | the held image is left as it is; the carried one is loaded and not pulled; the other is pulled by its digest; each is tagged `yoke/com.yoke.station:2.1.0`; what was obtained is reported per image; the record is complete |
+| **Expected** | the held image is left as it is; the carried one is loaded once and not pulled; the other is pulled by its digest; each is tagged `yoke/com.yoke.station/<unit>:2.1.0` for every unit that runs it; what was obtained is reported per image; the record is complete |
 
 ## yoke:the-installation.10 — an archive that loads with no digest is refused
 
@@ -157,6 +157,6 @@
 | **Method** | test |
 | **Not applicable in** | container engine: docker |
 | **Label** | blocking |
-| **Precondition** | an OCI archive written by the test and named by its manifest's digest, placed in a project's `components/images/`; no image under that reference in the engine; the project's descriptor naming it |
+| **Precondition** | two OCI archives written by the test, each named by its manifest's digest and placed in a project's `components/images/`; no image under either reference in the engine; the project's descriptor naming one for `panel` and the other for `pipeline` |
 | **Action** | build a signed package with the composer, and install it with the engine |
-| **Expected** | the installation completes; the engine holds the image under its pinned reference, loaded from the package and not pulled, and tagged `yoke/com.yoke.station:2.1.0`. Not applicable under Docker, whose classic store loads an archive with no digest |
+| **Expected** | the installation completes; the engine holds each image under its pinned reference, loaded from the package and not pulled, and each still tagged when the installation ends — `yoke/com.yoke.station/panel:2.1.0` and `yoke/com.yoke.station/pipeline:2.1.0` on the images they name. Not applicable under Docker, whose classic store loads an archive with no digest |
