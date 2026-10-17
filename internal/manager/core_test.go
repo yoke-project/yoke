@@ -30,7 +30,8 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// runBench is a Plugin that registers and waits to be told to stop.
+// runBench is a Plugin that registers and waits to be told to stop, printing a line now and then: a
+// follow begun at any moment has something of the unit's to show, whatever was written before it began.
 func runBench() int {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)
 	defer stop()
@@ -39,8 +40,12 @@ func runBench() int {
 		fmt.Fprintln(os.Stderr, "bench:", err)
 		return 1
 	}
+	tick := time.NewTicker(250 * time.Millisecond)
+	defer tick.Stop()
 	for {
 		select {
+		case <-tick.C:
+			fmt.Println("bench: still here")
 		case _, open := <-u.Events():
 			if !open {
 				return 0
