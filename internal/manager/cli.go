@@ -44,6 +44,8 @@ type call struct {
 	// nil outside a shell.
 	held *admin.Shell
 	line context.Context
+	// verb is the verb as it is written, and takes the subjects it takes: what a wrong count is told.
+	verb, takes string
 }
 
 // verbs are the command line's acts, by subject and operation. Each lifecycle namespace adds its own.
@@ -89,7 +91,7 @@ func Run(args []string, getenv func(string) string, stdout, stderr io.Writer) in
 		fmt.Fprintf(stdout, "usage: yoke %s %s %s\n", subject, args[1], ops[args[1]].usage)
 		return Done
 	}
-	return reported(ops[args[1]].run(&call{args: args[2:], getenv: getenv, out: stdout}), stderr)
+	return reported(ops[args[1]].run(&call{args: args[2:], getenv: getenv, out: stdout, verb: subject + " " + args[1], takes: ops[args[1]].usage}), stderr)
 }
 
 // asksHelp says whether a verb's arguments ask for its usage rather than for the verb.

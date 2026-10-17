@@ -101,7 +101,7 @@ func (c *call) instanceList() error {
 	for _, l := range listed {
 		names = append(names, l.Name)
 	}
-	derived := c.derived(o, names)
+	derived, guarded := c.derived(o, names)
 	for _, l := range listed {
 		if l.Record == nil {
 			fmt.Fprintf(c.out, "%s holds no valid record: %v\n", l.Name, l.Err)
@@ -126,9 +126,12 @@ func (c *call) instanceList() error {
 			line += " ephemeral"
 		}
 		fmt.Fprintln(c.out, line)
-		// The why, which only the guardian knows.
+		// The why, which only the guardian knows; with none to ask, the gate a start passes through says it.
 		for _, f := range w.GetFindings() {
 			fmt.Fprintf(c.out, "  refused: %s\n", f)
+		}
+		if !guarded && state == "stopped" && r.DesiredState == instancerecord.Running {
+			c.gateStart(o, *r)
 		}
 		if w.GetState() == "waiting" {
 			fmt.Fprintf(c.out, "  waiting: attempt %d, tried again in %v\n", w.GetAttempt(), w.GetWait().AsDuration())

@@ -285,6 +285,9 @@ func SaveBlock(dir, unit, destination string) error {
 	if _, err := os.Lstat(destination); err == nil {
 		return refusef("%s is already there, and a block is saved only where nothing is", destination)
 	}
+	if parent := filepath.Dir(destination); !isDir(parent) {
+		return refusef("%s is not a directory there is, and a block is saved into one that is", parent)
+	}
 	out := &yaml.Node{Kind: yaml.MappingNode}
 	put(out, "block", scalar(unit))
 	put(out, "model", scalar(fmt.Sprint(gate.DescriptionModel)))
@@ -357,4 +360,10 @@ func names[T any](items []T, name func(T) string) []string {
 		out = append(out, name(i))
 	}
 	return out
+}
+
+// isDir says whether path is a directory.
+func isDir(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
 }

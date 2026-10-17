@@ -127,7 +127,7 @@ func (a *Admission) Register(_ context.Context, req *pluginv1.RegisterRequest) (
 		return resp, nil
 	}
 	outcome := "accepted"
-	withheld := len(resp.Withheld.GetCapabilities()) + len(resp.Withheld.GetStreams()) + len(resp.Withheld.GetCommands()) + len(resp.Withheld.GetQueries())
+	withheld := len(slices.Concat(lists(resp.Withheld)...))
 	if resp.Outcome == pluginv1.RegisterResponse_OUTCOME_ACCEPTED_WITH_RESTRICTIONS {
 		outcome = "accepted_with_restrictions"
 	}

@@ -947,6 +947,14 @@ func (u supervised) RestartUnit(id string) error { return u.st.Supervisor.Restar
 // held are the Sessions as the administrative operations reach them, by the unit that holds one.
 type held struct{ st *State }
 
+// Granted is the scope the unit's Session holds; nothing where it holds none.
+func (s held) Granted(unitID string) (streams, commands, queries []string) {
+	if s.st.Session == nil {
+		return nil, nil, nil
+	}
+	return s.st.Session.Granted(unitID)
+}
+
 // OffersShared says the library of the unit's Session offered the shared object at its registration.
 func (s held) OffersShared(unitID string) bool {
 	if s.st.Session == nil || s.st.Admission == nil {

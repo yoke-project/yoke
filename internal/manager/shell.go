@@ -2,7 +2,9 @@ package manager
 
 import (
 	"bufio"
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -120,7 +122,7 @@ func shell(args []string, getenv func(string) string, in io.Reader, stdout, stde
 		current.cancel = end
 		current.Unlock()
 		printing.Lock()
-		err = v.run(&call{args: words[2:], getenv: getenv, out: stdout, held: held, line: lineCtx})
+		err = v.run(&call{args: words[2:], getenv: getenv, out: stdout, held: held, line: lineCtx, verb: words[0] + " " + words[1], takes: v.usage})
 		printing.Unlock()
 		current.Lock()
 		current.cancel = nil
@@ -227,7 +229,15 @@ func delivered(d *administrativev1.Subscribed) string {
 		if p := e.GetActor().GetPerson(); p != "" {
 			by += " " + p
 		}
-		return fmt.Sprintf("* %d %s %s by %s", e.GetSeq(), e.GetType(), subject, by)
+		line := fmt.Sprintf("* %d %s %s by %s", e.GetSeq(), e.GetType(), subject, by)
+		// What the event says, where its detail is a document: a change of state names both states.
+		if d := e.GetDetail(); len(d) > 0 && json.Valid(d) {
+			var compact bytes.Buffer
+			if json.Compact(&compact, d) == nil {
+				line += " " + compact.String()
+			}
+		}
+		return line
 	}
 	return "* " + d.String()
 }

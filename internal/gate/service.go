@@ -302,12 +302,13 @@ func Readable(data, stamp, ver string) error {
 	if err != nil {
 		return fmt.Errorf("the state's stamp %q is not a version", stamp)
 	}
-	within := r.Contains(wrote)
+	within, read := r.Contains(wrote), data
 	if !strings.Contains(data, "<") {
-		within = within && wrote.Compare(version.MustParse(ver)) <= 0
+		// An omitted upper end is the declaring version, and the range is named as it is read.
+		within, read = within && wrote.Compare(version.MustParse(ver)) <= 0, data+" up to "+ver
 	}
 	if !within {
-		return fmt.Errorf("%s declares it reads state written by %s, and %s last wrote this instance's state", ver, data, stamp)
+		return fmt.Errorf("%s declares it reads state written by %s, and %s last wrote this instance's state", ver, read, stamp)
 	}
 	return nil
 }
