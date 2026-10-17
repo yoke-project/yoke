@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | testing/30 §The contract level · testing/30 §A case |
+| **Cites** | specs/90.14 · testing/30 §The contract level · testing/30 §A case |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | testing/30 §The contract level |
+| **Cites** | specs/90.16 · testing/30 §The contract level |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

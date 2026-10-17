@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.13 · specs/50.15 · specs/50.16 · specs/50.17 · arch/50-plugin-surface/03 §What the request claims · arch/50-plugin-surface/08 §The registration exchange · arch/50-plugin-surface/07 §The shared ring |
+| **Cites** | specs/50.13 · specs/50.15 · specs/50.16 · specs/50.17 · specs/90.31 · arch/50-plugin-surface/03 §What the request claims · arch/50-plugin-surface/08 §The registration exchange · arch/50-plugin-surface/07 §The shared ring |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

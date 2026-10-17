@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.5 · specs/15.10 · specs/15.12 · arch/10-manager/01 §The client verbs · arch/10-manager/01 §Which projection a verb speaks to · arch/60-administrative-surface/04 §What every answer carries |
+| **Cites** | specs/15.5 · specs/15.10 · specs/15.12 · specs/90.39 · arch/10-manager/01 §The client verbs · arch/10-manager/01 §Which projection a verb speaks to · arch/60-administrative-surface/04 §What every answer carries |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | — |
