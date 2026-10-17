@@ -23,7 +23,7 @@ const usage = `usage: yoke-compose <verb> [options]
   check [--dir D]                                           run the gate over it, then the advice
   build [--dir D] [--out O] [--sign KEY] [--seal FILE]      make a package from it
 
-  add unit <name> --kind K [--exec P | --image R | --plugin ID] [--arg A]... [--depends-on U]...
+  add unit <name> --kind K [--exec P | --image R | --plugin ID] [--arg A]... [--depends-on U]... [--bind N=V]...
   add channel <name> --transport T --clients C [--unit U] [--class C [--host H] [--port N]] [--on-suspend G]
   add parameter <group>.<name> --type T [--range R] [--pattern P] [--values A,B] [--required] [--default V] [--label L]
   set <path> <value>                                        write any field, by the path a finding carries
@@ -321,6 +321,14 @@ func author(verb string, args []string, stdout, stderr io.Writer) int {
 	fs.StringVar(&u.Plugin, "plugin", "", "the Plugin a unit of kind plugin runs")
 	fs.Func("arg", "an argument, in order; repeat it", func(s string) error { u.Args = append(u.Args, s); return nil })
 	fs.Func("depends-on", "a unit this one depends on; repeat it", func(s string) error { u.DependsOn = append(u.DependsOn, s); return nil })
+	fs.Func("bind", "a binding its needs take, need=value; repeat it", func(s string) error {
+		need, value, ok := strings.Cut(s, "=")
+		if !ok || need == "" || value == "" {
+			return fmt.Errorf("--bind %q is not need=value", s)
+		}
+		u.Bind = append(u.Bind, [2]string{need, value})
+		return nil
+	})
 	fs.StringVar(&c.Transport, "transport", "", "the channel's transport")
 	fs.StringVar(&c.Clients, "clients", "", "single or multiple")
 	fs.StringVar(&c.Unit, "unit", "", "the managed interface the channel serves")
