@@ -81,6 +81,7 @@ type Config struct {
 	Cases       []Case
 	ReadyWithin time.Duration // how long the Core has to say it is ready; 30 s by default
 	Out         io.Writer
+	Report      string // where to write the table and the record as JSON; nothing is written when empty
 }
 
 // Hello is what a harness says first.
@@ -114,17 +115,62 @@ type Report struct {
 	OK   bool // every cell a pass
 }
 
-// Main runs the suite and returns its exit status: zero only when every cell passes.
+// Main runs the suite and returns its exit status: zero only when every cell passes. Asked for a report,
+// it writes one whatever the run came to, a run that could not reach its cases included.
 func Main(cfg Config) int {
 	report, err := Execute(cfg)
 	if err != nil {
 		fmt.Fprintln(cfg.Out, "yoke-conformance:", err)
-		return 1
 	}
-	if !report.OK {
+	if cfg.Report != "" {
+		if werr := write(cfg.Report, report, err); werr != nil {
+			fmt.Fprintln(cfg.Out, "yoke-conformance:", werr)
+			return 1
+		}
+	}
+	if err != nil || !report.OK {
 		return 1
 	}
 	return 0
+}
+
+// written is the report's form on disk: the record of what ran, one entry per cell, and, where the run
+// could not reach its cases, why.
+type written struct {
+	Ran struct {
+		Core        string  `json:"core"`
+		CoreVersion string  `json:"core_version"`
+		Harnesses   []Hello `json:"harnesses"`
+	} `json:"ran"`
+	Cells []writtenCell `json:"cells"`
+	Error string        `json:"error,omitempty"`
+	OK    bool          `json:"ok"`
+}
+
+type writtenCell struct {
+	Case     string `json:"case"`
+	Language string `json:"language"`
+	Result   string `json:"result"`
+	Detail   string `json:"detail,omitempty"`
+}
+
+// write records a run as JSON at path.
+func write(path string, report Report, failed error) error {
+	var w written
+	w.Ran.Core, w.Ran.CoreVersion, w.Ran.Harnesses = report.Ran.Core, report.Ran.CoreVersion, report.Ran.Harnesses
+	w.Cells = []writtenCell{}
+	for _, row := range report.Rows {
+		w.Cells = append(w.Cells, writtenCell{Case: row.Case, Language: row.Language, Result: row.Result, Detail: row.Detail})
+	}
+	if failed != nil {
+		w.Error = failed.Error()
+	}
+	w.OK = failed == nil && report.OK
+	data, err := json.MarshalIndent(w, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, append(data, '\n'), 0o644)
 }
 
 // Beat is the heartbeat interval a run's composition assigns its unit.

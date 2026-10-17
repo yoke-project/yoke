@@ -16,6 +16,7 @@ func main() {
 	core := flags.String("core", "yoke-core", "the yoke-core binary to drive")
 	harness := flags.String("harness", "", "the harness of the library under test")
 	render := flags.String("render", "", "print a contract's cases as its description, and run nothing")
+	report := flags.String("report", "", "write the table and the record of what ran as JSON to this path")
 	flags.Parse(os.Args[1:])
 	if *render != "" {
 		contract, known := conformance.Contracts()[*render]
@@ -30,5 +31,5 @@ func main() {
 		fmt.Fprintln(os.Stderr, "yoke-conformance: --harness names the harness of the library under test")
 		os.Exit(2)
 	}
-	os.Exit(conformance.Main(conformance.Config{Core: *core, Harness: *harness, Cases: append(append(append(conformance.Cases(), conformance.FamilyCases()...), conformance.AdministrativeCases()...), conformance.InterfaceCases()...), Out: os.Stdout}))
+	os.Exit(conformance.Main(conformance.Config{Core: *core, Harness: *harness, Cases: append(append(append(conformance.Cases(), conformance.FamilyCases()...), conformance.AdministrativeCases()...), conformance.InterfaceCases()...), Out: os.Stdout, Report: *report}))
 }
