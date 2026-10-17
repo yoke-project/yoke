@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/30.8 · specs/30.14 · specs/30.15 · specs/30.18 · arch/40-state/02 §`plugin` — what the artifact says it is · arch/40-state/02 §`credential` — how a plugin proves it is itself |
+| **Cites** | specs/30.8 · specs/30.14 · specs/30.15 · specs/30.18 · specs/40.3 · specs/40.5 · arch/40-state/02 §`plugin` — what the artifact says it is · arch/40-state/02 §`credential` — how a plugin proves it is itself |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

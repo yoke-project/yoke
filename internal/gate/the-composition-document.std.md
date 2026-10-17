@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/42.1 · specs/40.18 · specs/40.19 · arch/15-gate/04 §The third document · arch/15-gate/06 §Phase 3 — cross-document |
+| **Cites** | specs/40.17 · specs/40.18 · specs/40.19 · specs/42.1 · specs/42.24 · arch/15-gate/04 §The third document · arch/15-gate/06 §Phase 3 — cross-document |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

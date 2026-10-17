@@ -23,7 +23,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.21 · arch/70-interface-surface/03 §How many clients |
+| **Cites** | specs/70.21 · specs/70.45 · arch/70-interface-surface/03 §How many clients |
 | **Level** | L2 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -49,7 +49,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.26 · specs/70.27 · specs/70.29 · arch/70-interface-surface/06 §What the declaration says, and what holding means |
+| **Cites** | specs/70.3 · specs/70.26 · specs/70.27 · specs/70.29 · specs/70.45 · arch/70-interface-surface/06 §What the declaration says, and what holding means |
 | **Level** | L2 |
 | **Method** | test |
 | **Not applicable in** | — |

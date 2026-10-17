@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/31.36 · arch/45-events/05 §The grammar |
+| **Cites** | specs/31.36 · specs/42.22 · specs/50.79 · arch/45-events/05 §The grammar |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/31.38 · specs/31.42 · arch/45-events/05 §A name is created when a producer exists · arch/45-events/06 §The set |
+| **Cites** | specs/31.38 · specs/31.42 · specs/50.80 · arch/45-events/05 §A name is created when a producer exists · arch/45-events/06 §The set |
 | **Level** | L1 |
 | **Method** | check |
 | **Not applicable in** | — |

@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.94 · specs/50.97 · arch/50-plugin-surface/07 §The shared ring · arch/50-plugin-surface/07 §Objects that are not sockets |
+| **Cites** | specs/50.94 · specs/50.95 · specs/50.97 · arch/50-plugin-surface/07 §The shared ring · arch/50-plugin-surface/07 §Objects that are not sockets |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

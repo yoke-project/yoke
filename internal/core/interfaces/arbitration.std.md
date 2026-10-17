@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.24 · specs/70.27 · specs/70.31 · arch/70-interface-surface/06 §What the declaration says, and what holding means · arch/70-interface-surface/06 §When it is computed · arch/70-interface-surface/03 §What ends an attachment |
+| **Cites** | specs/70.3 · specs/70.24 · specs/70.27 · specs/70.31 · arch/70-interface-surface/06 §What the declaration says, and what holding means · arch/70-interface-surface/06 §When it is computed · arch/70-interface-surface/03 §What ends an attachment |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.26 · specs/70.28 · specs/70.29 · specs/70.30 · arch/70-interface-surface/06 §What each grade withdraws · arch/70-interface-surface/05 §What a suspended channel keeps |
+| **Cites** | specs/70.26 · specs/70.28 · specs/70.29 · specs/70.30 · specs/70.41 · arch/70-interface-surface/06 §What each grade withdraws · arch/70-interface-surface/05 §What a suspended channel keeps |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.24 · specs/70.26 · arch/70-interface-surface/06 §What each grade withdraws |
+| **Cites** | specs/70.24 · specs/70.25 · specs/70.26 · arch/70-interface-surface/06 §What each grade withdraws |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | — |

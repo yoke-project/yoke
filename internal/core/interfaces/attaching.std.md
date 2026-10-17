@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.31 · specs/70.32 · specs/70.33 · arch/70-interface-surface/03 §A connection that looks open proves nothing · arch/45-events/04 §A subscription may be confirmed |
+| **Cites** | specs/60.53 · specs/70.31 · specs/70.32 · specs/70.33 · arch/70-interface-surface/03 §A connection that looks open proves nothing · arch/45-events/04 §A subscription may be confirmed |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

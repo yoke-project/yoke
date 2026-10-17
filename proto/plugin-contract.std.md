@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.2 · arch/50-plugin-surface/08 §Two services on one socket |
+| **Cites** | specs/50.1 · specs/50.2 · arch/50-plugin-surface/08 §Two services on one socket |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -87,7 +87,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.54 · specs/50.58 · specs/50.60 · specs/50.61 · specs/50.67 · arch/50-plugin-surface/08 §The envelope |
+| **Cites** | specs/50.54 · specs/50.58 · specs/50.59 · specs/50.60 · specs/50.61 · specs/50.67 · arch/50-plugin-surface/08 §The envelope |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

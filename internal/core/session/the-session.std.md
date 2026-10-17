@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.2 · specs/50.39 · specs/50.47 · specs/50.48 · arch/50-plugin-surface/04 §Opening and closing |
+| **Cites** | specs/40.20 · specs/50.2 · specs/50.39 · specs/50.47 · specs/50.48 · arch/50-plugin-surface/04 §Opening and closing |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.54 · specs/50.55 · specs/50.57 · specs/50.58 · specs/50.60 · arch/50-plugin-surface/04 §The envelope carries four fields |
+| **Cites** | specs/50.54 · specs/50.55 · specs/50.57 · specs/50.58 · specs/50.59 · specs/50.60 · arch/50-plugin-surface/04 §The envelope carries four fields |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.73 · specs/50.74 · specs/50.75 · specs/50.56 · specs/50.46 · arch/50-plugin-surface/04 §Validation, in order |
+| **Cites** | specs/50.46 · specs/50.56 · specs/50.73 · specs/50.74 · specs/50.75 · specs/50.76 · arch/50-plugin-surface/04 §Validation, in order |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/70-interface-surface/04 §What decides whether a client may issue one |
+| **Cites** | specs/60.54 · arch/70-interface-surface/04 §What decides whether a client may issue one |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

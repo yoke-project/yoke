@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/30.39 · specs/30.40 · specs/30.41 · arch/40-state/03 §The counter |
+| **Cites** | specs/30.39 · specs/30.40 · specs/30.41 · specs/50.42 · arch/40-state/03 §The counter |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

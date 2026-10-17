@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/28.1 · specs/28.4 · specs/28.29 · specs/28.38 · specs/28.40 · arch/35-units/03 §The kind decides which of the seven a unit can reach |
+| **Cites** | specs/28.1 · specs/28.4 · specs/28.29 · specs/28.38 · specs/28.40 · arch/35-units/03 §The kind decides which of the seven a unit can reach · arch/35-units/01 §Three kinds, and they are kinds of one thing |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/28.30 · specs/28.36 · specs/28.37 · arch/35-units/03 §Three things that look like states and are not |
+| **Cites** | specs/28.30 · specs/28.36 · specs/28.37 · specs/50.85 · arch/35-units/03 §Three things that look like states and are not |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
