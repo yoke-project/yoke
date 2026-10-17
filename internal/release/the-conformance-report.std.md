@@ -40,6 +40,6 @@
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
-| **Precondition** | a repository tagged `v0.1.0`, and a directory of one measured family's reports |
+| **Precondition** | a repository tagged `v0.1.0`, and the directory a release's measuring leaves: what it set out to measure, one family, and that family's reports |
 | **Action** | run the verb with the directory |
 | **Expected** | the upload holds `yoke-conformance-report-0.1.0.json` beside the archives, holding that family's reports; one line names it, as `yoke-conformance-report`, with its digest and where it was handed over |

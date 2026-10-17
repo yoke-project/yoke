@@ -3,6 +3,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -27,7 +28,28 @@ func main() {
 	// The tag whose placing invoked the run: a commit carrying two release tags runs the verb once for
 	// each, and each run publishes what its own tag names.
 	invoked := flag.String("tag", "", "the tag that invoked this run; none publishes every release tag on the commit")
+	// A programs release runs the suite against each family's newest publication: -measure names them,
+	// from a copy of the manifest, and -conformance hands over the report joined from what was measured.
+	measure := flag.String("measure", "", "print, from this copy of the manifest, the family publications a programs release measures, and nothing else")
+	conformance := flag.String("conformance", "", "the directory the release's measuring left: the joined report is handed over with the programs")
 	flag.Parse()
+	if *measure != "" {
+		data, err := os.ReadFile(*measure)
+		if err == nil {
+			var measured []release.Measure
+			if measured, err = release.Measured(data); err == nil {
+				if measured == nil {
+					measured = []release.Measure{}
+				}
+				err = json.NewEncoder(os.Stdout).Encode(measured)
+			}
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "release:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	cfg := release.Config{Root: ".", Invoked: *invoked, Proxy: release.FromProxy, Today: time.Now, Out: os.Stdout, Err: os.Stderr}
 	switch {
 	case *crate != "" && *wheel != "":
@@ -50,6 +72,7 @@ func main() {
 		cfg.Registries = []release.Registry{release.PyPI{Index: "https://pypi.org", Upload: "https://upload.pypi.org/legacy/", Name: *wheel}}
 	case !*modulesOnly:
 		cfg.Artifacts, cfg.Source, cfg.Upload = release.Yoke, "yoke", release.ToForge
+		cfg.Conformance = *conformance
 		cfg.Releases = "https://github.com/yoke-project/yoke/releases/tag/"
 		cfg.Repository = "yoke-project/yoke"
 		cfg.Forge = release.GitHub{Repository: cfg.Repository, Root: "."}
