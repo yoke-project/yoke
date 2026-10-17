@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/42.10 · arch/50-plugin-surface/02 §What is refused, before anything runs |
+| **Cites** | specs/42.10 · arch/50-plugin-surface/02 §What is refused, before anything runs · prj_structure/40 A7 |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

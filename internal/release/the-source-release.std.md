@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | prj_structure/97 §What C and C++ are consumed as · prj_structure/85 §What a release is |
+| **Cites** | prj_structure/97 §What C and C++ are consumed as · prj_structure/85 §What a release is · prj_structure/40 F2 |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

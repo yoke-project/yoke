@@ -126,7 +126,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/25.68 · specs/30.8 · arch/40-state/02 §`plugin` — what the artifact says it is |
+| **Cites** | specs/25.68 · specs/30.8 · arch/40-state/02 §`plugin` — what the artifact says it is · prj_structure/40 G2 |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

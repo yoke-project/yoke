@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | prj_structure/85 §The release record · prj_structure/85 §The acts |
+| **Cites** | prj_structure/85 §The release record · prj_structure/85 §The acts · prj_structure/40 B4 |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
