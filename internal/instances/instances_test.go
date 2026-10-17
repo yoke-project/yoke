@@ -115,7 +115,7 @@ func TestAnInstanceIsRefusedWhereItCannotBeMade(t *testing.T) {
 		{"com.yoke.station", "2.0.0", good, "incomplete", false},
 		{"com.yoke.station", "2.1.0", good, "withdrawn", false},
 		{"com.yoke.station", "2.2.0", good, "not shared", true},
-		{"com.yoke.station", "2.3.0", values(t, ""), "parameter.missing", false},
+		{"com.yoke.station", "2.3.0", values(t, ""), "the values supplied are refused: parameter.missing", false},
 		{"com.yoke.station", "2.3.0", values(t, "[shared]\nsite_label = \"A\"\n[setup]\nretries = 12\n"), "parameter.value", false},
 	} {
 		o := opts(apps, instances)

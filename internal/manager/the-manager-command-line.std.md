@@ -55,7 +55,7 @@
 | **Label** | blocking |
 | **Precondition** | a configuration naming an install root and a Core built from this tree, no trust store on the host, and an unsigned package built by the composer |
 | **Action** | run `yoke app install` with the package, then again; then `yoke app list` and `yoke app show com.yoke.station`; then `yoke app install` with a file that is not a package |
-| **Expected** | the first install exits 0 and names where it installed; the second exits 0 saying the version is already there and that nothing was done; the list names the application, its version and `complete`; the show names the version, `unsigned` and the payload's digest; the file that is not a package exits 2 |
+| **Expected** | the first install exits 0 and names where it installed; the second exits 0 saying the version is already there and that nothing was done; the list names the application, its version and `complete`; the show names the version, `unsigned` — never as a key that verified it — and the payload's digest; the file that is not a package exits 2 |
 
 ## yoke:the-manager-command-line.05 — `yoke instance` creates, lists, shows and re-points instances
 
@@ -120,7 +120,7 @@
 | **Label** | blocking |
 | **Precondition** | instances `bench-a`, stopped, whose state holds a file, and `bench-b`, whose claim another process holds |
 | **Action** | `yoke instance enable bench-a`, then `disable`; `yoke instance clear bench-b` and `remove bench-b`; `yoke instance clear bench-a`, then `remove bench-a` |
-| **Expected** | enable writes `autostart: true` and leaves the desired state, and disable writes it back; both verbs on `bench-b` exit 1 saying it is running, and remove nothing; clearing `bench-a` empties its state and keeps its record; removing it takes the record and the state together |
+| **Expected** | enable writes `autostart: true` and leaves the desired state, and disable writes it back; both verbs on `bench-b` exit 1 saying it is running, and remove nothing; clearing `bench-a` empties its state and keeps its record; removing it takes the record and the state together; each of the two says what it did, as every other lifecycle verb does |
 
 ## yoke:the-manager-command-line.10 — `yoke instance list` answers without a guardian, and starts none
 
@@ -200,3 +200,16 @@
 | **Precondition** | `yoke-core` and `yoke-guardian` built from this tree, the guardian found on the `PATH` through a program that records the environment it was started with and then becomes the guardian; an instance `bench-a`, stopped; no guardian running; an invocation whose environment holds `WAYLAND_DISPLAY`, `DISPLAY`, `XAUTHORITY`, `PIPEWIRE_REMOTE` and `PULSE_SERVER`, and `SESSION_SECRET` |
 | **Action** | run `yoke instance start bench-a`, then `yoke instance stop bench-a` |
 | **Expected** | the guardian was started with each of the five variables the display and audio needs are read from, at the value the invocation held, and without `SESSION_SECRET` |
+
+## yoke:the-manager-command-line.16 — `--help` after any verb is that verb's usage, and is not a refusal
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/15.8 · arch/10-manager/01 §The verbs · arch/10-manager/01 §What it reports |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | none |
+| **Action** | `yoke log query --help`, `yoke plugin grant --help`, `yoke shell --help` |
+| **Expected** | each exits 0 and prints the usage of that verb — `yoke log query`, `yoke plugin grant <plugin> <capability>`, `yoke shell [--instance <name>]` — and none says `flag: help requested` |

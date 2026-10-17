@@ -35,6 +35,8 @@ func TestTheCommandLine(t *testing.T) {
 
 	if code, out := run("init", "com.yoke.station", "--dir", d, "--arch", "aarch64"); code != 0 {
 		t.Fatalf("init: %d %s", code, out)
+	} else if !strings.Contains(out, filepath.Join(d, "yoke.yaml")) || !strings.Contains(out, "manifests/") || !strings.Contains(out, "components/") {
+		t.Errorf("init said %q, not what it made", out)
 	}
 	if code, out := run("check", "--dir", d); code != 1 || !strings.Contains(out, "field.required") {
 		t.Errorf("check with no unit: %d %s", code, out)

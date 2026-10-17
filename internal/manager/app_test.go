@@ -54,6 +54,10 @@ func TestYokeAppInstallsListsAndShows(t *testing.T) {
 	if code != Done || !strings.Contains(out, "2.1.0") || !strings.Contains(out, "unsigned") || !strings.Contains(out, "sha256:") {
 		t.Errorf("the show exited %d:\n%s", code, out)
 	}
+	// An unsigned package was verified by no key, and is not said to have been verified by one.
+	if strings.Contains(out, "verified by unsigned") {
+		t.Errorf("the show names a key called unsigned:\n%s", out)
+	}
 	junk := filepath.Join(t.TempDir(), "junk.yoke")
 	os.WriteFile(junk, []byte("not a package"), 0o644)
 	if code, out := yoke(vars, "app", "install", junk); code != Refused {

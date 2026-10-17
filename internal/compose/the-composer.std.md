@@ -120,7 +120,7 @@
 | **Label** | blocking |
 | **Precondition** | an empty directory, an Ed25519 key in a PEM file, and a seal credential in a file of one base64 line |
 | **Action** | run `yoke-compose init com.yoke.station --dir <d>`, then `check --dir <d>`, then `build --dir <d> --out <o> --sign <key> --seal <credential>` once a unit is added; then a verb it does not have; then `build` into an `--out` that cannot be written |
-| **Expected** | `init` exits 0; `check` on a project with no unit exits 1, a refusal, printing the refusal's code; `build` exits 0 and prints the package's path, signed and sealed; an unknown verb exits 1, naming it and the verbs there are; the build that cannot write exits 2, a fault |
+| **Expected** | `init` exits 0, saying what it made — the descriptor, `manifests/` and `components/`; `check` on a project with no unit exits 1, a refusal, printing the refusal's code; `build` exits 0 and prints the package's path, signed and sealed; an unknown verb exits 1, naming it and the verbs there are; the build that cannot write exits 2, a fault |
 
 ## yoke:the-composer.10 — an image's archive is packaged as any component, and one no image pins is refused
 

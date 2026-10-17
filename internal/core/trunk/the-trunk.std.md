@@ -173,3 +173,16 @@
 | **Precondition** | `yoke-core` serving, a file left under its root, and the Core killed with `SIGKILL` |
 | **Action** | start another |
 | **Expected** | it serves the instance, and the root holds the lock file and nothing the dead Core or anyone left — nothing downstream depends on an orderly stop having run |
+
+## yoke:the-trunk.14 — the instance record says what this Core reads, and a weaker arrangement where it is only where it has a place
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/60.6 · arch/60-administrative-surface/05 §Which subjects are readable · arch/80-security/07 |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a Core of each form whose `core.yaml` names the Plugin directories; a weaker arrangement reported at a location, and one reported at none |
+| **Action** | read the instance record of each |
+| **Expected** | the service form's record lists `plugins.manifests`, `plugins.executables` and `plugins.scan_interval`; the application form's lists none of them, its Plugins coming from its bundle; the first arrangement reads `<code> at <location>`, the second its code alone, with no `at` after it |
