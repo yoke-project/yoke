@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.57 · specs/15.59 · arch/10-manager/07 §Supplying a secret |
+| **Cites** | specs/15.57 · specs/15.59 · specs/15.61 · arch/10-manager/07 §Supplying a secret |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.16 · arch/00-system/06 §1 — The service form, from boot · arch/10-manager/01 §`yoke service` — the system regime |
+| **Cites** | specs/15.15 · specs/15.16 · arch/00-system/06 §1 — The service form, from boot · arch/10-manager/01 §`yoke service` — the system regime |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.16 · arch/00-system/06 §1 — The service form, from boot · prj_structure/97 §`meta-yoke`, and what its recipes do |
+| **Cites** | specs/15.1 · specs/15.16 · arch/00-system/06 §1 — The service form, from boot · prj_structure/97 §`meta-yoke`, and what its recipes do |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | — |

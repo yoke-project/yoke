@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/17.41 · specs/17.63 · arch/25-guardian/04 §When a start is refused · arch/15-gate/06 §The phases |
+| **Cites** | specs/15.15 · specs/15.26 · specs/15.45 · specs/17.41 · specs/17.63 · arch/25-guardian/04 §When a start is refused · arch/15-gate/06 §The phases |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -134,3 +134,16 @@
 | **Precondition** | `yoke-core` built from this tree and named by the configuration, with the engine's address; `com.yoke.station` `2.1.0` installed, a unit naming an image not started automatically; a record `bench-a` pinned to it, desired `running` |
 | **Action** | start the guardian; wait for the report to say `bench-a` is observable; write it stopped and tell the guardian |
 | **Expected** | the Core is executed with `--engine`, becomes ready and says it is alive; the instance's state holds `version` saying `2.1.0`; once stopped the Core has ended and the guardian exits zero |
+
+## yoke:the-guardian.11 — a start is checked against the descriptor's digests, and never against a signature or the trust store
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/15.19 · specs/80.27 · arch/10-manager/03 §The order · arch/15-gate/06 §The moments |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an installed version whose record names no verifying key — installed unsigned — and an instance of it; the host's policy tightened by `YOKE_REQUIRE_SIGNATURE` to refuse every unsigned package |
+| **Action** | run the gate the instance's start runs |
+| **Expected** | it refuses nothing: what the start checks is that the bundle is what was installed, which the descriptor's digests say, and the policy that would refuse the package at installing is not consulted |

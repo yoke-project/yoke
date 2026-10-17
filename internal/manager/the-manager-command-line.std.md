@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.67 · specs/15.68 · arch/10-manager/01 §`yoke instance` — records · arch/10-manager/07 §Creating an instance, and naming it |
+| **Cites** | specs/15.3 · specs/15.67 · specs/15.68 · arch/10-manager/01 §`yoke instance` — records · arch/10-manager/07 §Creating an instance, and naming it |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/17.34 · specs/17.36 · specs/17.37 · arch/10-manager/01 §`yoke instance` — records · arch/25-guardian/07 §2 — A manager arrives and nothing is running · arch/25-guardian/02 §Where its own account goes |
+| **Cites** | specs/15.4 · specs/17.34 · specs/17.36 · specs/17.37 · arch/10-manager/01 §`yoke instance` — records · arch/25-guardian/07 §2 — A manager arrives and nothing is running · arch/25-guardian/02 §Where its own account goes |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -152,7 +152,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/80-security/06 §What is refused, and what is restarted · arch/10-manager/07 §Supplying a secret |
+| **Cites** | specs/15.61 · arch/80-security/06 §What is refused, and what is restarted · arch/10-manager/07 §Supplying a secret |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -179,7 +179,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/17.34 · arch/10-manager/01 §What it reports · arch/25-guardian/04 §When a start is refused |
+| **Cites** | specs/15.3 · specs/15.14 · specs/15.60 · specs/17.34 · arch/10-manager/01 §What it reports · arch/25-guardian/04 §When a start is refused |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -226,3 +226,55 @@
 | **Precondition** | none |
 | **Action** | `yoke plugin grant` with no subject; `yoke unit restart` with two |
 | **Expected** | each exits 1, naming the verb and the subjects it takes — `yoke plugin grant <plugin> <capability>`, `yoke unit restart <unit>` |
+
+## yoke:the-manager-command-line.18 — `yoke service` reads nothing of the account's configuration, and `yoke app` nothing of the system's
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/15.11 · specs/15.35 · specs/15.37 · specs/15.38 · specs/15.39 · arch/10-manager/01 §The namespaces · arch/10-manager/02 §Where it is and what it is |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a service form whose composition passes, named by the system's own configuration; an account whose manager configuration carries a key the Core reads and the manager does not, `heartbeat` |
+| **Action** | `yoke app list`; `yoke service check` with the same environment |
+| **Expected** | `yoke app list` is refused naming the key it does not know, since the manager's configuration is its own and says nothing the Core reads; `yoke service check` passes, never having read the account's file — each group selects its whole regime, and the two do not layer |
+
+## yoke:the-manager-command-line.19 — no verb performs the four steps of an update
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/15.54 · arch/10-manager/01 §The verbs · arch/10-manager/06 §Updating is four operations and not a verb |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | none |
+| **Action** | ask for `yoke app update`, `yoke instance update` and `yoke instance upgrade`, and for the usage |
+| **Expected** | each is refused as a verb that does not exist, naming the verbs the group has; the usage offers `install`, `copy`, `set-version` and `restart` as steps of their own, and no verb that performs them together |
+
+## yoke:the-manager-command-line.20 — an account lists its own instances and no others, and every account sees what is installed
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/15.75 · arch/10-manager/04 §What is read from the tree · arch/25-guardian/01 §Where it sits |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | one install root holding `com.yoke.station` 2.1.0, shared by two accounts, each with its own state directory; one instance created by each |
+| **Action** | `yoke instance list` and `yoke app list` as each account |
+| **Expected** | each account's instance list names its own instance and not the other's; both app lists name `com.yoke.station` 2.1.0 |
+
+## yoke:the-manager-command-line.21 — the lifecycle is told to the guardian and the contents asked of the Core, and neither reaches the other
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/15.7 · specs/60.3 · arch/10-manager/01 §Two groups, two authorities · arch/60-administrative-surface/04 §Every operation terminates in the Core |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an instance declared stopped, with no Core running; the administrative contract's operations |
+| **Action** | `yoke unit restart` on the instance; read the operations the administrative contract carries |
+| **Expected** | the client verb is refused saying the instance is not running, and the record is unchanged — a client verb asks the Core and never the guardian; no administrative operation starts or stops the instance or its Core — what is running is the guardian's to be told, and what runs inside it is the Core's |

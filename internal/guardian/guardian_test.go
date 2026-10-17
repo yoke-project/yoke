@@ -28,6 +28,7 @@ import (
 	"github.com/yoke-project/yoke/internal/guardian/channel"
 	"github.com/yoke-project/yoke/internal/instancerecord"
 	"github.com/yoke-project/yoke/internal/managerconf"
+	"github.com/yoke-project/yoke/internal/truststore"
 )
 
 // The Core the guardian executes is this test binary in a role, which a file beside its invocations
@@ -585,4 +586,18 @@ func dialAlive() (channel.Guardian_AliveClient, error) {
 func (h *host) delegate() {
 	h.t.Setenv("PATH", h.path)
 	h.t.Setenv("XDG_RUNTIME_DIR", h.runtime)
+}
+
+// std: yoke:the-guardian.11
+func TestAStartIsCheckedAgainstTheDigestsAndNeverTheTrustStore(t *testing.T) {
+	h := newHost(t, "")
+	h.declare("bench-a", instancerecord.Stopped, "beat", nil)
+	t.Setenv(truststore.Tighten, "1")
+	rec, err := instancerecord.Read(h.instances, "bench-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gated := guardian.GateStart(h.o, rec, false); gated.Refused() {
+		t.Errorf("the start of an unsigned installed version was refused under a policy requiring signatures: %v", gated.Findings)
+	}
 }

@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.46 · specs/15.67 · specs/17.34 · specs/17.40 · arch/10-manager/08 §1 — From a package to a running instance · arch/00-system/06 §2 — The application form, from a record |
+| **Cites** | specs/15.1 · specs/15.46 · specs/15.67 · specs/17.34 · specs/17.40 · arch/10-manager/08 §1 — From a package to a running instance · arch/00-system/06 §2 — The application form, from a record |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | — |
