@@ -50,8 +50,11 @@ type Config struct {
 	// release, which Releases, followed by the tag, locates.
 	Artifacts []Artifact
 	Source    string
-	Releases  string
-	Upload    func(tag string, files []string) error
+	// Modules is whether the source archive is joined by the modules archive, the vendor directory of
+	// the tagged tree, built from offline before either is handed over (619).
+	Modules  bool
+	Releases string
+	Upload   func(tag string, files []string) error
 	// Conformance is the directory the release's measuring left, one directory per family measured;
 	// where it is set, the joined report is handed over beside the other files.
 	Conformance string
@@ -400,6 +403,13 @@ func handOver(cfg Config, tag, version string, notices []string) ([]handed, erro
 			return nil, err
 		}
 		files = append(files, handed{published: cfg.Source + "-source", path: filepath.Join(dir, name)})
+		if cfg.Modules {
+			modules, err := modulesArchive(cfg, tree, dir, version, tarred, when)
+			if err != nil {
+				return nil, err
+			}
+			files = append(files, handed{published: cfg.Source + "-modules", path: modules})
+		}
 	}
 	if cfg.Conformance != "" {
 		order, err := Planned(cfg.Conformance)
@@ -501,4 +511,70 @@ func ToForge(tag string, files []string) error {
 		return gh(append([]string{"release", "create", tag, "--verify-tag", "--title", tag, "--notes", ""}, files...)...)
 	}
 	return gh(append([]string{"release", "upload", tag, "--clobber"}, files...)...)
+}
+
+// modulesArchive writes the vendor directory of the tagged tree as an archive beside the source archive,
+// under the same prefix, and builds the tree from the two unpacked together with no module proxy and an
+// empty module cache: an archive a build cannot use offline is not handed over.
+func modulesArchive(cfg Config, tree, dir, version string, source []byte, when time.Time) (string, error) {
+	vendor := exec.Command("go", "mod", "vendor")
+	vendor.Dir = tree
+	if said, err := vendor.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("the modules of %s cannot be vendored: %v\n%s", version, err, said)
+	}
+	prefix := cfg.Source + "-" + version + "/"
+	var entries []entry
+	err := filepath.WalkDir(filepath.Join(tree, "vendor"), func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(tree, path)
+		entries = append(entries, entry{name: prefix + filepath.ToSlash(rel), mode: 0o644, data: data})
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].name < entries[j].name })
+	name := filepath.Join(dir, fmt.Sprintf("%s-%s-modules.tar.gz", cfg.Source, version))
+	if err := writeArchive(name, entries, when); err != nil {
+		return "", err
+	}
+	// The two archives unpacked together, built as a packager builds them: nothing fetched.
+	offline, err := os.MkdirTemp("", "yoke-release-offline-")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(offline)
+	unpack := exec.Command("tar", "-x", "-C", offline)
+	unpack.Stdin = bytes.NewReader(source)
+	if said, err := unpack.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("the source archive cannot be unpacked: %v\n%s", err, said)
+	}
+	for _, e := range entries {
+		path := filepath.Join(offline, filepath.FromSlash(e.name))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			return "", err
+		}
+		if err := os.WriteFile(path, e.data, 0o644); err != nil {
+			return "", err
+		}
+	}
+	cache, err := os.MkdirTemp("", "yoke-release-cache-")
+	if err != nil {
+		return "", err
+	}
+	defer func() { exec.Command("chmod", "-R", "u+w", cache).Run(); os.RemoveAll(cache) }()
+	build := exec.Command("go", "build", "./...")
+	build.Dir = filepath.Join(offline, strings.TrimSuffix(prefix, "/"))
+	build.Env = append(environmentWithout("GOFLAGS", "GOPROXY", "GOMODCACHE"), "GOFLAGS=-mod=vendor", "GOPROXY=off", "GOMODCACHE="+cache, "CGO_ENABLED=0")
+	if said, err := build.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("%s does not build offline from the source archive and the modules archive: %v\n%s", version, err, said)
+	}
+	fmt.Fprintf(cfg.Err, "release: %s built offline from the source archive and the modules archive\n", version)
+	return name, nil
 }

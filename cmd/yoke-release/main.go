@@ -72,6 +72,7 @@ func main() {
 		cfg.Registries = []release.Registry{release.PyPI{Index: "https://pypi.org", Upload: "https://upload.pypi.org/legacy/", Name: *wheel}}
 	case !*modulesOnly:
 		cfg.Artifacts, cfg.Source, cfg.Upload = release.Yoke, "yoke", release.ToForge
+		cfg.Modules = true
 		cfg.Conformance = *conformance
 		cfg.Releases = "https://github.com/yoke-project/yoke/releases/tag/"
 		cfg.Repository = "yoke-project/yoke"
