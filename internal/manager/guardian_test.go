@@ -196,14 +196,18 @@ func TestEnableAndDisableAndClearAndRemove(t *testing.T) {
 	if _, err := os.Stat(instancerecord.File(root, "bench-b")); err != nil {
 		t.Errorf("a refused verb removed bench-b: %v", err)
 	}
-	expectDone(t, vars, "instance", "clear", "bench-a")
+	if out := expectDone(t, vars, "instance", "clear", "bench-a"); !strings.Contains(out, "bench-a") || !strings.Contains(out, "cleared") {
+		t.Errorf("clear said %q, not what it did", out)
+	}
 	if _, err := os.Stat(filepath.Join(state, "logs.db")); err == nil {
 		t.Error("clear left the state")
 	}
 	if _, err := os.Stat(instancerecord.File(root, "bench-a")); err != nil {
 		t.Errorf("clear took the record: %v", err)
 	}
-	expectDone(t, vars, "instance", "remove", "bench-a")
+	if out := expectDone(t, vars, "instance", "remove", "bench-a"); !strings.Contains(out, "bench-a") || !strings.Contains(out, "removed") {
+		t.Errorf("remove said %q, not what it did", out)
+	}
 	if _, err := os.Stat(filepath.Join(root, "bench-a")); err == nil {
 		t.Error("remove left the instance's directory")
 	}

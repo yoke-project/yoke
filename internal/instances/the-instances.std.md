@@ -42,7 +42,7 @@
 | **Label** | blocking |
 | **Precondition** | an application not installed; a version absent; one incomplete; one withdrawn; one not shared and installed by another account; values missing the required parameter, and one failing its declaration |
 | **Action** | create an instance of each |
-| **Expected** | each is refused, naming what refused it — the application, the version, its state, its sharing, `parameter.missing`, `parameter.value` — and no instance directory is left behind |
+| **Expected** | each is refused, naming what refused it — the application, the version, its state, its sharing, `parameter.missing`, `parameter.value` — in a sentence that agrees with it, *the values supplied are refused*; and no instance directory is left behind |
 
 ## yoke:the-instances.04 — re-pointing writes the pin and the digest together, and the state's stamp must fall in the data range
 

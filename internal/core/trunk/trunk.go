@@ -470,7 +470,7 @@ func declarations(st *State) error {
 		level := slog.LevelError
 		if f.Class == gate.Weaker {
 			level = slog.LevelWarn
-			st.weaker = append(st.weaker, f.Code+" at "+f.Location)
+			st.noteWeaker(f)
 		}
 		st.Log.Log(context.Background(), level, "finding", "document", f.Document, "code", f.Code, "location", f.Location, "finding", f.Message)
 		if dep == nil && f.Class != gate.Weaker {
@@ -821,6 +821,11 @@ func adminChannels(st *State) []Channel {
 		{Name: "operator", Path: "operator.sock", Serve: func(l Listener) { operator.Serve(l) }},
 		{Name: "shell", Path: "shell.sock", Serve: func(l Listener) { shell.Serve(l) }},
 	}
+}
+
+// noteWeaker keeps a weaker arrangement the gate reported, as the instance record says it.
+func (st *State) noteWeaker(f gate.Finding) {
+	st.weaker = append(st.weaker, f.Code+" at "+f.Location)
 }
 
 // instanceRecord is the instance as a read answers it.

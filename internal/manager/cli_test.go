@@ -74,3 +74,21 @@ func TestWithNoSelectorTheAccountsOneInstanceIsAddressed(t *testing.T) {
 		t.Errorf("no instance: %q %v", got, err)
 	}
 }
+
+// std: yoke:the-manager-command-line.16
+func TestHelpAfterAVerbIsItsUsage(t *testing.T) {
+	vars := map[string]string{"XDG_RUNTIME_DIR": t.TempDir(), "XDG_STATE_HOME": t.TempDir()}
+	for _, c := range []struct {
+		args  []string
+		usage string
+	}{
+		{[]string{"log", "query", "--help"}, "yoke log query"},
+		{[]string{"plugin", "grant", "--help"}, "yoke plugin grant <plugin> <capability>"},
+		{[]string{"shell", "--help"}, "yoke shell [--instance <name>]"},
+	} {
+		code, out := yoke(vars, c.args...)
+		if code != Done || !strings.Contains(out, c.usage) || strings.Contains(out, "help requested") {
+			t.Errorf("%v exited %d:\n%s", c.args, code, out)
+		}
+	}
+}
