@@ -42,7 +42,8 @@ func serviceForm(t *testing.T) (vars map[string]string, refused, clean string) {
 
 // std: yoke:the-service-regime.01
 func TestServiceStartStopAndRestartAskTheInitSystem(t *testing.T) {
-	vars, _, _ := serviceForm(t)
+	vars, _, clean := serviceForm(t)
+	vars["YOKE_COMPOSITION"] = clean
 	asked := filepath.Join(t.TempDir(), "asked")
 	fakeBin(t, vars, "systemctl", `echo "$@" >> `+asked+"\n")
 	for _, verb := range []string{"start", "stop", "restart"} {
@@ -173,5 +174,22 @@ func TestTheShippedUnitNeverRestartsARefusal(t *testing.T) {
 	}
 	if len(prevent) != 1 || prevent[0] != strconv.Itoa(Refused) {
 		t.Errorf("RestartPreventExitStatus= %v, where a refusal exits %d", prevent, Refused)
+	}
+}
+
+// std: yoke:the-service-regime.08
+func TestAServiceStartTheGateRefusesIsSaidAndNothingIsAsked(t *testing.T) {
+	vars, _, _ := serviceForm(t)
+	asked := filepath.Join(t.TempDir(), "asked")
+	fakeBin(t, vars, "systemctl", `echo "$@" >> `+asked+"\n")
+	for _, verb := range []string{"start", "restart"} {
+		code, out := yoke(vars, "service", verb)
+		if code != Refused || strings.Count(out, "component.missing") != 2 || !strings.Contains(out, "not asked") {
+			t.Errorf("a %s the gate refuses exited %d:\n%s", verb, code, out)
+		}
+	}
+	expectDone(t, vars, "service", "stop")
+	if got, _ := os.ReadFile(asked); string(got) != "stop yoke.service\n" {
+		t.Errorf("systemctl was asked:\n%s", got)
 	}
 }
