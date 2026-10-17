@@ -82,3 +82,17 @@
 | **Precondition** | every field the gate's schema names for a descriptor, and for a composition document; a project, and a composition document, each holding the unit, channel, group and rule a field belongs to |
 | **Action** | write each field with a verb, into the descriptor and — for a field a composition document says — into the composition document named by `--file` |
 | **Expected** | each verb exits `0` and the field is at its path afterwards; a field of the schema no verb writes fails the case by name |
+
+## yoke:the-authoring-verbs.07 — `add unit` writes the bindings its needs take, and is judged with them
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/12.35 · arch/20-composer/01 §The verbs |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a project made by `init`, with a program at `components/setup` and the Manifest of a Plugin declaring two device needs, `instrument` and `lamp` |
+| **Action** | `add unit head --kind plugin --plugin com.example.head --exec components/setup` with neither binding; then with `--bind instrument=/dev/spectro-a --bind lamp=/dev/lamp-a` |
+| **Expected** | the first exits `1` naming `unit.needs.unbound`, and the descriptor is byte for byte what it was; the second exits `0` and writes the unit with both bindings under `bind`, and the project passes `check` |
+
