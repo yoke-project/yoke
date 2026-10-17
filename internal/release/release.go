@@ -52,6 +52,9 @@ type Config struct {
 	Source    string
 	Releases  string
 	Upload    func(tag string, files []string) error
+	// Conformance is the directory the release's measuring left, one directory per family measured;
+	// where it is set, the joined report is handed over beside the other files.
+	Conformance string
 
 	// What a definitions tag publishes beside its module: the packages, made at a version into a
 	// directory, each to its registry. Settle is how many times, Pause apart, a registry is asked for a
@@ -397,6 +400,21 @@ func handOver(cfg Config, tag, version string, notices []string) ([]handed, erro
 			return nil, err
 		}
 		files = append(files, handed{published: cfg.Source + "-source", path: filepath.Join(dir, name)})
+	}
+	if cfg.Conformance != "" {
+		order, err := Planned(cfg.Conformance)
+		if err != nil {
+			return nil, err
+		}
+		report, err := Join(cfg.Conformance, "v"+version, order)
+		if err != nil {
+			return nil, fmt.Errorf("the conformance report cannot be joined: %v", err)
+		}
+		name := fmt.Sprintf("yoke-conformance-report-%s.json", version)
+		if err := os.WriteFile(filepath.Join(dir, name), report, 0o644); err != nil {
+			return nil, err
+		}
+		files = append(files, handed{published: "yoke-conformance-report", path: filepath.Join(dir, name)})
 	}
 
 	var paths []string

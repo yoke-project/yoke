@@ -1,10 +1,16 @@
 # A release's tag runs this repository's release verb where the tag is seen. The verb's lines are the
 # run's output the release command collects; it appends them to the manifest itself.
+#
+# A programs tag first runs the suite of its own commit against every family's newest publication, each
+# family's harness built from the commit its line names by the family's own conformance script, and the
+# release hands over the reports joined into one. Dispatched by hand, the run measures and releases
+# nothing, which is how the measuring is tried before a release depends on it.
 name: release
 
 on:
   push:
     tags: ['v*', 'proto/v*']
+  workflow_dispatch:
 
 # The verb uploads the release's files to the tag's release, and publishes the definitions packages under
 # credentials the run's identity is exchanged for: nothing is stored.
@@ -17,7 +23,82 @@ permissions:
   issues: read
 
 jobs:
+  plan:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref_name, 'v')
+    runs-on: ubuntu-24.04
+    outputs:
+      measured: ${{ steps.plan.outputs.measured }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.26'
+      # What each family last published, read from the manifest as it stands on the default branch.
+      - id: plan
+        run: |
+          curl -fsSL --retry 5 https://raw.githubusercontent.com/yoke-project/yoke/main/releases/manifest.jsonl -o manifest.jsonl
+          echo "measured=$(go run ./cmd/yoke-release -measure manifest.jsonl)" >> "$GITHUB_OUTPUT"
+
+  measure:
+    needs: plan
+    if: needs.plan.outputs.measured != '[]'
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        family: ${{ fromJSON(needs.plan.outputs.measured) }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: yoke
+      - uses: actions/checkout@v7
+        with:
+          repository: yoke-project/${{ matrix.family.repository }}
+          ref: ${{ matrix.family.commit }}
+          path: family
+      - uses: extractions/setup-just@v4
+        with:
+          just-version: 1.58.0
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.26'
+          cache: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+      # Nothing here fails the job: whatever happens is written into the family's directory, and the
+      # report says it.
+      - env:
+          MEASURED: ${{ toJSON(matrix.family) }}
+          REPOSITORY: ${{ matrix.family.repository }}
+          COMMIT: ${{ matrix.family.commit }}
+        run: |
+          out="$RUNNER_TEMP/conformance/$REPOSITORY"
+          mkdir -p "$out/reports" "$RUNNER_TEMP/suite"
+          printf '%s\n' "$MEASURED" > "$out/measured.json"
+          stop() { echo "$*" > "$out/error"; exit 0; }
+          go -C yoke build -o "$RUNNER_TEMP/suite/yoke-conformance" ./cmd/yoke-conformance \
+            && go -C yoke build -o "$RUNNER_TEMP/suite/yoke-core" ./cmd/yoke-core || stop "the suite of this commit does not build"
+          grep -q CONFORMANCE_SUITE family/ci/conformance.sh 2> /dev/null \
+            || stop "its conformance script at ${COMMIT:0:12} runs no suite handed over"
+          if [[ -x family/ci/install-tools.sh ]]; then
+            (cd family && ci/install-tools.sh) > "$out/tools.txt" 2>&1 || stop "its tools do not install: $(tail -1 "$out/tools.txt")"
+          fi
+          CONFORMANCE_SUITE="$RUNNER_TEMP/suite" CONFORMANCE_REPORTS="$out/reports" \
+            bash family/ci/conformance.sh "" "$RUNNER_TEMP/results" > "$out/said.txt" 2>&1 || true
+          ls "$out"/reports/*.json > /dev/null 2>&1 || stop "it wrote no report: $(tail -1 "$out/said.txt")"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: conformance-${{ matrix.family.repository }}
+          path: ${{ runner.temp }}/conformance/${{ matrix.family.repository }}
+
   release:
+    needs: [plan, measure]
+    # The release follows its measuring whatever the reports hold; a definitions tag measures nothing.
+    if: github.event_name == 'push' && !cancelled() && needs.plan.result != 'failure'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -30,6 +111,22 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: '1.26'
+      - if: startsWith(github.ref_name, 'v')
+        uses: actions/download-artifact@v7
+        with:
+          pattern: conformance-*
+          path: ${{ runner.temp }}/measured
+      # One directory per family measured, named by its repository, and what was set out to be measured.
+      - if: startsWith(github.ref_name, 'v')
+        env:
+          MEASURED: ${{ needs.plan.outputs.measured }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/conformance"
+          for d in "$RUNNER_TEMP"/measured/conformance-*; do
+            [[ -d "$d" ]] && mv "$d" "$RUNNER_TEMP/conformance/${d##*/conformance-}"
+          done
+          printf '%s\n' "$MEASURED" > "$RUNNER_TEMP/conformance/measured.json"
+          echo "CONFORMANCE=$RUNNER_TEMP/conformance" >> "$GITHUB_ENV"
       # crates.io exchanges the run's identity only for a crate that exists and trusts this workflow, so
       # until then the exchange is refused and the verb says the crate was not published.
       - id: crates
@@ -37,7 +134,7 @@ jobs:
         continue-on-error: true
       # The run publishes what the tag that invoked it names: a commit carrying a programs tag and a
       # definitions tag runs this twice, and neither run steps on the other's release.
-      - run: just release "$TAG" > manifest-lines.jsonl
+      - run: just release "$TAG" "${CONFORMANCE:-}" > manifest-lines.jsonl
         env:
           TAG: ${{ github.ref_name }}
           GH_TOKEN: ${{ github.token }}

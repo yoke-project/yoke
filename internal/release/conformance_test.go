@@ -110,8 +110,10 @@ func TestTheJoinedReportHoldsEachFamilysReports(t *testing.T) {
 func TestAProgramsTagHandsTheReportOverBesideItsFiles(t *testing.T) {
 	root := withCommands(t, "v0.1.0")
 	dir := t.TempDir()
-	measuredAt(t, dir, release.Measure{Repository: "yoke-sdk-go", Version: "v0.6.0", Commit: "g6"},
-		map[string]string{"yoke-go-plugin-harness.json": passing}, "")
+	go6 := release.Measure{Repository: "yoke-sdk-go", Version: "v0.6.0", Commit: "g6"}
+	measuredAt(t, dir, go6, map[string]string{"yoke-go-plugin-harness.json": passing}, "")
+	plan, _ := json.Marshal([]release.Measure{go6})
+	os.WriteFile(filepath.Join(dir, "measured.json"), plan, 0o644)
 	s := &shelf{}
 	serve := func(m, v string) (string, error) {
 		if m == "example.com/yk/proto" {
@@ -121,9 +123,9 @@ func TestAProgramsTagHandsTheReportOverBesideItsFiles(t *testing.T) {
 	}
 	var out, errs bytes.Buffer
 	code := release.Run(release.Config{Root: root, Out: &out, Err: &errs, Proxy: serve,
-		Today:       func() time.Time { return time.Date(2026, 10, 17, 0, 0, 0, 0, time.UTC) },
-		Artifacts:   []release.Artifact{{Name: "yk-tools", Packages: []string{"./cmd/a"}}},
-		Releases:    "https://forge.example/yk/releases/tag/", Upload: s.upload,
+		Today:     func() time.Time { return time.Date(2026, 10, 17, 0, 0, 0, 0, time.UTC) },
+		Artifacts: []release.Artifact{{Name: "yk-tools", Packages: []string{"./cmd/a"}}},
+		Releases:  "https://forge.example/yk/releases/tag/", Upload: s.upload,
 		Conformance: dir})
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, errs.String())
