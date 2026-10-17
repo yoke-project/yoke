@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/25.45 · specs/25.46 · arch/30-core/03 §Cleanup belongs to the next start |
+| **Cites** | specs/10.38 · specs/25.45 · specs/25.46 · arch/30-core/03 §Cleanup belongs to the next start |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -113,7 +113,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/25.41 · specs/25.36 · arch/30-core/04 §The two ceilings · arch/30-core/04 §Permissions are an outcome of the form |
+| **Cites** | specs/10.38 · specs/25.36 · specs/25.41 · arch/30-core/04 §The two ceilings · arch/30-core/04 §Permissions are an outcome of the form |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

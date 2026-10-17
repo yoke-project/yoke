@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/90.19 · specs/90.25 · arch/90-sdks/03 §What a run produces |
+| **Cites** | specs/00.27 · specs/90.19 · specs/90.25 · arch/90-sdks/03 §What a run produces |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

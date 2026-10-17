@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/13.4 · specs/13.5 · specs/13.31 · arch/10-manager/03 §The footer |
+| **Cites** | specs/10.19 · specs/13.4 · specs/13.5 · specs/13.31 · arch/10-manager/03 §The footer |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -165,7 +165,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/13.14 · specs/13.15 · specs/13.16 · arch/10-manager/03 §Sealing |
+| **Cites** | specs/10.21 · specs/13.14 · specs/13.15 · specs/13.16 · arch/10-manager/03 §Sealing |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

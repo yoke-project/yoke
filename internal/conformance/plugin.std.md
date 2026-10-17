@@ -49,7 +49,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/90.33 · arch/90-sdks/06 §It may not create a stream's transport |
+| **Cites** | specs/00.14 · specs/90.33 · arch/90-sdks/06 §It may not create a stream's transport |
 | **Level** | L2 |
 | **Method** | test |
 | **Not applicable in** | — |

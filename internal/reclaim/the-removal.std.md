@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.56 · arch/10-manager/06 §Reclaiming |
+| **Cites** | specs/10.37 · specs/15.56 · arch/10-manager/06 §Reclaiming |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

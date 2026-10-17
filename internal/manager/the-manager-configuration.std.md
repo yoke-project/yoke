@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.72 · specs/15.44 · arch/10-manager/02 §Where it is and what it is |
+| **Cites** | specs/10.35 · specs/15.44 · specs/15.72 · arch/10-manager/02 §Where it is and what it is |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

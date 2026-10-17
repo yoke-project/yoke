@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/32.9 · specs/32.10 · specs/32.17 · arch/40-state/04 §Resolving a group's policy · arch/60-administrative-surface/04 §The four names, applied |
+| **Cites** | specs/10.40 · specs/32.9 · specs/32.10 · specs/32.17 · arch/40-state/04 §Resolving a group's policy · arch/60-administrative-surface/04 §The four names, applied |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

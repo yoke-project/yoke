@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | prj_structure/97 §Two numbers in one repository are two tag prefixes · prj_structure/97 §The definitions, and the four families that are not Go |
+| **Cites** | specs/00.28 · prj_structure/97 §Two numbers in one repository are two tag prefixes · prj_structure/97 §The definitions, and the four families that are not Go |
 | **Level** | L1 |
 | **Method** | check |
 | **Not applicable in** | — |

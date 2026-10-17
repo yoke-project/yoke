@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/60.7 · specs/60.60 · specs/60.11 · arch/60-administrative-surface/01 §One pair per instance · arch/60-administrative-surface/03 §Reaching the socket is the whole of it |
+| **Cites** | specs/00.24 · specs/60.7 · specs/60.11 · specs/60.60 · arch/60-administrative-surface/01 §One pair per instance · arch/60-administrative-surface/03 §Reaching the socket is the whole of it |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/00-system/02 §The service form on disk · specs/20.9 |
+| **Cites** | specs/10.25 · specs/10.26 · specs/20.9 · arch/00-system/02 §The service form on disk |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/25.3 · specs/25.8 · specs/20.4 · arch/30-core/01 §The application form has no equivalent, and needs none |
+| **Cites** | specs/00.22 · specs/10.29 · specs/10.30 · specs/10.31 · specs/10.38 · specs/20.4 · specs/25.3 · specs/25.8 · arch/30-core/01 §The application form has no equivalent, and needs none |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -113,7 +113,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/25.11 · specs/25.12 · arch/30-core/02 §The claim |
+| **Cites** | specs/00.29 · specs/10.28 · specs/10.30 · specs/25.11 · specs/25.12 · arch/30-core/02 §The claim |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -126,7 +126,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/25.12 · arch/30-core/02 §The claim |
+| **Cites** | specs/00.31 · specs/25.12 · arch/30-core/02 §The claim |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

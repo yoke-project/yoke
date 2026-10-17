@@ -87,7 +87,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.43 · specs/50.53 · specs/50.51 · arch/50-plugin-surface/04 §Validity · arch/50-plugin-surface/04 §Revocation |
+| **Cites** | specs/10.39 · specs/50.43 · specs/50.51 · specs/50.53 · arch/50-plugin-surface/04 §Validity · arch/50-plugin-surface/04 §Revocation |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

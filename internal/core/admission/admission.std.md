@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.24 · specs/50.26 · specs/50.29 · specs/50.30 · specs/50.33 · arch/50-plugin-surface/03 §The grant is an intersection, computed once · arch/50-plugin-surface/03 §Three outcomes · arch/97-trace/03 §The intersection does something here |
+| **Cites** | specs/00.24 · specs/50.24 · specs/50.26 · specs/50.29 · specs/50.30 · specs/50.33 · arch/50-plugin-surface/03 §The grant is an intersection, computed once · arch/50-plugin-surface/03 §Three outcomes · arch/97-trace/03 §The intersection does something here |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
