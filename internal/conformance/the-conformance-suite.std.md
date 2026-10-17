@@ -147,3 +147,17 @@
 | **Precondition** | a harness that describes itself with a Manifest and, launched by the Core, says hello with its unit identity; one case attaching the suite |
 | **Action** | run the suite; in the case, attach the suite to the channel `suite`, twice |
 | **Expected** | the Core is started with the channel `suite` bound as a local socket, of one client; the suite attaches to it and is given an opening; the second attachment is the first, not another; the case passes |
+
+## yoke:the-conformance-suite.12 — asked for a report, a run writes its table and its record as one JSON document
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/90.19 · arch/90-sdks/03 §What a run produces · prj_structure/85 §The report a release carries |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a run given a path for its report, with one case the harness satisfies and one it cannot recognise; and a run given a path whose harness never says hello |
+| **Action** | run the suite each time, and read the file |
+| **Expected** | the first file names the Core and its version, the harness's contract, declared version, language and SDK line, holds one entry per cell with its case, language, result and detail — `pass` and `absent` — and says not every cell passed; the second names the harness that did not answer and why, holds no cell, and says not every cell passed; both runs exit non-zero |
+
