@@ -314,6 +314,7 @@ func empty(n *yaml.Node) bool {
 type UnitOptions struct {
 	Kind, Exec, Image, Plugin string
 	Args, DependsOn           []string
+	Bind                      [][2]string // need, value, in the order given
 }
 
 // AddUnit writes a unit declaration. A program under `components/` of a project is read for its digest,
@@ -347,6 +348,16 @@ func AddUnit(d Document, name string, o UnitOptions) error {
 		}
 		if len(o.DependsOn) > 0 {
 			put(u, "depends_on", sequence(o.DependsOn))
+		}
+		if len(o.Bind) > 0 {
+			bind := &yaml.Node{Kind: yaml.MappingNode}
+			for _, b := range o.Bind {
+				if at(bind, b[0]) != nil {
+					return refusef("the binding %s of the unit %s is given twice", b[0], name)
+				}
+				put(bind, b[0], scalar(b[1]))
+			}
+			put(u, "bind", bind)
 		}
 		put(units, name, u)
 		return nil
