@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/10.6 · specs/10.8 · specs/10.9 · specs/14.5 · specs/14.6 · specs/14.7 · specs/14.8 · specs/14.12 · arch/15-gate/04 §At a glance · arch/15-gate/06 §Phase 1 — shape |
+| **Cites** | specs/10.6 · specs/10.8 · specs/10.9 · specs/12.29 · specs/14.5 · specs/14.6 · specs/14.7 · specs/14.8 · specs/14.12 · specs/95.24 · arch/15-gate/04 §At a glance · arch/15-gate/06 §Phase 1 — shape |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/10.3 · specs/10.7 · specs/13.1 · specs/14.52 · specs/42.1 · specs/42.2 · arch/15-gate/04 §The third document · arch/15-gate/06 §Phase 3 — cross-document |
+| **Cites** | specs/10.3 · specs/10.7 · specs/12.31 · specs/13.1 · specs/14.52 · specs/42.1 · specs/42.2 · arch/15-gate/04 §The third document · arch/15-gate/06 §Phase 3 — cross-document |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/00.8 · specs/40.18 · specs/40.19 · specs/42.1 · arch/15-gate/04 §The third document · arch/15-gate/06 §Phase 3 — cross-document |
+| **Cites** | specs/00.8 · specs/12.30 · specs/40.18 · specs/40.19 · specs/42.1 · arch/15-gate/04 §The third document · arch/15-gate/06 §Phase 3 — cross-document |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/12.35 · specs/14.16 · specs/14.17 · specs/14.18 · specs/15.28 · specs/40.13 · arch/15-gate/06 §Phase 3 — cross-document · arch/15-gate/03 §`units` |
+| **Cites** | specs/12.31 · specs/12.35 · specs/12.39 · specs/12.40 · specs/14.16 · specs/14.17 · specs/14.18 · specs/15.28 · specs/40.13 · arch/15-gate/06 §Phase 3 — cross-document · arch/15-gate/03 §`units` |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/00.3 · specs/00.25 · specs/70.2 · specs/70.16 · specs/70.17 · arch/70-interface-surface/01 §Where a channel is bound · arch/30-core/04 §Who binds what |
+| **Cites** | specs/00.3 · specs/00.25 · specs/12.12 · specs/14.28 · specs/70.2 · specs/70.16 · specs/70.17 · arch/70-interface-surface/01 §Where a channel is bound · arch/30-core/04 §Who binds what |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.10 · specs/70.11 · arch/70-interface-surface/02 §What decides that a projection exists · arch/70-interface-surface/08 §`http+ws` — the browser projection |
+| **Cites** | specs/12.11 · specs/70.10 · specs/70.11 · arch/70-interface-surface/02 §What decides that a projection exists · arch/70-interface-surface/08 §`http+ws` — the browser projection |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/00.17 · specs/28.26 · specs/70.19 · specs/70.20 · arch/70-interface-surface/01 §Managed and attached · arch/35-units/04 §What the Core hands the process |
+| **Cites** | specs/00.17 · specs/12.11 · specs/28.26 · specs/70.19 · specs/70.20 · arch/70-interface-surface/01 §Managed and attached · arch/35-units/04 §What the Core hands the process |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -87,7 +87,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/70-interface-surface/03 §Who the client is · arch/70-interface-surface/04 §What an operation is refused by, and in what order |
+| **Cites** | specs/12.12 · arch/70-interface-surface/03 §Who the client is · arch/70-interface-surface/04 §What an operation is refused by, and in what order |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

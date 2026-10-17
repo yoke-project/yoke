@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/20-composer/03 §Placing one · arch/20-composer/03 §Reuse is by copy · arch/15-gate/05 §How a name is resolved |
+| **Cites** | specs/95.11 · specs/95.12 · specs/95.29 · arch/20-composer/03 §Placing one · arch/20-composer/03 §Reuse is by copy · arch/15-gate/05 §How a name is resolved |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/20-composer/03 §Placing one · arch/20-composer/03 §What a block holds · arch/20-composer/03 §Where a block comes from |
+| **Cites** | specs/95.29 · arch/20-composer/03 §Placing one · arch/20-composer/03 §What a block holds · arch/20-composer/03 §Where a block comes from |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/20-composer/03 §Reuse is by copy · arch/20-composer/03 §What a block holds |
+| **Cites** | specs/95.10 · arch/20-composer/03 §Reuse is by copy · arch/20-composer/03 §What a block holds |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

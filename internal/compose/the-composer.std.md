@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/20-composer/01 §The verbs · arch/20-composer/02 §The working directory |
+| **Cites** | specs/95.23 · arch/20-composer/01 §The verbs · arch/20-composer/02 §The working directory |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/20-composer/01 §The verbs · arch/15-gate/06 §The moments |
+| **Cites** | specs/95.14 · arch/20-composer/01 §The verbs · arch/15-gate/06 §The moments |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -87,7 +87,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/13.30 · specs/13.14 · arch/20-composer/01 §One artifact, beside the manager and never on the device |
+| **Cites** | specs/13.14 · specs/13.30 · specs/95.26 · arch/20-composer/01 §One artifact, beside the manager and never on the device |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -113,7 +113,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/20-composer/01 §The verbs · arch/20-composer/01 §The two faces · arch/20-composer/01 §What it reports · arch/20-composer/02 §Building a package |
+| **Cites** | specs/95.7 · arch/20-composer/01 §The verbs · arch/20-composer/01 §The two faces · arch/20-composer/01 §What it reports · arch/20-composer/02 §Building a package |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

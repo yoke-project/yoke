@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/14.50 · arch/15-gate/06 §Phase 0 — reading |
+| **Cites** | specs/12.2 · specs/14.50 · arch/15-gate/06 §Phase 0 — reading |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -87,7 +87,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/14.10 · specs/14.25 · specs/14.29 · specs/14.31 · arch/15-gate/03 §`units` · arch/15-gate/03 §`channels` · arch/15-gate/03 §`address` · arch/15-gate/03 §`arbitration` |
+| **Cites** | specs/14.10 · specs/14.25 · specs/14.27 · specs/14.29 · specs/14.31 · arch/15-gate/03 §`units` · arch/15-gate/03 §`channels` · arch/15-gate/03 §`address` · arch/15-gate/03 §`arbitration` |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -126,7 +126,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/10.13 · specs/14.11 · specs/14.14 · specs/14.20 · specs/28.14 · arch/15-gate/03 §`units` · arch/35-units/04 §What the Core hands the process |
+| **Cites** | specs/10.13 · specs/12.7 · specs/14.11 · specs/14.14 · specs/14.20 · specs/28.14 · arch/15-gate/03 §`units` · arch/35-units/04 §What the Core hands the process |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -152,7 +152,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/12.36 · specs/14.15 · specs/14.17 · arch/15-gate/03 §`units` · arch/35-units/05 §What each declared need expands into |
+| **Cites** | specs/12.10 · specs/12.34 · specs/12.36 · specs/14.15 · specs/14.17 · arch/15-gate/03 §`units` · arch/35-units/05 §What each declared need expands into |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -165,7 +165,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/10.10 · specs/10.11 · specs/12.46 · specs/14.43 · arch/15-gate/05 §Where substitution is permitted |
+| **Cites** | specs/10.10 · specs/10.11 · specs/12.46 · specs/12.50 · specs/14.43 · arch/15-gate/05 §Where substitution is permitted |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -204,7 +204,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/14.21 · specs/14.22 · specs/14.23 · specs/14.35 · specs/14.37 · specs/14.38 · specs/12.16 · arch/15-gate/03 §`policy` · arch/15-gate/03 §The unit's `policy` block |
+| **Cites** | specs/12.14 · specs/12.15 · specs/12.16 · specs/14.21 · specs/14.22 · specs/14.23 · specs/14.35 · specs/14.36 · specs/14.37 · specs/14.38 · arch/15-gate/03 §`policy` · arch/15-gate/03 §The unit's `policy` block |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -231,7 +231,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/12.35 · specs/14.16 · specs/14.17 · specs/14.18 · arch/15-gate/03 §`units` · arch/15-gate/06 §Phase 1 — shape · arch/15-gate/06 §Phase 3 — cross-document |
+| **Cites** | specs/12.10 · specs/12.35 · specs/12.40 · specs/14.16 · specs/14.17 · specs/14.18 · arch/15-gate/03 §`units` · arch/15-gate/06 §Phase 1 — shape · arch/15-gate/06 §Phase 3 — cross-document |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -244,7 +244,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/28.12 · specs/14.50 · arch/15-gate/03 §`units` · arch/15-gate/06 §Phase 0 — reading |
+| **Cites** | specs/14.9 · specs/14.50 · specs/28.12 · arch/15-gate/03 §`units` · arch/15-gate/06 §Phase 0 — reading |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -257,7 +257,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/15-gate/06 §Phase 1 — shape · arch/20-composer/01 §What it must be able to write |
+| **Cites** | specs/12.47 · specs/12.48 · specs/12.49 · specs/12.50 · arch/15-gate/06 §Phase 1 — shape · arch/20-composer/01 §What it must be able to write |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

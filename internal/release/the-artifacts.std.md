@@ -113,7 +113,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | prj_structure/95 §The built binaries · prj_structure/40 F3 |
+| **Cites** | specs/95.3 · specs/95.4 · specs/95.14 · prj_structure/95 §The built binaries · prj_structure/40 F3 |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

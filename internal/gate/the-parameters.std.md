@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/14.41 · arch/15-gate/04 §What only the descriptor has |
+| **Cites** | specs/12.17 · specs/14.41 · arch/15-gate/04 §What only the descriptor has |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/14.41 · arch/15-gate/04 §What only the descriptor has · arch/15-gate/06 §Phase 1 — shape |
+| **Cites** | specs/12.43 · specs/14.41 · arch/15-gate/04 §What only the descriptor has · arch/15-gate/06 §Phase 1 — shape |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/14.41 · arch/15-gate/06 §Phase 1 — shape |
+| **Cites** | specs/12.43 · specs/14.41 · arch/15-gate/06 §Phase 1 — shape |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/14.41 · specs/14.42 · arch/10-manager/07 §The values a site supplies · arch/15-gate/06 §Phase 4 — host facts |
+| **Cites** | specs/12.41 · specs/14.41 · specs/14.42 · arch/10-manager/07 §The values a site supplies · arch/15-gate/06 §Phase 4 — host facts |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

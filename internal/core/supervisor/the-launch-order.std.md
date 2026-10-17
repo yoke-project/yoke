@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/28.5 · specs/28.18 · specs/28.19 · specs/45.27 · arch/35-units/02 §Ready is three different things |
+| **Cites** | specs/12.9 · specs/28.5 · specs/28.18 · specs/28.19 · specs/45.27 · arch/35-units/02 §Ready is three different things |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -87,7 +87,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/28.16 · specs/28.21 · specs/20.10 · arch/35-units/02 §The order · arch/35-units/02 §A dependency that never arrives |
+| **Cites** | specs/12.8 · specs/12.48 · specs/20.10 · specs/28.16 · specs/28.21 · arch/35-units/02 §The order · arch/35-units/02 §A dependency that never arrives |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | — |

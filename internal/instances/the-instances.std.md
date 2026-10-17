@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/17.6 · arch/10-manager/06 §Rolling back · arch/10-manager/07 §Creating an instance, and naming it |
+| **Cites** | specs/12.23 · specs/17.6 · arch/10-manager/06 §Rolling back · arch/10-manager/07 §Creating an instance, and naming it |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.67 · arch/10-manager/07 §The values a site supplies |
+| **Cites** | specs/12.41 · specs/15.67 · arch/10-manager/07 §The values a site supplies |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
