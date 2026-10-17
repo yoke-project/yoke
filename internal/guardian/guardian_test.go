@@ -96,6 +96,22 @@ func fakeCore(name string) int {
 		}
 		<-stop
 		return 0
+	case "sparse":
+		// It says it is alive at once, then every 1.9 s: always within the tolerance, never early.
+		alive, err := dialAlive()
+		if err != nil || alive.Send(&channel.Beat{Instance: name}) != nil {
+			return 1
+		}
+		for {
+			select {
+			case <-stop:
+				return 0
+			case <-time.After(1900 * time.Millisecond):
+				if alive.Send(&channel.Beat{Instance: name}) != nil {
+					return 1
+				}
+			}
+		}
 	case "mute", "retire":
 		// It says it is alive once; then a mute Core falls silent and will not stop when asked, and a retiring
 		// one says it is stopping, stays silent past the tolerance, and ends.
