@@ -26,6 +26,8 @@ func TestTheShippedUnitRunsTheDeploymentUnderSystemd(t *testing.T) {
 		}
 	}
 	vars, _, clean := serviceForm(t)
+	// The manager's start gates the composition in force, as the unit's exec does: both read the clean one.
+	vars["YOKE_COMPOSITION"] = clean
 	shipped, err := os.ReadFile(filepath.Join("..", "..", "packaging", Unit))
 	if err != nil {
 		t.Fatal(err)
