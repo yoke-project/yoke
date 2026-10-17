@@ -257,3 +257,22 @@ func TestEveryFieldEitherDocumentCanSayIsWrittenByAVerb(t *testing.T) {
 		}
 	}
 }
+
+// std: yoke:the-authoring-verbs.07
+func TestAddUnitWritesItsBindings(t *testing.T) {
+	dir := authored(t)
+	file := filepath.Join(dir, Descriptor)
+	os.MkdirAll(filepath.Join(dir, "manifests"), 0o755)
+	os.WriteFile(filepath.Join(dir, "manifests", "com.example.head.yaml"),
+		[]byte("manifest: 1\nid: com.example.head\nprotocol: 1\nneeds:\n  - device:instrument\n  - device:lamp\n"), 0o644)
+	unchanged(t, file, "add", "unit", "head", "--kind", "plugin", "--plugin", "com.example.head", "--exec", "components/setup", "--dir", dir)
+	must(t, "add", "unit", "head", "--kind", "plugin", "--plugin", "com.example.head", "--exec", "components/setup",
+		"--bind", "instrument=/dev/spectro-a", "--bind", "lamp=/dev/lamp-a", "--dir", dir)
+	if written(t, file, "units.head.bind.instrument") != "/dev/spectro-a" || written(t, file, "units.head.bind.lamp") != "/dev/lamp-a" {
+		data, _ := os.ReadFile(file)
+		t.Errorf("the descriptor is\n%s", data)
+	}
+	if r := Check(dir); r.Refused() {
+		t.Errorf("the project is refused: %v", r.Findings)
+	}
+}
