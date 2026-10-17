@@ -68,6 +68,18 @@ func (c *call) systemctl(act string) error {
 	if err := c.positional(0, "no subject"); err != nil {
 		return err
 	}
+	// A start or a restart the gate would refuse is said here, to whoever asked: the shipped unit is
+	// Type=exec, so the init system answers once the manager is executed, and the refusal its exec makes
+	// would reach only the journal. The gate the unit runs stays the authority.
+	if act == "start" || act == "restart" {
+		path, report, _, err := c.composition("")
+		if err != nil {
+			return err
+		}
+		if c.findings(path, report) {
+			return refusef("the composition %s is refused, and the init system was not asked to %s %s", path, act, Unit)
+		}
+	}
 	said, code, err := c.initSystem(act, Unit)
 	if err != nil {
 		return err
