@@ -377,3 +377,54 @@ func TestYokesArtifactsHoldWhatEachAxisCarries(t *testing.T) {
 		}
 	}
 }
+
+// std: yoke:the-artifacts.10
+func TestAProgramsTagHandsOverItsModulesBuiltOfflineFirst(t *testing.T) {
+	root := withCommandsAnd(t, map[string]string{}, "v0.1.0")
+	for path, content := range map[string]string{
+		"go.mod":        "module example.com/yk\n\ngo 1.26\n\nrequire example.com/dep v0.0.0\n\nreplace example.com/dep => ./dep\n",
+		"dep/go.mod":    "module example.com/dep\n\ngo 1.26\n",
+		"dep/dep.go":    "package dep\n\n// Word is what the command prints.\nconst Word = \"modules\"\n",
+		"cmd/a/main.go": "package main\n\nimport \"example.com/dep\"\n\nfunc main() { println(dep.Word) }\n",
+	} {
+		os.MkdirAll(filepath.Dir(filepath.Join(root, path)), 0o755)
+		os.WriteFile(filepath.Join(root, path), []byte(content), 0o644)
+	}
+	git(t, root, "add", "-A")
+	git(t, root, "commit", "-q", "-m", "a dependency")
+	git(t, root, "tag", "-f", "v0.1.0")
+	s := &shelf{}
+	var out, errs bytes.Buffer
+	code := release.Run(release.Config{Root: root, Out: &out, Err: &errs,
+		Proxy:     func(m, v string) (string, error) { return treeHash(t, root, m, v, v, ""), nil },
+		Today:     func() time.Time { return time.Date(2026, 10, 17, 0, 0, 0, 0, time.UTC) },
+		Artifacts: []release.Artifact{{Name: "yk-tools", Packages: []string{"./cmd/a"}}},
+		Source:    "yk", Modules: true, Releases: "https://forge.example/yk/releases/tag/", Upload: s.upload})
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, errs.String())
+	}
+	archive, handed := s.files["yk-0.1.0-modules.tar.gz"]
+	if !handed {
+		t.Fatalf("the upload held %v", keys(s.files))
+	}
+	held := entries(t, archive)
+	if _, ok := held["yk-0.1.0/vendor/modules.txt"]; !ok {
+		t.Errorf("the modules archive holds %v", keys(held))
+	}
+	if !strings.Contains(string(held["yk-0.1.0/vendor/example.com/dep/dep.go"]), "modules") {
+		t.Errorf("the required module's source is not in the archive: %v", keys(held))
+	}
+	sum := sha256.Sum256(archive)
+	_, lines, _, _ := parse(t, out.String())
+	named := false
+	for _, l := range lines {
+		digests, _ := l["digests"].([]any)
+		named = named || (l["published"] == "yk-modules" && len(digests) == 1 && digests[0] == "sha256:"+hex.EncodeToString(sum[:]))
+	}
+	if !named {
+		t.Errorf("no line names the modules archive: %s", out.String())
+	}
+	if !strings.Contains(errs.String(), "built offline") {
+		t.Errorf("the verb does not say it built from the two archives offline:\n%s", errs.String())
+	}
+}

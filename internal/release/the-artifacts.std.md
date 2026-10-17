@@ -121,3 +121,16 @@
 | **Precondition** | the artifacts `yoke`'s release verb declares |
 | **Action** | read them against the tree |
 | **Expected** | three: `yoke`, holding `yoke-core`, `yoke`, `yoke-guardian` and `yoke-auth` with `packaging/yoke.service`, `packaging/core.yaml`, `packaging/yoke.tmpfiles` and `packaging/yoke.sysusers`; `yoke-conformance`, holding the suite, `yoke-core` and `yoke-compose`; `yoke-verify`; every program and file named exists in the tree |
+
+## yoke:the-artifacts.10 — a programs tag hands over its modules, and builds from them and the source archive with the network off first
+
+| Field | Value |
+| --- | --- |
+| **Cites** | prj_structure/40 E2 · prj_structure/97 §What a recipe pins, and what *offline* means · prj_structure/85 §The acts |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a repository tagged `v0.1.0` whose command imports a module it requires through a replacement inside the tree, and a source archive asked for |
+| **Action** | run the verb |
+| **Expected** | the upload holds `yk-0.1.0-modules.tar.gz`, holding `yk-0.1.0/vendor/modules.txt` and the required module's source beneath `yk-0.1.0/vendor/`; one line names it as `yk-modules` with its digest; and the verb built the command from the source archive and that archive, unpacked together, with no module proxy and an empty module cache, before it handed either over |
