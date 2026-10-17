@@ -178,7 +178,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/20.26 · arch/30-core/05 §The restart policy |
+| **Cites** | specs/10.39 · specs/20.26 · arch/30-core/05 §The restart policy |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -204,7 +204,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/20.31 · arch/35-units/04 §Ending one · arch/30-core/05 §Stopping |
+| **Cites** | specs/10.13 · specs/20.31 · arch/35-units/04 §Ending one · arch/30-core/05 §Stopping |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

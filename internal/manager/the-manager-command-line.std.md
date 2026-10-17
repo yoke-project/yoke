@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.69 · arch/10-manager/01 §The client verbs · arch/60-administrative-surface/03 §Reaching the socket is the whole of it |
+| **Cites** | specs/10.31 · specs/15.69 · arch/10-manager/01 §The client verbs · arch/60-administrative-surface/03 §Reaching the socket is the whole of it |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -87,7 +87,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.55 · specs/15.56 · arch/10-manager/01 §`yoke app` — artifacts · arch/10-manager/06 §Removing · arch/10-manager/06 §Reclaiming |
+| **Cites** | specs/10.37 · specs/15.55 · specs/15.56 · arch/10-manager/01 §`yoke app` — artifacts · arch/10-manager/06 §Removing · arch/10-manager/06 §Reclaiming |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

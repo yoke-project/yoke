@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/13.23 · specs/15.21 · specs/15.42 · specs/15.46 · specs/15.47 · arch/10-manager/05 §The order |
+| **Cites** | specs/10.4 · specs/10.16 · specs/10.17 · specs/13.23 · specs/15.21 · specs/15.42 · specs/15.46 · specs/15.47 · arch/10-manager/05 §The order |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.23 · specs/15.33 · arch/10-manager/05 §The order |
+| **Cites** | specs/10.14 · specs/15.23 · specs/15.33 · arch/10-manager/05 §The order |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -113,7 +113,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.51 · specs/45.40 · arch/10-manager/05 §Obtaining images |
+| **Cites** | specs/10.20 · specs/15.51 · specs/45.40 · arch/10-manager/05 §Obtaining images |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

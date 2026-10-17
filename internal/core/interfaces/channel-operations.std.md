@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.6 · arch/70-interface-surface/07 §Two acts, and they are not the same one · arch/70-interface-surface/04 §The eleven |
+| **Cites** | specs/00.14 · specs/70.6 · arch/70-interface-surface/07 §Two acts, and they are not the same one · arch/70-interface-surface/04 §The eleven |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

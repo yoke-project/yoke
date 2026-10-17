@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/13.30 · specs/14.40 · arch/20-composer/02 §Building a package · arch/20-composer/02 §The two sidecars |
+| **Cites** | specs/10.16 · specs/10.18 · specs/10.19 · specs/13.30 · specs/14.40 · arch/20-composer/02 §Building a package · arch/20-composer/02 §The two sidecars |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/20-composer/02 §Building a package |
+| **Cites** | specs/10.14 · arch/20-composer/02 §Building a package |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -126,7 +126,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/20-composer/02 §Building a package · arch/10-manager/05 §Obtaining images |
+| **Cites** | specs/10.20 · arch/20-composer/02 §Building a package · arch/10-manager/05 §Obtaining images |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

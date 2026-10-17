@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/14.50 · arch/15-gate/05 §The formats · arch/15-gate/06 §Phase 1 — shape |
+| **Cites** | specs/10.10 · specs/14.50 · arch/15-gate/05 §The formats · arch/15-gate/06 §Phase 1 — shape |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -126,7 +126,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/14.11 · specs/14.14 · specs/14.20 · specs/28.14 · arch/15-gate/03 §`units` · arch/35-units/04 §What the Core hands the process |
+| **Cites** | specs/10.13 · specs/14.11 · specs/14.14 · specs/14.20 · specs/28.14 · arch/15-gate/03 §`units` · arch/35-units/04 §What the Core hands the process |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -165,7 +165,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/14.43 · specs/12.46 · arch/15-gate/05 §Where substitution is permitted |
+| **Cites** | specs/10.10 · specs/10.11 · specs/12.46 · specs/14.43 · arch/15-gate/05 §Where substitution is permitted |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

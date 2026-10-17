@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.13 · specs/60.1 · specs/60.20 · arch/60-administrative-surface/02 §Neither is privileged, and the union is what enforces it · arch/60-administrative-surface/08 §Two services over one union |
+| **Cites** | specs/00.12 · specs/15.13 · specs/60.1 · specs/60.20 · arch/60-administrative-surface/02 §Neither is privileged, and the union is what enforces it · arch/60-administrative-surface/08 §Two services over one union |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

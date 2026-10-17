@@ -87,7 +87,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/31.48 · specs/20.42 · arch/45-events/06 §The set · arch/30-core/07 §What it reads |
+| **Cites** | specs/10.3 · specs/20.42 · specs/31.48 · arch/45-events/06 §The set · arch/30-core/07 §What it reads |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | — |

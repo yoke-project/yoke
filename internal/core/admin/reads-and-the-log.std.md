@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/60.42 · arch/60-administrative-surface/05 §Authorised and observed, in one answer |
+| **Cites** | specs/00.9 · specs/60.42 · arch/60-administrative-surface/05 §Authorised and observed, in one answer |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
