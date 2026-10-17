@@ -130,6 +130,9 @@ type guardian struct {
 	events      chan event
 	done        chan struct{}
 	subscribers map[chan *channel.Watched]bool
+	// runs counts the Cores this guardian executed: a watch made again after an orderly stop counts its
+	// incarnations from one, and a timer the previous one left must never be taken for the next one's.
+	runs int
 }
 
 // watch is what the guardian holds about one instance it acts on.
@@ -142,7 +145,8 @@ type watch struct {
 	since     time.Time
 	cmd       *exec.Cmd
 	pid       int
-	gen       int // which execution the timers and the exit belong to
+	gen       int // the instance's incarnation under this guardian, as it is said
+	run       int // which execution the timers and the exit belong to, unique within the guardian
 	policy    gate.Policy
 	ephemeral bool
 	beats     int    // the beats this execution sent, which a silence is measured from
@@ -173,7 +177,7 @@ type event struct {
 	name     string // empty with wake: every record
 	explicit bool   // somebody asked, so a refusal is tried again
 	stopping bool   // a beat saying the Core has begun an orderly shutdown
-	gen      int
+	gen      int    // the execution a timer or an exit belongs to: a watch's run
 	pid      int
 	err      error
 	reply    chan any
@@ -246,7 +250,7 @@ func (g *guardian) abandon() {
 
 func (g *guardian) handle(e event) {
 	w := g.watched[e.name]
-	current := w != nil && w.gen == e.gen
+	current := w != nil && w.run == e.gen
 	switch e.kind {
 	case wake:
 		if e.name == "" {
@@ -271,7 +275,7 @@ func (g *guardian) handle(e event) {
 		case w.state == Starting:
 			w.state, w.since, w.reason = Observable, time.Now(), ""
 			g.log.Info("the instance is observable", "instance", w.name, "pid", w.pid, "incarnation", w.gen)
-			g.after(w.policy.StabilityWindow, event{kind: stable, name: w.name, gen: w.gen})
+			g.after(w.policy.StabilityWindow, event{kind: stable, name: w.name, gen: w.run})
 			g.heard(w)
 			g.publish(w)
 			e.reply <- nil
@@ -328,7 +332,7 @@ func (g *guardian) handle(e event) {
 func (g *guardian) heard(w *watch) {
 	w.beats++
 	tolerance := w.policy.HeartbeatInterval * time.Duration(w.policy.HeartbeatTolerance+1)
-	g.after(tolerance, event{kind: silence, name: w.name, gen: w.gen, pid: w.beats})
+	g.after(tolerance, event{kind: silence, name: w.name, gen: w.run, pid: w.beats})
 }
 
 func (g *guardian) reconcileAll(explicit, boot bool) {
@@ -511,6 +515,8 @@ func (g *guardian) start(rec instancerecord.Record, w *watch) {
 	}
 	cmd.Stdout, cmd.Stderr = g.o.Stderr, g.o.Stderr
 	w.gen++
+	g.runs++
+	w.run = g.runs
 	w.findings, w.beats = nil, 0
 	if w.reason == Silent {
 		g.log.Info("the instance is brought back as a new incarnation", "instance", rec.Name, "attempt", w.attempt, "incarnation", w.gen)
@@ -522,7 +528,7 @@ func (g *guardian) start(rec instancerecord.Record, w *watch) {
 	}
 	w.cmd, w.pid, w.state, w.since = cmd, cmd.Process.Pid, Starting, time.Now()
 	g.log.Info("the Core is executed", "instance", rec.Name, "pid", w.pid, "bundle", bundle)
-	gen := w.gen
+	gen := w.run
 	go func() {
 		err := cmd.Wait()
 		g.send(event{kind: exited, name: rec.Name, gen: gen, err: err})
@@ -552,7 +558,7 @@ func (g *guardian) stop(w *watch) {
 		g.log.Info("the Core is asked to stop", "instance", w.name, "pid", w.pid)
 	}
 	w.cmd.Process.Signal(syscall.SIGTERM)
-	g.after(w.policy.StopWindow, event{kind: kill, name: w.name, gen: w.gen})
+	g.after(w.policy.StopWindow, event{kind: kill, name: w.name, gen: w.run})
 	g.publish(w)
 }
 
@@ -607,7 +613,7 @@ func (g *guardian) failed(w *watch, err error) {
 	w.wait = min(w.wait, w.policy.Ceiling)
 	w.state, w.since = Waiting, time.Now()
 	g.log.Info("the instance waits to be tried again", "instance", w.name, "attempt", w.attempt, "wait", w.wait)
-	g.after(w.wait, event{kind: retry, name: w.name, gen: w.gen})
+	g.after(w.wait, event{kind: retry, name: w.name, gen: w.run})
 	g.publish(w)
 }
 
