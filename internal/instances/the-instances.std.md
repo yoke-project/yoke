@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/10.32 · specs/15.67 · specs/17.5 · specs/17.6 · arch/10-manager/07 §Creating an instance, and naming it · arch/10-manager/07 §The values a site supplies |
+| **Cites** | specs/10.32 · specs/15.67 · specs/17.5 · specs/17.6 · specs/17.24 · arch/10-manager/07 §Creating an instance, and naming it · arch/10-manager/07 §The values a site supplies |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/12.23 · specs/17.6 · arch/10-manager/06 §Rolling back · arch/10-manager/07 §Creating an instance, and naming it |
+| **Cites** | specs/12.23 · specs/17.6 · specs/17.51 · arch/10-manager/06 §Rolling back · arch/10-manager/07 §Creating an instance, and naming it |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/12.41 · specs/15.67 · arch/10-manager/07 §The values a site supplies |
+| **Cites** | specs/12.41 · specs/15.67 · specs/17.22 · arch/10-manager/07 §The values a site supplies |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.62 · specs/15.64 · specs/30.30 · specs/32.20 · arch/10-manager/07 §Copying an instance's state |
+| **Cites** | specs/15.62 · specs/15.64 · specs/17.54 · specs/30.30 · specs/32.20 · arch/10-manager/07 §Copying an instance's state |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -87,7 +87,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.63 · specs/15.64 · specs/15.65 · specs/30.31 · specs/30.32 · arch/10-manager/07 §Copying an instance's state |
+| **Cites** | specs/15.63 · specs/15.64 · specs/15.65 · specs/17.50 · specs/17.54 · specs/30.31 · specs/30.32 · arch/10-manager/07 §Copying an instance's state |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
