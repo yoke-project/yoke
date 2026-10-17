@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.6 · arch/70-interface-surface/07 §The three delivery paths · arch/30-core/04 |
+| **Cites** | specs/70.6 · arch/70-interface-surface/07 §The three delivery paths · arch/30-core/04 §A stream's socket is the Core's |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

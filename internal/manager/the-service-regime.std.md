@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.36 · arch/15-gate/01 §Who invokes it, and when · arch/15-gate/06 §The checks |
+| **Cites** | specs/15.36 · arch/15-gate/01 §Who invokes it, and when · arch/15-gate/06 §The phases |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

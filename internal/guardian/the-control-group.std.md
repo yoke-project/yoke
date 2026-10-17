@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/17.44 · specs/17.45 · arch/25-guardian/05 §What it is for · arch/35-units/05 |
+| **Cites** | specs/17.44 · specs/17.45 · arch/25-guardian/05 §What it is for · arch/35-units/05 §Driving the engine |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | container engine: docker |
@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/17.46 · arch/25-guardian/05 §Where a host cannot provide one · arch/15-gate/06 §The checks |
+| **Cites** | specs/17.46 · arch/25-guardian/05 §Where a host cannot provide one · arch/15-gate/06 §Phase 5 — weaker arrangements |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

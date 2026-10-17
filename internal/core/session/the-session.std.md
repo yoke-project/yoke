@@ -152,7 +152,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.66 · arch/50-plugin-surface/05 §What a health report carries · arch/35-units/03 |
+| **Cites** | specs/50.66 · arch/50-plugin-surface/05 §What a health report carries · arch/35-units/03 §One authority |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

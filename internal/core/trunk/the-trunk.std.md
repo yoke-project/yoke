@@ -178,7 +178,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/60.6 · arch/60-administrative-surface/05 §Which subjects are readable · arch/80-security/07 |
+| **Cites** | specs/60.6 · arch/60-administrative-surface/05 §Which subjects are readable · arch/80-security/07 §The enumeration lives in one place |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

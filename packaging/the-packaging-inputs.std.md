@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/00-system/02 §The service form on disk · arch/10-manager/04 §Who owns what · prj_structure/97 §`meta-yoke`, and what its recipes do |
+| **Cites** | arch/00-system/02 §The service form on disk · arch/10-manager/04 §The tree · prj_structure/97 §`meta-yoke`, and what its recipes do |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/00-system/02 §The service form on disk · arch/10-manager/02 §What is checked |
+| **Cites** | arch/00-system/02 §The service form on disk · arch/10-manager/02 §What is checked, and what is not |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

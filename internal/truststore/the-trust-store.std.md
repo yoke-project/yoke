@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/80.30 · specs/13.17 · arch/80-security/05 §The credential that opens a sealed package · arch/80-security/07 |
+| **Cites** | specs/80.30 · specs/13.17 · arch/80-security/05 §The credential that opens a sealed package · arch/80-security/07 §What qualifies |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
