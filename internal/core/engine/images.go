@@ -69,10 +69,12 @@ func (e *Engine) Load(ctx context.Context, archive io.Reader, progress func(stri
 	return nil
 }
 
-// Tag places an image in the reserved namespace, `yoke/<id>:<version>`, which is what reclaiming reads.
-func (e *Engine) Tag(ctx context.Context, ref, id, version string) error {
-	return e.act(ctx, http.MethodPost, "/images/"+ref+"/tag", url.Values{"repo": {"yoke/" + id}, "tag": {version}},
-		"tag "+ref+" as yoke/"+id+":"+version)
+// Tag places an image in the reserved namespace for one unit, `yoke/<id>/<unit>:<version>`, which is what
+// reclaiming reads. A version carries an image per containerised unit, and a tag names one image.
+func (e *Engine) Tag(ctx context.Context, ref, id, unit, version string) error {
+	repo := "yoke/" + id + "/" + unit
+	return e.act(ctx, http.MethodPost, "/images/"+ref+"/tag", url.Values{"repo": {repo}, "tag": {version}},
+		"tag "+ref+" as "+repo+":"+version)
 }
 
 // follow reads an engine's progress, one JSON object at a time, handing on each line it carries; an error
@@ -130,9 +132,11 @@ func (e *Engine) Images(ctx context.Context) ([]Image, error) {
 	return images, nil
 }
 
-// Reserved reads a tag in the reserved namespace back into the application and version it names. The tag
-// is written unqualified, and an engine may list it qualified: Docker does not, Podman 4 with `localhost/`,
-// Podman 6 with `docker.io/`. All three are the same tag; any other registry is not.
+// Reserved reads a tag in the reserved namespace back into the application and version it names, whichever
+// unit it was written for — and a tag an earlier installation wrote with no unit, `yoke/<id>:<version>`,
+// reads the same. The tag is written unqualified, and an engine may list it qualified: Docker does not,
+// Podman 4 with `localhost/`, Podman 6 with `docker.io/`. All three are the same tag; any other registry
+// is not.
 func Reserved(tag string) (id, version string, ok bool) {
 	name := tag
 	for _, qualified := range []string{"localhost/", "docker.io/"} {
@@ -145,7 +149,11 @@ func Reserved(tag string) (id, version string, ok bool) {
 	if !found {
 		return "", "", false
 	}
-	id, version, ok = strings.Cut(rest, ":")
+	named, version, ok := strings.Cut(rest, ":")
+	id, unit, written := strings.Cut(named, "/")
+	if written && (unit == "" || strings.Contains(unit, "/")) {
+		return "", "", false
+	}
 	return id, version, ok && id != "" && version != ""
 }
 
