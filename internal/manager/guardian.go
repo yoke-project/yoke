@@ -267,7 +267,11 @@ func (c *call) instanceClear() error {
 	if err != nil {
 		return err
 	}
-	return refused(instances.Clear(o, name))
+	if err := instances.Clear(o, name); err != nil {
+		return refused(err)
+	}
+	fmt.Fprintf(c.out, "%s's state is cleared, and the instance stays declared\n", name)
+	return nil
 }
 
 func (c *call) instanceRemove() error {
@@ -275,7 +279,11 @@ func (c *call) instanceRemove() error {
 	if err != nil {
 		return err
 	}
-	return refused(instances.Remove(o, name))
+	if err := instances.Remove(o, name); err != nil {
+		return refused(err)
+	}
+	fmt.Fprintf(c.out, "%s is removed, its record and its state together\n", name)
+	return nil
 }
 
 // derived is what is known of each instance now: the guardian's account where one answers, otherwise

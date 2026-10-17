@@ -825,7 +825,11 @@ func adminChannels(st *State) []Channel {
 
 // noteWeaker keeps a weaker arrangement the gate reported, as the instance record says it.
 func (st *State) noteWeaker(f gate.Finding) {
-	st.weaker = append(st.weaker, f.Code+" at "+f.Location)
+	said := f.Code
+	if f.Location != "" {
+		said += " at " + f.Location
+	}
+	st.weaker = append(st.weaker, said)
 }
 
 // instanceRecord is the instance as a read answers it.
@@ -837,9 +841,12 @@ func (st *State) instanceRecord() *administrativev1.InstanceRecord {
 		Weaker: slices.Clone(st.weaker),
 		Parameters: map[string]string{
 			"state_dir": st.Config.StateDir, "runtime_dir": st.Config.RuntimeDir, "engine": st.Config.Engine, "log.level": st.Config.Log.Level,
-			"plugins.manifests": st.Config.Plugins.Manifests, "plugins.executables": st.Config.Plugins.Executables,
-			"plugins.scan_interval": st.Config.Plugins.ScanInterval.String(),
 		}}
+	// The Plugin directories are read in the service form alone: an application's Plugins come from its bundle.
+	if st.Form == Service {
+		r.Parameters["plugins.manifests"], r.Parameters["plugins.executables"] = st.Config.Plugins.Manifests, st.Config.Plugins.Executables
+		r.Parameters["plugins.scan_interval"] = st.Config.Plugins.ScanInterval.String()
+	}
 	since := st.readyAt
 	if r.Stopping {
 		since = st.stoppingAt

@@ -63,6 +63,10 @@ func Run(args []string, getenv func(string) string, stdout, stderr io.Writer) in
 		return Done
 	}
 	if args[0] == "shell" {
+		if asksHelp(args[1:]) {
+			fmt.Fprintln(stdout, "usage: yoke shell [--instance <name>]")
+			return Done
+		}
 		interrupts := make(chan os.Signal, 1)
 		signal.Notify(interrupts, os.Interrupt)
 		defer signal.Stop(interrupts)
@@ -81,7 +85,21 @@ func Run(args []string, getenv func(string) string, stdout, stderr io.Writer) in
 		fmt.Fprintf(stderr, "yoke %s has no operation%s; it has %s\n", subject, named, strings.Join(operations(subject), ", "))
 		return Refused
 	}
+	if asksHelp(args[2:]) {
+		fmt.Fprintf(stdout, "usage: yoke %s %s %s\n", subject, args[1], ops[args[1]].usage)
+		return Done
+	}
 	return reported(ops[args[1]].run(&call{args: args[2:], getenv: getenv, out: stdout}), stderr)
+}
+
+// asksHelp says whether a verb's arguments ask for its usage rather than for the verb.
+func asksHelp(args []string) bool {
+	for _, a := range args {
+		if a == "-h" || a == "-help" || a == "--help" {
+			return true
+		}
+	}
+	return false
 }
 
 // reported prints what a verb answered where it failed, and is its exit status.
