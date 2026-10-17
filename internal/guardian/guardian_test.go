@@ -607,4 +607,3 @@ func TestStoredValuesAreCheckedAgainAtEveryStart(t *testing.T) {
 		}
 	}
 }
-
