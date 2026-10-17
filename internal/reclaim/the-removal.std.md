@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.56 · specs/17.28 · arch/10-manager/06 §Reclaiming · arch/30-core/03 §The eleven steps |
+| **Cites** | specs/15.56 · specs/17.28 · specs/25.48 · arch/10-manager/06 §Reclaiming · arch/30-core/03 §The eleven steps |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

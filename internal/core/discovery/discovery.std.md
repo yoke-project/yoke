@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/20.46 · specs/28.23 · arch/30-core/07 §Availability and composition are two questions |
+| **Cites** | specs/20.46 · specs/25.40 · specs/28.23 · arch/30-core/07 §Availability and composition are two questions |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

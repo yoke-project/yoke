@@ -87,7 +87,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/10-manager/01 §What it reports · arch/00-system/06 §1 — The service form, from boot |
+| **Cites** | specs/25.56 · arch/10-manager/01 §What it reports · arch/00-system/06 §1 — The service form, from boot |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

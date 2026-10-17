@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/25.10 · specs/25.13 · arch/30-core/01 §The service form · arch/30-core/02 §The claim |
+| **Cites** | specs/20.1 · specs/25.1 · specs/25.10 · specs/25.13 · arch/30-core/01 §The service form · arch/30-core/02 §The claim |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

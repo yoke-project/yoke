@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/12.15 · specs/32.5 · specs/32.6 · specs/32.8 · arch/40-state/04 §Resolving a group's policy · arch/40-state/04 §The group is the unit · arch/15-gate/03 §`policy` |
+| **Cites** | specs/12.15 · specs/20.32 · specs/32.5 · specs/32.6 · specs/32.8 · arch/40-state/04 §Resolving a group's policy · arch/40-state/04 §The group is the unit · arch/15-gate/03 §`policy` |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

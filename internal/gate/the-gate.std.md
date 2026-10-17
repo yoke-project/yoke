@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/10.10 · specs/14.50 · arch/15-gate/05 §The formats · arch/15-gate/06 §Phase 1 — shape |
+| **Cites** | specs/10.10 · specs/14.50 · specs/45.33 · arch/15-gate/05 §The formats · arch/15-gate/06 §Phase 1 — shape |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -152,7 +152,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/12.10 · specs/12.34 · specs/12.36 · specs/14.15 · specs/14.17 · specs/17.26 · arch/15-gate/03 §`units` · arch/35-units/05 §What each declared need expands into |
+| **Cites** | specs/12.10 · specs/12.34 · specs/12.36 · specs/14.15 · specs/14.17 · specs/17.26 · specs/45.14 · specs/45.32 · specs/45.33 · arch/15-gate/03 §`units` · arch/35-units/05 §What each declared need expands into |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -204,7 +204,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/12.14 · specs/12.15 · specs/12.16 · specs/14.21 · specs/14.22 · specs/14.23 · specs/14.35 · specs/14.36 · specs/14.37 · specs/14.38 · arch/15-gate/03 §`policy` · arch/15-gate/03 §The unit's `policy` block |
+| **Cites** | specs/12.14 · specs/12.15 · specs/12.16 · specs/14.21 · specs/14.22 · specs/14.23 · specs/14.35 · specs/14.36 · specs/14.37 · specs/14.38 · specs/20.32 · arch/15-gate/03 §`policy` · arch/15-gate/03 §The unit's `policy` block |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
