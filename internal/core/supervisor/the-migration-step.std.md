@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/12.28 · specs/14.20 · specs/28.9 · arch/30-core/03 §The eleven steps · arch/40-state/05 §The stamp · arch/97-trace/06 §The update itself |
+| **Cites** | specs/12.28 · specs/14.20 · specs/25.67 · specs/28.9 · arch/30-core/03 §The eleven steps · arch/40-state/05 §The stamp · arch/97-trace/06 §The update itself |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | — |

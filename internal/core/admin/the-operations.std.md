@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/60.45 · specs/60.46 · arch/60-administrative-surface/04 §The one operation whose content the Core does not read · arch/60-administrative-surface/07 §This surface's codes |
+| **Cites** | specs/20.2 · specs/60.45 · specs/60.46 · arch/60-administrative-surface/04 §The one operation whose content the Core does not read · arch/60-administrative-surface/07 §This surface's codes |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/20.44 · specs/25.61 · arch/30-core/03 §When the description changes underneath |
+| **Cites** | specs/20.44 · specs/20.49 · specs/25.61 · specs/25.62 · arch/30-core/03 §When the description changes underneath |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

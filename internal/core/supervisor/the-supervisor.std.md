@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/28.41 · specs/28.32 · arch/35-units/03 §One authority |
+| **Cites** | specs/20.33 · specs/28.32 · specs/28.41 · arch/35-units/03 §One authority |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/28.30 · specs/28.36 · specs/28.37 · arch/35-units/03 §Three things that look like states and are not |
+| **Cites** | specs/20.14 · specs/20.19 · specs/20.33 · specs/28.30 · specs/28.36 · specs/28.37 · arch/35-units/03 §Three things that look like states and are not |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/28.50 · arch/35-units/04 §The plan |
+| **Cites** | specs/25.65 · specs/28.50 · arch/35-units/04 §The plan |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -139,7 +139,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/20.18 · arch/30-core/05 §Facts arrive; it does not go looking |
+| **Cites** | specs/20.14 · specs/20.18 · arch/30-core/05 §Facts arrive; it does not go looking |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -217,7 +217,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/20.20 · specs/20.21 · specs/20.22 · specs/20.23 · arch/30-core/05 §When the source of facts goes quiet |
+| **Cites** | specs/20.19 · specs/20.20 · specs/20.21 · specs/20.22 · specs/20.23 · arch/30-core/05 §When the source of facts goes quiet |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
