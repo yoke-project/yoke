@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/60-administrative-surface/08 §How this contract states its version · arch/60-administrative-surface/07 §This surface's codes |
+| **Cites** | arch/60-administrative-surface/08 §How this contract states its version · arch/60-administrative-surface/07 §This surface's codes · prj_structure/40 A7 |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

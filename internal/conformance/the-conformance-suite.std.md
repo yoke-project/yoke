@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/90.17 · specs/90.44 · arch/90-sdks/03 §The shape of a run · arch/90-sdks/03 §A real Core, and no fixture |
+| **Cites** | specs/90.17 · specs/90.44 · arch/90-sdks/03 §The shape of a run · arch/90-sdks/03 §A real Core, and no fixture · prj_structure/40 D1 |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/90.17 · arch/90-sdks/04 §The control protocol · arch/90-sdks/04 §How it is reached |
+| **Cites** | specs/90.17 · arch/90-sdks/04 §The control protocol · arch/90-sdks/04 §How it is reached · prj_structure/40 D4 |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/90.19 · specs/90.20 · arch/90-sdks/03 §What a run produces |
+| **Cites** | specs/90.19 · specs/90.20 · arch/90-sdks/03 §What a run produces · prj_structure/40 B6 |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -87,7 +87,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/90-sdks/03 §What a run produces |
+| **Cites** | arch/90-sdks/03 §What a run produces · prj_structure/40 D2 · prj_structure/40 G2 |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -152,7 +152,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/90.19 · arch/90-sdks/03 §What a run produces · prj_structure/85 §The report a release carries |
+| **Cites** | specs/90.19 · arch/90-sdks/03 §What a run produces · prj_structure/85 §The report a release carries · prj_structure/40 D2 |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
