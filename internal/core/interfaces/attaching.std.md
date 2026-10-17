@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.42 · specs/70.43 · specs/70.44 · arch/70-interface-surface/03 §How many clients |
+| **Cites** | specs/14.27 · specs/70.42 · specs/70.43 · specs/70.44 · arch/70-interface-surface/03 §How many clients |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.31 · specs/70.32 · specs/70.33 · arch/70-interface-surface/03 §A connection that looks open proves nothing · arch/45-events/04 §A subscription may be confirmed |
+| **Cites** | specs/12.13 · specs/14.32 · specs/70.31 · specs/70.32 · specs/70.33 · arch/70-interface-surface/03 §A connection that looks open proves nothing · arch/45-events/04 §A subscription may be confirmed |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

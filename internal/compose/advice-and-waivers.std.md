@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/20-composer/04 §The set as it stands · arch/20-composer/04 §The two classes must not swap places |
+| **Cites** | specs/12.25 · specs/95.17 · specs/95.18 · arch/20-composer/04 §The set as it stands · arch/20-composer/04 §The two classes must not swap places |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/20-composer/04 §The set as it stands |
+| **Cites** | specs/95.19 · specs/95.20 · arch/20-composer/04 §The set as it stands |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/20-composer/04 §Waiving an item · arch/20-composer/02 §The two sidecars |
+| **Cites** | specs/95.21 · specs/95.22 · arch/20-composer/04 §Waiving an item · arch/20-composer/02 §The two sidecars |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

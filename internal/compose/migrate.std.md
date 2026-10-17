@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/20-composer/05 §The verb · arch/20-composer/05 §The field this rests on |
+| **Cites** | specs/95.25 · arch/20-composer/05 §The verb · arch/20-composer/05 §The field this rests on |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/20-composer/05 §The verb · arch/20-composer/05 §What it produces |
+| **Cites** | specs/12.6 · specs/95.25 · arch/20-composer/05 §The verb · arch/20-composer/05 §What it produces |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

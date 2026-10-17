@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/20-composer/01 §The verbs · arch/15-gate/03 §`address` |
+| **Cites** | specs/12.11 · specs/14.28 · arch/20-composer/01 §The verbs · arch/15-gate/03 §`address` |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/20-composer/01 §The verbs |
+| **Cites** | specs/12.43 · arch/20-composer/01 §The verbs |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

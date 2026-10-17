@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/14.39 · arch/15-gate/04 §What only the descriptor has · arch/15-gate/06 §Phase 0 — reading |
+| **Cites** | specs/12.6 · specs/14.39 · specs/95.23 · arch/15-gate/04 §What only the descriptor has · arch/15-gate/06 §Phase 0 — reading |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/14.39 · specs/14.40 · specs/13.27 · arch/15-gate/04 §What only the descriptor has |
+| **Cites** | specs/12.5 · specs/13.27 · specs/14.39 · specs/14.40 · arch/15-gate/04 §What only the descriptor has |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/14.39 · specs/13.27 · specs/13.28 · arch/15-gate/04 §What only the descriptor has · arch/15-gate/06 §Phase 1 — shape |
+| **Cites** | specs/12.5 · specs/13.27 · specs/13.28 · specs/14.39 · arch/15-gate/04 §What only the descriptor has · arch/15-gate/06 §Phase 1 — shape |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/14.40 · arch/15-gate/04 §The third document |
+| **Cites** | specs/12.30 · specs/14.40 · arch/15-gate/04 §The third document |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/15-gate/04 §Identity · arch/15-gate/06 §Phase 3 — cross-document · arch/40-state/05 §What is compared against it |
+| **Cites** | specs/12.23 · specs/12.24 · arch/15-gate/04 §Identity · arch/15-gate/06 §Phase 3 — cross-document · arch/40-state/05 §What is compared against it |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

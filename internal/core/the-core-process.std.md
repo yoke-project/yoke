@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/30-core/01 §core.yaml, in the service form · specs/20.6 |
+| **Cites** | specs/14.36 · specs/20.6 · arch/30-core/01 §core.yaml, in the service form |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
