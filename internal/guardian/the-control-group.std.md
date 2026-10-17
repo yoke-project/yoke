@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/17.46 · arch/25-guardian/05 §Where a host cannot provide one · arch/15-gate/06 §Phase 5 — weaker arrangements |
+| **Cites** | specs/10.15 · specs/17.46 · arch/25-guardian/05 §Where a host cannot provide one · arch/15-gate/06 §Phase 5 — weaker arrangements |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

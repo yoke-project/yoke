@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/17.14 · specs/17.20 · arch/10-manager/06 §Removing |
+| **Cites** | specs/10.36 · specs/17.14 · specs/17.20 · arch/10-manager/06 §Removing |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

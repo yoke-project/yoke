@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.67 · specs/17.5 · specs/17.6 · arch/10-manager/07 §Creating an instance, and naming it · arch/10-manager/07 §The values a site supplies |
+| **Cites** | specs/10.32 · specs/15.67 · specs/17.5 · specs/17.6 · arch/10-manager/07 §Creating an instance, and naming it · arch/10-manager/07 §The values a site supplies |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

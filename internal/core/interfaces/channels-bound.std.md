@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.2 · specs/70.16 · specs/70.17 · arch/70-interface-surface/01 §Where a channel is bound · arch/30-core/04 §Who binds what |
+| **Cites** | specs/00.3 · specs/00.25 · specs/70.2 · specs/70.16 · specs/70.17 · arch/70-interface-surface/01 §Where a channel is bound · arch/30-core/04 §Who binds what |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/28.26 · specs/70.19 · specs/70.20 · arch/70-interface-surface/01 §Managed and attached · arch/35-units/04 §What the Core hands the process |
+| **Cites** | specs/00.17 · specs/28.26 · specs/70.19 · specs/70.20 · arch/70-interface-surface/01 §Managed and attached · arch/35-units/04 §What the Core hands the process |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/28.6 · specs/70.2 · specs/70.20 · arch/70-interface-surface/01 §Managed and attached · arch/30-core/03 §The eleven steps |
+| **Cites** | specs/00.16 · specs/28.6 · specs/70.2 · specs/70.20 · arch/70-interface-surface/01 §Managed and attached · arch/30-core/03 §The eleven steps |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | — |

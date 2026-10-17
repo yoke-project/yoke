@@ -32,7 +32,7 @@ func Cases() []Case {
 			Requires:     "a refusal `admission.auth.consumed` at `authentication`",
 			Run:          spentTokenRefused},
 		{Contract: "plugin", ID: "yoke:plugin.04", Title: "nothing is emitted on a stream the Core has not activated",
-			Cites:        []string{"specs/90.33", "arch/90-sdks/06 §It may not create a stream's transport"},
+			Cites:        []string{"specs/00.14", "specs/90.33", "arch/90-sdks/06 §It may not create a stream's transport"},
 			Precondition: "the harness of case 2, its Session open and no stream activated",
 			Issues:       "`emit` on the stream its Manifest declares",
 			Requires:     "a refusal `stream.inactive`",

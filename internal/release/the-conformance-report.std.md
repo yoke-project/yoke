@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | prj_structure/85 §The report a release carries · arch/90-sdks/03 §What a run produces |
+| **Cites** | specs/00.27 · prj_structure/85 §The report a release carries · arch/90-sdks/03 §What a run produces |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

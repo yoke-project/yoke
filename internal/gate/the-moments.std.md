@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.25 · arch/15-gate/06 §Phase 4 — host facts · arch/15-gate/06 §The identifying code, and what computing it costs |
+| **Cites** | specs/10.23 · specs/15.25 · arch/15-gate/06 §Phase 4 — host facts · arch/15-gate/06 §The identifying code, and what computing it costs |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

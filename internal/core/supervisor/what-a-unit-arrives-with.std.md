@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.7 · specs/50.8 · arch/50-plugin-surface/01 §The startup window, and its three uses · arch/30-core/05 §Where the numbers come from |
+| **Cites** | specs/10.39 · specs/10.40 · specs/50.7 · specs/50.8 · arch/50-plugin-surface/01 §The startup window, and its three uses · arch/30-core/05 §Where the numbers come from |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

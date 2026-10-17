@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/31.45 · specs/70.24 · specs/70.27 · specs/70.31 · arch/70-interface-surface/06 §What the declaration says, and what holding means · arch/70-interface-surface/06 §When it is computed · arch/70-interface-surface/03 §What ends an attachment |
+| **Cites** | specs/00.18 · specs/31.45 · specs/70.24 · specs/70.27 · specs/70.31 · arch/70-interface-surface/06 §What the declaration says, and what holding means · arch/70-interface-surface/06 §When it is computed · arch/70-interface-surface/03 §What ends an attachment |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

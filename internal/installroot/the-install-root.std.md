@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.40 · specs/15.41 · specs/15.42 · specs/15.74 · arch/10-manager/02 §What is checked, and what is not |
+| **Cites** | specs/10.34 · specs/15.40 · specs/15.41 · specs/15.42 · specs/15.74 · arch/10-manager/02 §What is checked, and what is not |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.48 · specs/15.50 · arch/10-manager/04 §Two installs at once |
+| **Cites** | specs/10.33 · specs/15.48 · specs/15.50 · arch/10-manager/04 §Two installs at once |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.21 · specs/13.23 · arch/10-manager/04 §The install record |
+| **Cites** | specs/10.36 · specs/13.23 · specs/15.21 · arch/10-manager/04 §The install record |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/10-manager/04 §The tree |
+| **Cites** | specs/10.33 · arch/10-manager/04 §The tree |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.46 · arch/10-manager/04 §What is read from the tree |
+| **Cites** | specs/10.36 · specs/15.46 · arch/10-manager/04 §What is read from the tree |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

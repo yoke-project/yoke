@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/20.41 · specs/31.28 · specs/31.29 · arch/30-core/06 §What the bus owes a subscriber |
+| **Cites** | specs/00.31 · specs/20.41 · specs/31.28 · specs/31.29 · arch/30-core/06 §What the bus owes a subscriber |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
