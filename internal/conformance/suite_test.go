@@ -449,3 +449,60 @@ func TestAPluginRunBindsAChannelForTheSuite(t *testing.T) {
 		t.Errorf("the channel's socket: %v; attaching: %v, then %v, the same attachment: %v", socket, attached, again, same)
 	}
 }
+
+// std: yoke:the-conformance-suite.12
+func TestAskedForAReportARunWritesItAsJSON(t *testing.T) {
+	absent := conformance.Case{ID: "yoke:toy.08", Title: "absent", Issues: "fly", Requires: "anything",
+		Run: func(r *conformance.Run) conformance.Outcome { return conformance.Absent("fly") }}
+	cfg, _ := config(t, unitHello, absent)
+	cfg.Report = filepath.Join(t.TempDir(), "report.json")
+	if code := conformance.Main(cfg); code == 0 {
+		t.Error("a run with a case absent exited zero")
+	}
+	var written struct {
+		Ran struct {
+			Core        string              `json:"core"`
+			CoreVersion string              `json:"core_version"`
+			Harnesses   []conformance.Hello `json:"harnesses"`
+		} `json:"ran"`
+		Cells []struct{ Case, Language, Result, Detail string } `json:"cells"`
+		Error string                                            `json:"error"`
+		OK    bool                                              `json:"ok"`
+	}
+	data, err := os.ReadFile(cfg.Report)
+	if err != nil {
+		t.Fatalf("no report was written: %v", err)
+	}
+	if err := json.Unmarshal(data, &written); err != nil {
+		t.Fatalf("the report is not JSON: %v\n%s", err, data)
+	}
+	if written.Ran.Core != cfg.Core || written.Ran.CoreVersion == "" || len(written.Ran.Harnesses) == 0 ||
+		written.Ran.Harnesses[0].SDK != "test-harness 0.0.1" || written.Ran.Harnesses[0].Language == "" {
+		t.Errorf("the report says what ran as %+v", written.Ran)
+	}
+	if len(written.Cells) != 2 || written.Cells[0].Case != "yoke:toy.01" || written.Cells[0].Result != "pass" ||
+		written.Cells[1].Result != "absent" || written.Cells[1].Detail == "" || written.Cells[1].Language == "" {
+		t.Errorf("the report's cells are %+v", written.Cells)
+	}
+	if written.OK || written.Error != "" {
+		t.Errorf("the report says ok=%v, error=%q", written.OK, written.Error)
+	}
+
+	silent, _ := config(t, unitHello)
+	silent.Harness = "/bin/true"
+	silent.Report = filepath.Join(t.TempDir(), "report.json")
+	if code := conformance.Main(silent); code == 0 {
+		t.Error("a run whose harness never said hello exited zero")
+	}
+	written.Cells, written.Error, written.OK = nil, "", true
+	data, err = os.ReadFile(silent.Report)
+	if err != nil {
+		t.Fatalf("no report was written for a harness that never answered: %v", err)
+	}
+	if err := json.Unmarshal(data, &written); err != nil {
+		t.Fatalf("the report is not JSON: %v\n%s", err, data)
+	}
+	if !strings.Contains(written.Error, "hello") || len(written.Cells) != 0 || written.OK {
+		t.Errorf("the report of a harness that never answered: error=%q cells=%v ok=%v", written.Error, written.Cells, written.OK)
+	}
+}
