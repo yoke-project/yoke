@@ -165,7 +165,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/25.45 · specs/25.60 · arch/30-core/03 §Cleanup belongs to the next start |
+| **Cites** | specs/25.45 · specs/25.60 · specs/30.1 · arch/30-core/03 §Cleanup belongs to the next start |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | — |

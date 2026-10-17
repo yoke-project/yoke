@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/31.3 · specs/31.4 · specs/31.9 · specs/31.11 · arch/45-events/01 §The eight fields |
+| **Cites** | specs/31.3 · specs/31.4 · specs/31.9 · specs/31.11 · specs/31.23 · arch/45-events/01 §The eight fields |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/31.4 · specs/31.5 · arch/45-events/01 §The subject is a kind and an identity |
+| **Cites** | specs/31.4 · specs/31.5 · specs/31.7 · arch/45-events/01 §The subject is a kind and an identity |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/31.8 · arch/45-events/01 §The clock is the Core's |
+| **Cites** | specs/31.1 · specs/31.8 · arch/45-events/01 §The clock is the Core's |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

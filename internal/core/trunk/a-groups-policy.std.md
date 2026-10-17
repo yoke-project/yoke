@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/32.9 · specs/32.10 · arch/40-state/04 §Resolving a group's policy · arch/60-administrative-surface/04 §The four names, applied |
+| **Cites** | specs/32.9 · specs/32.10 · specs/32.17 · arch/40-state/04 §Resolving a group's policy · arch/60-administrative-surface/04 §The four names, applied |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/32.14 · arch/40-state/04 §A host may tighten and may never loosen |
+| **Cites** | specs/32.14 · specs/32.15 · arch/40-state/04 §A host may tighten and may never loosen |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

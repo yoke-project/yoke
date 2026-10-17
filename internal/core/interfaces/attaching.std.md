@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.17 · arch/70-interface-surface/03 §Who the client is · arch/45-events/06 §`channel` |
+| **Cites** | specs/31.46 · specs/70.17 · arch/70-interface-surface/03 §Who the client is · arch/45-events/06 §`channel` |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/70-interface-surface/03 §What ends an attachment · arch/45-events/06 §`channel` |
+| **Cites** | specs/31.46 · arch/70-interface-surface/03 §What ends an attachment · arch/45-events/06 §`channel` |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.31 · specs/70.32 · specs/70.33 · arch/70-interface-surface/03 §A connection that looks open proves nothing · arch/45-events/04 §A subscription may be confirmed |
+| **Cites** | specs/31.32 · specs/31.33 · specs/31.35 · specs/70.31 · specs/70.32 · specs/70.33 · arch/70-interface-surface/03 §A connection that looks open proves nothing · arch/45-events/04 §A subscription may be confirmed |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/32.12 · specs/32.18 · arch/40-state/04 §The worst case, which is computed and not enforced |
+| **Cites** | specs/32.12 · specs/32.18 · specs/32.35 · arch/40-state/04 §The worst case, which is computed and not enforced |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

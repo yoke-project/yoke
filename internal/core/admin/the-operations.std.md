@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/60.28 · arch/60-administrative-surface/04 §The four names, applied · arch/60-administrative-surface/07 §This surface's codes |
+| **Cites** | specs/32.17 · specs/60.28 · arch/60-administrative-surface/04 §The four names, applied · arch/60-administrative-surface/07 §This surface's codes |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

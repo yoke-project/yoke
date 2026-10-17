@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/30.43 · arch/40-state/01 §The schema is stamped in the file |
+| **Cites** | specs/30.43 · specs/30.45 · arch/40-state/01 §The schema is stamped in the file |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -139,7 +139,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/30.4 · specs/32.27 · arch/40-state/02 §`decision` — the history beside the policy · arch/40-state/02 §`grant` — the capabilities in force |
+| **Cites** | specs/30.4 · specs/31.26 · specs/32.27 · arch/40-state/02 §`decision` — the history beside the policy · arch/40-state/02 §`grant` — the capabilities in force |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -165,7 +165,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/30.19 · specs/30.20 · specs/30.21 · arch/40-state/02 §Nothing is removed |
+| **Cites** | specs/30.19 · specs/30.20 · specs/30.21 · specs/32.25 · specs/32.30 · arch/40-state/02 §Nothing is removed |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

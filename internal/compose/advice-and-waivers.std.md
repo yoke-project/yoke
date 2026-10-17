@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/20-composer/04 §The set as it stands · arch/20-composer/04 §The two classes must not swap places |
+| **Cites** | specs/32.35 · arch/20-composer/04 §The set as it stands · arch/20-composer/04 §The two classes must not swap places |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

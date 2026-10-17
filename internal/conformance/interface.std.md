@@ -49,7 +49,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.26 · specs/70.27 · specs/70.29 · arch/70-interface-surface/06 §What the declaration says, and what holding means |
+| **Cites** | specs/31.45 · specs/70.26 · specs/70.27 · specs/70.29 · arch/70-interface-surface/06 §What the declaration says, and what holding means |
 | **Level** | L2 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -62,7 +62,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.35 · specs/70.36 · specs/70.37 · arch/70-interface-surface/06 §How a suspension ends, in two halves |
+| **Cites** | specs/31.47 · specs/70.35 · specs/70.36 · specs/70.37 · arch/70-interface-surface/06 §How a suspension ends, in two halves |
 | **Level** | L2 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -75,7 +75,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.32 · specs/70.33 · arch/70-interface-surface/03 §A connection that looks open proves nothing |
+| **Cites** | specs/31.35 · specs/70.32 · specs/70.33 · arch/70-interface-surface/03 §A connection that looks open proves nothing |
 | **Level** | L2 |
 | **Method** | test |
 | **Not applicable in** | — |

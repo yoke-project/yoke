@@ -34,36 +34,7 @@ func TestThroughTheCoreOutputAndLifeAreRecorded(t *testing.T) {
 
 	// Each start runs until the unit completed, and is then stopped.
 	for life := 1; life <= 2; life++ {
-		command := exec.Command(binary)
-		command.Env = append(os.Environ(), "YOKE_CONFIG="+core, "YOKE_COMPOSITION="+composition)
-		out, _ := command.StderrPipe()
-		if err := command.Start(); err != nil {
-			t.Fatal(err)
-		}
-		scanner := bufio.NewScanner(out)
-		completed := make(chan bool)
-		go func() {
-			done := false
-			for scanner.Scan() {
-				if !done && strings.Contains(scanner.Text(), "type=unit.state.changed") && strings.Contains(scanner.Text(), fmt.Sprintf("subject=unit:hello#%d", life)) &&
-					strings.Contains(scanner.Text(), "to=Completed") {
-					done = true
-					completed <- true
-				}
-			}
-			close(completed)
-		}()
-		select {
-		case ok := <-completed:
-			if !ok {
-				t.Fatalf("the Core exited before the unit's life %d completed", life)
-			}
-		case <-time.After(20 * time.Second):
-			command.Process.Kill()
-			t.Fatalf("life %d did not complete within twenty seconds", life)
-		}
-		command.Process.Signal(syscall.SIGTERM)
-		command.Wait()
+		untilCompleted(t, binary, core, composition, life)
 	}
 
 	db, err := sql.Open("sqlite", "file:"+filepath.Join(dir, "state", logstore.File)+"?mode=ro")
@@ -86,5 +57,81 @@ func TestThroughTheCoreOutputAndLifeAreRecorded(t *testing.T) {
 	}
 	if !has("SELECT count(*) FROM entry WHERE unit = 'hello' AND incarnation = 1 AND source = 'core' AND type = 'unit.state.changed'") {
 		t.Error("the first life's state changes were not recorded")
+	}
+}
+
+// untilCompleted starts the Core on the composition, waits until the unit's life completed, and stops it.
+func untilCompleted(t *testing.T, binary, core, composition string, life int) {
+	t.Helper()
+	command := exec.Command(binary)
+	command.Env = append(os.Environ(), "YOKE_CONFIG="+core, "YOKE_COMPOSITION="+composition)
+	out, _ := command.StderrPipe()
+	if err := command.Start(); err != nil {
+		t.Fatal(err)
+	}
+	scanner := bufio.NewScanner(out)
+	completed := make(chan bool)
+	go func() {
+		done := false
+		for scanner.Scan() {
+			if !done && strings.Contains(scanner.Text(), "type=unit.state.changed") && strings.Contains(scanner.Text(), fmt.Sprintf("subject=unit:hello#%d", life)) &&
+				strings.Contains(scanner.Text(), "to=Completed") {
+				done = true
+				completed <- true
+			}
+		}
+		close(completed)
+	}()
+	select {
+	case ok := <-completed:
+		if !ok {
+			t.Fatalf("the Core exited before the unit's life %d completed", life)
+		}
+	case <-time.After(20 * time.Second):
+		command.Process.Kill()
+		t.Fatalf("life %d did not complete within twenty seconds", life)
+	}
+	command.Process.Signal(syscall.SIGTERM)
+	command.Wait()
+}
+
+// std: yoke:the-log-store.10
+func TestDeletingTheLogStoreLosesHistoryAndChangesNoBehaviour(t *testing.T) {
+	binary := filepath.Join(t.TempDir(), "yoke-core")
+	if said, err := exec.Command("go", "build", "-o", binary, "github.com/yoke-project/yoke/cmd/yoke-core").CombinedOutput(); err != nil {
+		t.Fatalf("yoke-core does not build: %v\n%s", err, said)
+	}
+	dir := t.TempDir()
+	run, _ := os.MkdirTemp("", "yk")
+	t.Cleanup(func() { os.RemoveAll(run) })
+	for _, d := range []string{"plugins.d", "plugins"} {
+		os.MkdirAll(filepath.Join(dir, d), 0o755)
+	}
+	composition := filepath.Join(dir, "bench.yaml")
+	os.WriteFile(composition, []byte("units:\n  hello: { kind: oneshot, exec: /bin/sh, args: [ -c, 'echo once' ] }\n"), 0o644)
+	core := filepath.Join(dir, "core.yaml")
+	os.WriteFile(core, []byte(fmt.Sprintf("state_dir: %s/state\nruntime_dir: %s\nplugins:\n  manifests: %s/plugins.d\n  executables: %s/plugins\n", dir, run, dir, dir)), 0o644)
+
+	untilCompleted(t, binary, core, composition, 1)
+	registry, err := os.ReadFile(filepath.Join(dir, "state", "registry.db"))
+	if err != nil {
+		t.Fatalf("the first start left no Registry: %v", err)
+	}
+	for _, suffix := range []string{"", "-wal", "-shm"} {
+		os.Remove(filepath.Join(dir, "state", logstore.File+suffix))
+	}
+	// The history went with the file, so the unit's lives are counted afresh; what runs is the same.
+	untilCompleted(t, binary, core, composition, 1)
+	if after, _ := os.ReadFile(filepath.Join(dir, "state", "registry.db")); len(after) == 0 || len(registry) == 0 {
+		t.Error("the Registry did not survive the log store's deletion")
+	}
+	db, err := sql.Open("sqlite", "file:"+filepath.Join(dir, "state", logstore.File)+"?mode=ro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var n int
+	if err := db.QueryRow("SELECT count(*) FROM entry WHERE unit = 'hello' AND source = 'stdout' AND message = 'once'").Scan(&n); err != nil || n != 1 {
+		t.Errorf("the new log store holds %d lines of the unit (%v), want the one the second start wrote", n, err)
 	}
 }
