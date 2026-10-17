@@ -68,3 +68,30 @@ func TestTheCommandLine(t *testing.T) {
 		t.Errorf("a build that cannot write: %d %s", code, out)
 	}
 }
+
+// std: yoke:the-composer.11
+func TestHelpAfterAVerbIsItsSynopsis(t *testing.T) {
+	for _, c := range []struct {
+		verb        string
+		says, never []string
+	}{
+		{"set", []string{"set <path> <value>"}, []string{"--kind", "--transport", "flag provided"}},
+		{"add", []string{"add unit <name>", "add channel <name>", "add parameter <group>.<name>"}, nil},
+		{"block", []string{"block add <source>", "block save <unit> <destination>"}, []string{"waive"}},
+	} {
+		code, out := run(c.verb, "--help")
+		if code != Done {
+			t.Errorf("%s --help exited %d:\n%s", c.verb, code, out)
+		}
+		for _, s := range c.says {
+			if !strings.Contains(out, s) {
+				t.Errorf("%s --help does not say %q:\n%s", c.verb, s, out)
+			}
+		}
+		for _, s := range c.never {
+			if strings.Contains(out, s) {
+				t.Errorf("%s --help says %q:\n%s", c.verb, s, out)
+			}
+		}
+	}
+}

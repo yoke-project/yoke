@@ -140,6 +140,10 @@ func TestTheOperationIsThePathAnsweredOnceInJSON(t *testing.T) {
 	if status, _, ref := b.post(t, "read", &interfacev1.Request{Version: 1, Operation: &interfacev1.Request_Subscribe{Subscribe: &interfacev1.Subscribe{}}}); status != http.StatusBadRequest || ref.GetCode() != "operation.malformed" {
 		t.Errorf("a request naming another operation was answered %d %v", status, ref)
 	}
+	if status, _, ref := b.post(t, "command", &interfacev1.Request{}); status != http.StatusBadRequest || ref.GetCode() != "operation.malformed" ||
+		!strings.Contains(ref.GetMessage(), "names no operation") {
+		t.Errorf("an empty request was answered %d %v", status, ref)
+	}
 	if status, _, ref := b.post(t, "command", command("acquire", "dance", nil)); status != http.StatusForbidden || ref.GetCode() != "scope.undeclared" {
 		t.Errorf("a command of an undeclared type was answered %d %v", status, ref)
 	}

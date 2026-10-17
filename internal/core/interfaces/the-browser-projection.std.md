@@ -28,8 +28,8 @@
 | **Not applicable in** | — |
 | **Label** | blocking |
 | **Precondition** | an attachment open on `/v1/events`, its cookie held |
-| **Action** | `POST /v1/read` with a read of the units; `POST /v1/read` with a read of a unit nobody declared; `POST /v1/read` carrying a subscription; `POST /v1/command` on a unit whose type was never declared |
-| **Expected** | the first is answered `200` with the response in JSON; the second `404` with the refusal `subject.unknown` in the body; the third `400` with `operation.malformed`, the path and the request naming different operations; the fourth `403` with `scope.undeclared` |
+| **Action** | `POST /v1/read` with a read of the units; `POST /v1/read` with a read of a unit nobody declared; `POST /v1/read` carrying a subscription; `POST /v1/command` with an empty request; `POST /v1/command` on a unit whose type was never declared |
+| **Expected** | the first is answered `200` with the response in JSON; the second `404` with the refusal `subject.unknown` in the body; the third `400` with `operation.malformed`, the path and the request naming different operations; the fourth `400` with `operation.malformed`, saying the request names no operation; the fifth `403` with `scope.undeclared` |
 
 ## yoke:the-browser-projection.03 — a control request with no live attachment is refused channel.not_attached
 

@@ -185,8 +185,8 @@
 | **Not applicable in** | — |
 | **Label** | blocking |
 | **Precondition** | `yoke-core` and `yoke-guardian` built from this tree, the guardian on the `PATH`; `com.yoke.station` `2.1.0` installed with a unit needing a secret, and an instance `bench-a` of it with no secret set; no guardian running |
-| **Action** | run `yoke instance start bench-a`; then `yoke instance restart bench-a` |
-| **Expected** | each exits 1, naming `secret.missing` and the unit's need, and saying nothing ran; the record says `running`, since that is what was asked; no guardian is running |
+| **Action** | run `yoke instance start bench-a`; then `yoke instance restart bench-a`; then `yoke instance list` |
+| **Expected** | each exits 1, naming `secret.missing` and the unit's need, and saying nothing ran; the record says `running`, since that is what was asked; no guardian is running; the list says `stopped, desired running` and why — `secret.missing` |
 
 ## yoke:the-manager-command-line.15 — a guardian the manager starts carries the session's display and audio, and nothing else of its environment
 
@@ -213,3 +213,16 @@
 | **Precondition** | none |
 | **Action** | `yoke log query --help`, `yoke plugin grant --help`, `yoke shell --help` |
 | **Expected** | each exits 0 and prints the usage of that verb — `yoke log query`, `yoke plugin grant <plugin> <capability>`, `yoke shell [--instance <name>]` — and none says `flag: help requested` |
+
+## yoke:the-manager-command-line.17 — a verb given the wrong number of subjects names the ones it takes
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/15.8 · arch/10-manager/01 §The verbs · arch/10-manager/01 §What it reports |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | none |
+| **Action** | `yoke plugin grant` with no subject; `yoke unit restart` with two |
+| **Expected** | each exits 1, naming the verb and the subjects it takes — `yoke plugin grant <plugin> <capability>`, `yoke unit restart <unit>` |

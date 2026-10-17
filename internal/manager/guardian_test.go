@@ -166,6 +166,10 @@ func TestAStartTheGateRefusesIsSaidAndStartsNoGuardian(t *testing.T) {
 	if pid := holder(vars, "guardian.lock"); pid != 0 {
 		t.Errorf("a guardian was started for a start the gate refuses: %d", pid)
 	}
+	// With no guardian to ask, the list still says why the instance is not what was asked.
+	if out := expectDone(t, vars, "instance", "list"); !strings.Contains(out, "desired running") || !strings.Contains(out, "secret.missing") {
+		t.Errorf("the list after a refused start:\n%s", out)
+	}
 }
 
 // std: yoke:the-manager-command-line.09

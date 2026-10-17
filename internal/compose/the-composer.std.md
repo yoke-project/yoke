@@ -134,3 +134,16 @@
 | **Precondition** | a project whose unit names an image pinned by digest, carrying its archive at `components/images/<algorithm>-<hex>.tar`; then the same project carrying a second archive no image pins |
 | **Action** | `build` each |
 | **Expected** | the first package's payload holds the archive under `components/images/` and nothing was fetched; the second is refused, naming the archive no image pins |
+
+## yoke:the-composer.11 — `--help` after a verb is that verb's synopsis, and names no other verb's options
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/20-composer/01 §The verbs · arch/20-composer/01 §What it reports |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | none |
+| **Action** | `yoke-compose set --help`, `yoke-compose add --help`, `yoke-compose block --help` |
+| **Expected** | each exits 0; `set` prints `set <path> <value>` and none of `add`'s options, such as `--kind` or `--transport`; `add` prints its three forms, `add unit`, `add channel` and `add parameter`; `block` prints `block add` and `block save` |

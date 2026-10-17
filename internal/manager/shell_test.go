@@ -198,3 +198,19 @@ func TestThroughTheCoreAnswersEventsAndAFollowShareOneConnection(t *testing.T) {
 		}
 	}
 }
+
+// std: yoke:the-shell.04
+func TestAnEventPrintedCarriesWhatItSays(t *testing.T) {
+	event := func(detail string) *administrativev1.Subscribed {
+		return &administrativev1.Subscribed{Carries: &administrativev1.Subscribed_Event{Event: &administrativev1.Event{
+			Seq: 16, Type: "unit.state.changed", Detail: []byte(detail),
+			Subject: &administrativev1.Subject{Kind: "unit", Identity: "provision", Incarnation: 5},
+			Actor:   &administrativev1.Actor{Class: "core"}}}}
+	}
+	if got := delivered(event(`{"from":"Starting","to":"Running"}`)); !strings.Contains(got, "Starting") || !strings.Contains(got, "Running") {
+		t.Errorf("a change of state printed as %q", got)
+	}
+	if got := delivered(event("\x01\x02")); got != "* 16 unit.state.changed unit:provision/5 by core" {
+		t.Errorf("an event whose detail is not a document printed as %q", got)
+	}
+}

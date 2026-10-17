@@ -43,3 +43,16 @@
 | **Precondition** | a Core running a composition of one Plugin unit `bench`, reached through the `core.yaml` it was started with |
 | **Action** | open `yoke shell` and type `unit list`; `unit restart bench`; `log follow --unit bench`, then interrupt it; `unit show bench`; `exit` |
 | **Expected** | `unit list` prints the unit's record as `yoke unit list` does; the restart prints what it changed, and the events it caused are printed as lines beginning `* `, none inside an answer; the interrupt ends the follow and not the shell, and `unit show bench` is answered after it on the same connection; the shell exits `0` |
+
+## yoke:the-shell.04 — an event printed between answers carries what it says, not only its type
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/10-manager/01 §`yoke shell` — the terminal · arch/45-events/06 §The set |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | none |
+| **Action** | print a `unit.state.changed` from `Starting` to `Running`, and one whose detail is not a document |
+| **Expected** | the first line names both states; the second is the event's sequence, type, subject and actor, with nothing undecodable after them |

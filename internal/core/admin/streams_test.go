@@ -9,6 +9,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -40,6 +41,25 @@ func (f *fakeSessions) Instruct(_ context.Context, id string, c *pluginv1.Contro
 	}
 	f.instructed = append(f.instructed, instruction{unit: id, control: c, present: present})
 	return &pluginv1.Ack{Outcome: pluginv1.Ack_OUTCOME_DONE}, nil
+}
+
+// Granted is the scope each unit was admitted with: every stream of the station but station.preview.
+func (f *fakeSessions) Granted(string) (streams, commands, queries []string) {
+	return []string{"station.spectra"}, nil, nil
+}
+
+// opening is a transport service that remembers every transport it was asked to create.
+type opening struct {
+	*streams.Service
+	mu     sync.Mutex
+	opened []string
+}
+
+func (o *opening) Open(unitID string, incarnation uint64, stream string, t streams.Tolerances, shared bool) (streams.Transport, string, error) {
+	o.mu.Lock()
+	o.opened = append(o.opened, unitID+" "+stream)
+	o.mu.Unlock()
+	return o.Service.Open(unitID, incarnation, stream, t, shared)
 }
 
 func (f *fakeSessions) instructions() []instruction {
@@ -87,6 +107,8 @@ func streamsOf(t *testing.T, b *bench, unitID string) []string {
 // std: yoke:a-streams-transport.06
 func TestUnitStreamStartCreatesTheTransportThenActivates(t *testing.T) {
 	b, svc := streamBench(t)
+	created := &opening{Service: svc}
+	b.core.Streams = created
 	for _, c := range []struct {
 		unit, stream, code, names string
 	}{
@@ -105,6 +127,10 @@ func TestUnitStreamStartCreatesTheTransportThenActivates(t *testing.T) {
 		if active := svc.Active(c.unit); len(active) != 0 {
 			t.Errorf("starting %s of %s left %v open", c.stream, c.unit, active)
 		}
+	}
+	// A refusal is decided before anything is created: a withheld stream never has a transport at all.
+	if len(created.opened) != 0 {
+		t.Errorf("the refused starts created transports for %v", created.opened)
 	}
 
 	resp, ref := b.call(t, streamRequest(true, "acquire", "station.spectra"))

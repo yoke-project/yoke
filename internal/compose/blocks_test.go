@@ -179,6 +179,10 @@ func TestSavingAUnitWritesABlockThatPlacesTheSameDeclarations(t *testing.T) {
 	if code, out := run("block", "save", "acquire-2", saved, "--dir", dir); code != Refused || !strings.Contains(out, saved) {
 		t.Errorf("saving over a file: %d %s", code, out)
 	}
+	nowhere := filepath.Join(t.TempDir(), "absent")
+	if code, out := run("block", "save", "acquire-2", filepath.Join(nowhere, "saved.yaml"), "--dir", dir); code != Refused || !strings.Contains(out, nowhere) {
+		t.Errorf("saving into a directory that is not there: %d %s", code, out)
+	}
 	must(t, "block", "add", saved, "--as", "acquire-4", "--dir", dir)
 	same := func(path string) {
 		t.Helper()

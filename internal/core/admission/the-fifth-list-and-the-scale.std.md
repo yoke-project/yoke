@@ -29,7 +29,7 @@
 | **Label** | blocking |
 | **Precondition** | the same plugin, with only the capability governing `calibration.drift` authorised |
 | **Action** | a unit registers claiming both occurrences |
-| **Expected** | it is accepted with restrictions; the granted scope names `calibration.drift` among its occurrences, and the withheld items name `head.fault` and the capability governing it |
+| **Expected** | it is accepted with restrictions; the granted scope names `calibration.drift` among its occurrences, and the withheld items name `head.fault` and the capability governing it; and the admission's line counts every withheld item, the occurrence among them |
 
 ## yoke:the-fifth-list-and-the-scale.03 — an occurrence a unit reports is published on the unit's life, at the grade declared
 

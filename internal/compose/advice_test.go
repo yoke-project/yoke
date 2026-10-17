@@ -194,7 +194,7 @@ func TestAWaiverSilencesOnePlaceAndAStaleOneIsListed(t *testing.T) {
 		t.Errorf("advisories.yaml holds:\n%s", before)
 	}
 	_, out := run("check", "--dir", dir)
-	if strings.Contains(out, ParameterLabelOverclaim) || strings.Count(out, "\nadvice") != 4 || !strings.Contains(out, "waived: 1") {
+	if strings.Contains(out, ParameterLabelOverclaim) || strings.Count(out, "\nadvice") != 4 || !strings.Contains(out, "waived: 1 advisory item,") {
 		t.Errorf("check with one waiver:\n%s", out)
 	}
 	if _, out := run("waivers", "--dir", dir); !strings.Contains(out, "isolated segment") || strings.Contains(out, "stale") {

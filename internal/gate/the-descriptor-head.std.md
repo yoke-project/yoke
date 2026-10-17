@@ -56,3 +56,16 @@
 | **Precondition** | a descriptor whose plugin unit names `com.yoke.station.acquire`, and a `manifests/` directory holding `com.yoke.station.acquire.yaml`; then the same directory without it |
 | **Action** | check the descriptor against the directory, composing |
 | **Expected** | the first reads that Manifest and refuses nothing; the second is refused `plugin.manifest.missing`, naming `manifests/com.yoke.station.acquire.yaml` |
+
+## yoke:the-descriptor-head.05 — a stamp outside the data range is refused naming the range as it is read
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/15-gate/04 §Identity · arch/15-gate/06 §Phase 3 — cross-document · arch/40-state/05 §What is compared against it |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | `1.0.0` declaring `data: ">=1.0"`, and state stamped `1.1.0`; `2.0.0` declaring `data: ">=1.0 <2.1"`, and state stamped `2.1.0` |
+| **Action** | ask whether each may read its state |
+| **Expected** | both are refused naming the stamp; the first names its range as it is read — `>=1.0` up to `1.0.0`, the declaring version being the unwritten upper end — and the second its range as written |
