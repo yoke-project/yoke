@@ -126,7 +126,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/30.8 · arch/40-state/02 §`plugin` — what the artifact says it is |
+| **Cites** | specs/25.68 · specs/30.8 · arch/40-state/02 §`plugin` — what the artifact says it is |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -165,7 +165,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/30.19 · specs/30.20 · specs/30.21 · arch/40-state/02 §Nothing is removed |
+| **Cites** | specs/25.68 · specs/30.19 · specs/30.20 · specs/30.21 · arch/40-state/02 §Nothing is removed |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/28.55 · specs/45.1 · specs/45.6 · arch/35-units/05 §What containerisation is allowed to change · arch/35-units/05 §Driving the engine |
+| **Cites** | specs/20.34 · specs/28.55 · specs/45.1 · specs/45.6 · specs/45.14 · arch/35-units/05 §What containerisation is allowed to change · arch/35-units/05 §Driving the engine |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/45.25 · arch/35-units/05 §Driving the engine · arch/30-core/05 §Facts arrive; it does not go looking |
+| **Cites** | specs/20.34 · specs/45.20 · specs/45.25 · arch/35-units/05 §Driving the engine · arch/30-core/05 §Facts arrive; it does not go looking |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/45.40 · arch/35-units/05 §Driving the engine · arch/35-units/03 §The terminal states say who ended it · arch/35-units/03 §The restart policy reads the state and is not part of it |
+| **Cites** | specs/45.40 · specs/45.41 · arch/35-units/05 §Driving the engine · arch/35-units/03 §The terminal states say who ended it · arch/35-units/03 §The restart policy reads the state and is not part of it |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/35-units/05 §Driving the engine · arch/35-units/03 §The restart policy reads the state and is not part of it |
+| **Cites** | specs/20.34 · arch/35-units/05 §Driving the engine · arch/35-units/03 §The restart policy reads the state and is not part of it |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

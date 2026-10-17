@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/28.24 · specs/50.7 · specs/50.12 · specs/50.13 · arch/50-plugin-surface/03 §The four inputs · arch/50-plugin-surface/01 §The startup window, and its three uses |
+| **Cites** | specs/20.17 · specs/28.24 · specs/50.7 · specs/50.12 · specs/50.13 · arch/50-plugin-surface/03 §The four inputs · arch/50-plugin-surface/01 §The startup window, and its three uses |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

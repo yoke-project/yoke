@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/25.36 · arch/15-gate/06 §The two ceilings · arch/30-core/04 §The two ceilings |
+| **Cites** | specs/25.36 · specs/25.37 · specs/25.38 · arch/15-gate/06 §The two ceilings · arch/30-core/04 §The two ceilings |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -126,7 +126,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.96 · arch/15-gate/06 §The two ceilings · arch/50-plugin-surface/07 §The shared ring |
+| **Cites** | specs/25.35 · specs/50.96 · arch/15-gate/06 §The two ceilings · arch/50-plugin-surface/07 §The shared ring |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

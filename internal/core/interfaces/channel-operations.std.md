@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/70-interface-surface/04 §What is opaque, and what that costs the Core |
+| **Cites** | specs/20.2 · arch/70-interface-surface/04 §What is opaque, and what that costs the Core |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

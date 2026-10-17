@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/45.39 · arch/15-gate/06 §Phase 4 — host facts |
+| **Cites** | specs/45.29 · specs/45.39 · arch/15-gate/06 §Phase 4 — host facts |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.67 · specs/17.18 · arch/10-manager/07 §Creating an instance, and naming it |
+| **Cites** | specs/15.67 · specs/17.18 · specs/25.4 · specs/25.7 · arch/10-manager/07 §Creating an instance, and naming it |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -87,7 +87,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.63 · specs/15.64 · specs/15.65 · arch/10-manager/07 §Copying an instance's state |
+| **Cites** | specs/15.63 · specs/15.64 · specs/15.65 · specs/25.5 · specs/25.66 · arch/10-manager/07 §Copying an instance's state |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

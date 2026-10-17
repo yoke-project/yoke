@@ -87,7 +87,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/25.9 · specs/25.39 · arch/30-core/02 §The name |
+| **Cites** | specs/25.9 · specs/25.38 · specs/25.39 · arch/30-core/02 §The name |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/25.3 · specs/25.8 · specs/20.4 · arch/30-core/01 §The application form has no equivalent, and needs none |
+| **Cites** | specs/20.1 · specs/20.4 · specs/25.3 · specs/25.5 · specs/25.8 · specs/25.23 · specs/25.24 · arch/30-core/01 §The application form has no equivalent, and needs none |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -113,7 +113,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/25.11 · specs/25.12 · arch/30-core/02 §The claim |
+| **Cites** | specs/25.4 · specs/25.11 · specs/25.12 · arch/30-core/02 §The claim |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

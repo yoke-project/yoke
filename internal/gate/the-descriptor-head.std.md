@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/15-gate/04 §Identity · arch/15-gate/06 §Phase 3 — cross-document · arch/40-state/05 §What is compared against it |
+| **Cites** | specs/25.67 · arch/15-gate/04 §Identity · arch/15-gate/06 §Phase 3 — cross-document · arch/40-state/05 §What is compared against it |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

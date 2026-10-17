@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/45.40 · arch/35-units/05 §Driving the engine |
+| **Cites** | specs/45.28 · specs/45.40 · specs/45.41 · arch/35-units/05 §Driving the engine |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

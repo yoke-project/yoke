@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/28.25 · specs/28.27 · specs/40.22 · specs/50.3 · specs/50.4 · specs/50.5 · arch/50-plugin-surface/01 §What the launch supplies · arch/50-plugin-surface/01 §What it is not given |
+| **Cites** | specs/28.25 · specs/28.27 · specs/28.56 · specs/40.22 · specs/50.3 · specs/50.4 · specs/50.5 · arch/50-plugin-surface/01 §What the launch supplies · arch/50-plugin-surface/01 §What it is not given |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.7 · specs/50.8 · arch/50-plugin-surface/01 §The startup window, and its three uses · arch/30-core/05 §Where the numbers come from |
+| **Cites** | specs/20.32 · specs/50.7 · specs/50.8 · arch/50-plugin-surface/01 §The startup window, and its three uses · arch/30-core/05 §Where the numbers come from |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/28.26 · arch/35-units/04 §What the Core hands the process |
+| **Cites** | specs/25.28 · specs/28.26 · arch/35-units/04 §What the Core hands the process |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

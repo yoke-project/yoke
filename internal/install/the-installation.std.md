@@ -113,7 +113,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.51 · specs/45.40 · arch/10-manager/05 §Obtaining images |
+| **Cites** | specs/15.51 · specs/45.28 · specs/45.40 · arch/10-manager/05 §Obtaining images |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

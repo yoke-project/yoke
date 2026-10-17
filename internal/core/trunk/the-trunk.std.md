@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/20.10 · specs/25.14 · arch/30-core/03 §The eleven steps |
+| **Cites** | specs/20.10 · specs/25.1 · specs/25.14 · specs/25.16 · arch/30-core/03 §The eleven steps |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/25.20 · specs/25.36 · arch/30-core/04 §The two ceilings |
+| **Cites** | specs/25.20 · specs/25.36 · specs/25.50 · specs/45.19 · arch/30-core/04 §The two ceilings |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/25.45 · specs/25.46 · arch/30-core/03 §Cleanup belongs to the next start |
+| **Cites** | specs/25.6 · specs/25.45 · specs/25.46 · specs/25.48 · arch/30-core/03 §Cleanup belongs to the next start |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/25.41 · specs/25.43 · arch/30-core/04 §Permissions are an outcome of the form |
+| **Cites** | specs/25.41 · specs/25.42 · specs/25.43 · arch/30-core/04 §Permissions are an outcome of the form |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -113,7 +113,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/25.41 · specs/25.36 · arch/30-core/04 §The two ceilings · arch/30-core/04 §Permissions are an outcome of the form |
+| **Cites** | specs/25.25 · specs/25.36 · specs/25.41 · specs/25.42 · arch/30-core/04 §The two ceilings · arch/30-core/04 §Permissions are an outcome of the form |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -165,7 +165,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/25.45 · specs/25.60 · arch/30-core/03 §Cleanup belongs to the next start |
+| **Cites** | specs/25.6 · specs/25.45 · specs/25.60 · arch/30-core/03 §Cleanup belongs to the next start |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | — |

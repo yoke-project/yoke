@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/17.58 · specs/17.60 · specs/17.61 · specs/17.62 · arch/25-guardian/06 §When it stops arriving · arch/25-guardian/06 §Coming back |
+| **Cites** | specs/17.58 · specs/17.60 · specs/17.61 · specs/17.62 · specs/25.56 · arch/25-guardian/06 §When it stops arriving · arch/25-guardian/06 §Coming back |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

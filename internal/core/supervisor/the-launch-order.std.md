@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/28.18 · specs/28.19 · specs/28.45 · arch/35-units/02 §Ready is three different things |
+| **Cites** | specs/25.40 · specs/28.18 · specs/28.19 · specs/28.45 · arch/35-units/02 §Ready is three different things |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
