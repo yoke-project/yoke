@@ -601,6 +601,7 @@ func TestAStartIsCheckedAgainstTheDigestsAndNeverTheTrustStore(t *testing.T) {
 		t.Errorf("the start of an unsigned installed version was refused under a policy requiring signatures: %v", gated.Findings)
 	}
 }
+
 // std: yoke:the-guardian.12
 func TestStoredValuesAreCheckedAgainAtEveryStart(t *testing.T) {
 	h := newHost(t, "")

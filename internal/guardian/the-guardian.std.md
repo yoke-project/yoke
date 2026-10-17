@@ -140,6 +140,14 @@
 | Field | Value |
 | --- | --- |
 | **Cites** | specs/00.26 · specs/15.19 · specs/80.27 · arch/10-manager/03 §The order · arch/15-gate/06 §The moments |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an installed version whose record names no verifying key — installed unsigned — and an instance of it; the host's policy tightened by `YOKE_REQUIRE_SIGNATURE` to refuse every unsigned package |
+| **Action** | run the gate the instance's start runs |
+| **Expected** | it refuses nothing: what the start checks is that the bundle is what was installed, which the descriptor's digests say, and the policy that would refuse the package at installing is not consulted |
+
 ## yoke:the-guardian.12 — values stored in a record are checked again at every start, and a hand-edited one is refused
 
 | Field | Value |
@@ -149,9 +157,6 @@
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
-| **Precondition** | an installed version whose record names no verifying key — installed unsigned — and an instance of it; the host's policy tightened by `YOKE_REQUIRE_SIGNATURE` to refuse every unsigned package |
-| **Action** | run the gate the instance's start runs |
-| **Expected** | it refuses nothing: what the start checks is that the bundle is what was installed, which the descriptor's digests say, and the policy that would refuse the package at installing is not consulted |
 | **Precondition** | an instance whose record was edited by hand after it was created: one holding a value for a parameter the descriptor does not declare, one missing the value a required parameter needs |
 | **Action** | run the gate each start runs |
 | **Expected** | both are refused, each naming the parameter, and neither is honoured — what a record stores was valid when it was written and is checked again before it is used |

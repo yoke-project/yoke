@@ -15,8 +15,6 @@ func Cases() []Case {
 	return []Case{
 		{Contract: "plugin", ID: "yoke:plugin.01", Title: "the Manifest a library generates is one the Core reads",
 			Cites:        []string{"specs/42.1", "specs/90.36", "specs/90.37", "specs/90.38", "arch/90-sdks/06 §The declaration a plugin library produces"},
-			Cites: []string{"specs/90.36", "specs/90.38", "specs/42.1", "arch/90-sdks/06 §The declaration a plugin library produces"},
-			Cites:        []string{"specs/90.36", "specs/90.38", "specs/42.1", "arch/90-sdks/06 §The declaration a plugin library produces"},
 			Precondition: "the harness, launched by the suite with no deployment around it",
 			Issues:       "`describe`, then the Manifest written into the Plugin directory of a Core that is started",
 			Requires:     "a Manifest; the Core reads it, becomes ready and launches the harness as a unit, which says hello with its unit",
@@ -35,8 +33,6 @@ func Cases() []Case {
 			Run:          spentTokenRefused},
 		{Contract: "plugin", ID: "yoke:plugin.04", Title: "nothing is emitted on a stream the Core has not activated",
 			Cites:        []string{"specs/00.14", "specs/90.33", "arch/90-sdks/06 §It may not create a stream's transport"},
-			Cites: []string{"specs/90.33", "arch/90-sdks/06 §It may not create a stream's transport"},
-			Cites:        []string{"specs/90.33", "arch/90-sdks/06 §It may not create a stream's transport"},
 			Precondition: "the harness of case 2, its Session open and no stream activated",
 			Issues:       "`emit` on the stream its Manifest declares",
 			Requires:     "a refusal `stream.inactive`",
