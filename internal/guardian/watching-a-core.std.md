@@ -43,3 +43,16 @@
 | **Precondition** | `yoke-core` built from this tree and named by the configuration; an instance whose descriptor declares a heartbeat of `1s`, tolerance `2`, a stop window of `2s` and a backoff of `1s`, desired `running` |
 | **Action** | start the guardian; once the instance is observable, stay three intervals and check it still is; then stop the Core's process with `SIGSTOP` |
 | **Expected** | while the Core runs it stays observable; once stopped, the guardian says the instance is silent, terminates the process, and executes a new Core, under another process, which becomes observable |
+
+## yoke:watching-a-core.04 — the silence measured for one execution is never measured against the next
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/17.59 · arch/25-guardian/06 §The signal |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the heartbeat of `.01`; a second instance keeping the guardian up; a Core that says it is alive at once and then a little more often than the tolerance |
+| **Action** | start the guardian; once the instance is observable, stop it in order and start it again at once; wait longer than the tolerance |
+| **Expected** | the second Core becomes observable and the guardian never calls the instance silent: a silence its first Core's beats measured ends with that Core |

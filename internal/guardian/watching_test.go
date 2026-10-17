@@ -1,6 +1,7 @@
 package guardian_test
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -52,5 +53,33 @@ func TestAnAnnouncedStopIsAnExpectedSilence(t *testing.T) {
 		if strings.Contains(h.said(), never) {
 			t.Errorf("the guardian said %q of an announced stop:\n%s", never, h.said())
 		}
+	}
+}
+
+// std: yoke:watching-a-core.04
+func TestASilenceEndsWithTheExecutionItWasMeasuredFor(t *testing.T) {
+	h := newHost(t, heartbeat)
+	h.declare("bench-a", instancerecord.Running, "sparse", nil)
+	h.declare("bench-b", instancerecord.Running, "sparse", nil)
+	h.start(false)
+	c := h.client()
+	h.until(c, "bench-a", "bench-a observable", in("observable"))
+	h.until(c, "bench-b", "bench-b observable", in("observable"))
+	h.setDesired("bench-a", instancerecord.Stopped)
+	if _, err := c.Reconcile(context.Background(), &channel.ReconcileRequest{Name: "bench-a"}); err != nil {
+		t.Fatal(err)
+	}
+	h.until(c, "bench-a", "bench-a stopped", in("stopped"))
+	// Started again half a second on, so that the first Core's pending silence falls before the second's
+	// next beat.
+	time.Sleep(500 * time.Millisecond)
+	h.setDesired("bench-a", instancerecord.Running)
+	if _, err := c.Reconcile(context.Background(), &channel.ReconcileRequest{Name: "bench-a"}); err != nil {
+		t.Fatal(err)
+	}
+	h.until(c, "bench-a", "bench-a observable again", in("observable"))
+	time.Sleep(3 * time.Second)
+	if strings.Contains(h.said(), "the instance is silent") {
+		t.Errorf("a Core that kept saying it is alive was called silent:\n%s", h.said())
 	}
 }
