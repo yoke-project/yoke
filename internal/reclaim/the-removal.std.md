@@ -53,9 +53,9 @@
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
-| **Precondition** | an engine holding images tagged `yoke/com.yoke.station:2.0.0` and `yoke/com.yoke.station:2.1.0` and one image of the account's own; `2.0.0` removed by the pass, `2.1.0` kept |
+| **Precondition** | an engine holding two images of `2.0.0`, tagged `yoke/com.yoke.station/pipeline:2.0.0` and `yoke/com.yoke.station/archive:2.0.0`, one of `1.9.0` tagged as an earlier installation tagged, `yoke/com.yoke.station:1.9.0`, one of `2.1.0` tagged `yoke/com.yoke.station/pipeline:2.1.0`, and one image of the account's own; `1.9.0` and `2.0.0` removed by the pass, `2.1.0` kept |
 | **Action** | run the pass |
-| **Expected** | the tag `yoke/com.yoke.station:2.0.0` goes and then its image; the image of `2.1.0` and the account's own are left; the engine is asked for nothing where no image is tagged |
+| **Expected** | every tag of `1.9.0` and `2.0.0` goes and then its image — all three images; the image of `2.1.0` and the account's own are left; the engine is asked for nothing where no image is tagged |
 
 ## yoke:the-removal.05 — the pass clears a failed ephemeral record and a free runtime directory
 
@@ -79,6 +79,6 @@
 | **Method** | test |
 | **Not applicable in** | container engine: docker |
 | **Label** | blocking |
-| **Precondition** | three OCI archives written by the test and loaded into the engine; the first tagged `yoke/com.yoke.reclaim:2.0.0`, the second `yoke/com.yoke.reclaim:2.1.0`, both through the engine's API as installing tags — where the engine qualifies the name its own way — the third left under its own name; `2.0.0` and `2.1.0` of `com.yoke.reclaim` installed, nothing pointing at either. The engine's store is the account's and other cases use it meanwhile, so the case names an application no other case does |
+| **Precondition** | four OCI archives written by the test and loaded into the engine; the first two tagged `yoke/com.yoke.reclaim/a:2.0.0` and `yoke/com.yoke.reclaim/b:2.0.0`, the third `yoke/com.yoke.reclaim/a:2.1.0`, all through the engine's API as installing tags — where the engine qualifies the name its own way — the fourth left under its own name; `2.0.0` and `2.1.0` of `com.yoke.reclaim` installed, nothing pointing at either. The engine's store is the account's and other cases use it meanwhile, so the case names an application no other case does |
 | **Action** | run the pass with the engine, over `com.yoke.reclaim` |
-| **Expected** | `2.0.0` and its tag are gone and the pass names both; the tag of `2.1.0` and the third image are still in the store. Not applicable under Docker, whose classic store loads an archive with no digest |
+| **Expected** | `2.0.0` and both its tags are gone and the pass names them; the tag of `2.1.0` and the fourth image are still in the store. Not applicable under Docker, whose classic store loads an archive with no digest |

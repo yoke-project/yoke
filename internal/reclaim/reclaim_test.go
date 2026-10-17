@@ -178,15 +178,24 @@ func TestThePassCollectsYokesImagesNoBundleReferences(t *testing.T) {
 	o := setup(t)
 	install(t, o, "2.0.0", installroot.Complete)
 	install(t, o, "2.1.0", installroot.Complete)
-	f := &fakeEngine{tags: map[string]string{"yoke/com.yoke.station:2.0.0": "sha256:old", "yoke/com.yoke.station:2.1.0": "sha256:new",
+	f := &fakeEngine{tags: map[string]string{
+		"yoke/com.yoke.station/pipeline:2.0.0": "sha256:old-pipeline", "yoke/com.yoke.station/archive:2.0.0": "sha256:old-archive",
+		"yoke/com.yoke.station:1.9.0": "sha256:older", "yoke/com.yoke.station/pipeline:2.1.0": "sha256:new",
 		"localhost/mine:latest": "sha256:mine"}}
 	address := serve(t, f)
 	o.Engine = func(ctx context.Context) (*engine.Engine, error) { return engine.Reach(ctx, address) }
 	if _, err := Prune(o, ""); err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(f.deleted, []string{"yoke/com.yoke.station:2.0.0", "sha256:old"}) {
+	want := []string{"yoke/com.yoke.station/pipeline:2.0.0", "sha256:old-pipeline", "yoke/com.yoke.station/archive:2.0.0", "sha256:old-archive",
+		"yoke/com.yoke.station:1.9.0", "sha256:older"}
+	if got := slices.Sorted(slices.Values(f.deleted)); !slices.Equal(got, slices.Sorted(slices.Values(want))) {
 		t.Errorf("deleted %v", f.deleted)
+	}
+	for i, ref := range f.deleted {
+		if strings.HasPrefix(ref, "sha256:") && (i == 0 || strings.HasPrefix(f.deleted[i-1], "sha256:")) {
+			t.Errorf("the image %s went before its tag: %v", ref, f.deleted)
+		}
 	}
 	untagged := &fakeEngine{tags: map[string]string{"localhost/mine:latest": "sha256:mine"}}
 	empty := setup(t)

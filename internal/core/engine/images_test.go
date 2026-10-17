@@ -139,10 +139,10 @@ func TestAnArchiveIsLoaded(t *testing.T) {
 func TestAnImageIsTaggedInTheReservedNamespace(t *testing.T) {
 	f := &images{fake: podman(true), held: map[string]bool{held: true}}
 	e := withImages(t, f)
-	if err := e.Tag(context.Background(), held, "com.yoke.station", "2.1.0"); err != nil {
+	if err := e.Tag(context.Background(), held, "com.yoke.station", "pipeline", "2.1.0"); err != nil {
 		t.Fatal(err)
 	}
-	if len(f.tagged) != 1 || f.tagged[0] != held+" yoke/com.yoke.station:2.1.0" {
+	if len(f.tagged) != 1 || f.tagged[0] != held+" yoke/com.yoke.station/pipeline:2.1.0" {
 		t.Errorf("tagged %v", f.tagged)
 	}
 }
@@ -171,12 +171,14 @@ func TestAnOCIArchiveSavedByDigestLoads(t *testing.T) {
 
 // std: yoke:the-engine-images.06
 func TestAReservedTagIsReadBackHoweverTheEngineQualifiesIt(t *testing.T) {
-	for _, tag := range []string{"yoke/com.yoke.station:2.1.0", "localhost/yoke/com.yoke.station:2.1.0", "docker.io/yoke/com.yoke.station:2.1.0"} {
+	for _, tag := range []string{"yoke/com.yoke.station/pipeline:2.1.0", "localhost/yoke/com.yoke.station/pipeline:2.1.0",
+		"docker.io/yoke/com.yoke.station/pipeline:2.1.0", "yoke/com.yoke.station:2.1.0"} {
 		if id, version, ok := engine.Reserved(tag); !ok || id != "com.yoke.station" || version != "2.1.0" {
 			t.Errorf("%s reads as %q %q %v", tag, id, version, ok)
 		}
 	}
-	for _, tag := range []string{"registry.example/yoke/com.yoke.station:2.1.0", "docker.io/library/busybox:1.36", "yoke/com.yoke.station", "docker.io/yoke/:2.1.0"} {
+	for _, tag := range []string{"registry.example/yoke/com.yoke.station/pipeline:2.1.0", "docker.io/library/busybox:1.36",
+		"yoke/com.yoke.station/pipeline", "docker.io/yoke/:2.1.0", "yoke/com.yoke.station/:2.1.0", "yoke/com.yoke.station/a/b:2.1.0"} {
 		if id, version, ok := engine.Reserved(tag); ok {
 			t.Errorf("%s reads as %q %q", tag, id, version)
 		}

@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -117,7 +118,7 @@ func TestEveryImageIsObtainedByItsDigest(t *testing.T) {
 	heldRef, carriedRef, pulledRef := "localhost/held@"+digestOf("held"), "localhost/carried@"+digestOf("carried"), "localhost/pulled@"+digestOf("pulled")
 	f := &fakeEngine{held: map[string]bool{heldRef: true}, loadsKeep: true, loading: carriedRef}
 	apps := root(t)
-	pkg := build(t, imaged(t, map[string]string{"held": heldRef, "carried": carriedRef, "pulled": pulledRef}, []string{carriedRef}), compose.BuildOptions{Sign: priv})
+	pkg := build(t, imaged(t, map[string]string{"held": heldRef, "carried": carriedRef, "again": carriedRef, "pulled": pulledRef}, []string{carriedRef}), compose.BuildOptions{Sign: priv})
 	var said strings.Builder
 	o := withEngine(options(apps, pkg), serveEngine(t, f))
 	o.Out = &said
@@ -128,13 +129,9 @@ func TestEveryImageIsObtainedByItsDigest(t *testing.T) {
 	if f.loaded != 1 || len(f.pulled) != 1 || f.pulled[0] != pulledRef {
 		t.Errorf("loaded %d, pulled %v", f.loaded, f.pulled)
 	}
-	for _, ref := range []string{heldRef, carriedRef, pulledRef} {
-		found := false
-		for _, tag := range f.tagged {
-			found = found || tag == ref+" yoke/com.yoke.station:2.1.0"
-		}
-		if !found {
-			t.Errorf("%s was not tagged: %v", ref, f.tagged)
+	for unit, ref := range map[string]string{"held": heldRef, "carried": carriedRef, "again": carriedRef, "pulled": pulledRef} {
+		if !slices.Contains(f.tagged, ref+" yoke/com.yoke.station/"+unit+":2.1.0") {
+			t.Errorf("%s was not tagged for %s: %v", ref, unit, f.tagged)
 		}
 		if !strings.Contains(said.String(), ref) {
 			t.Errorf("nothing was reported about %s:\n%s", ref, said.String())
@@ -175,13 +172,19 @@ func TestAnEngineThatCannotBeReachedIsARefusal(t *testing.T) {
 // std: yoke:the-installation.12
 func TestAPackageCarryingAnImageInstallsWithTheEngine(t *testing.T) {
 	enginetest.Not(t, enginetest.Docker)
-	ref, written := enginetest.OCIArchive(t, "yoke-install")
-	proj := imaged(t, map[string]string{"panel": ref}, nil)
-	archive := filepath.Join(proj, "components", "images", strings.Replace(ref[strings.Index(ref, "@")+1:], ":", "-", 1)+".tar")
-	os.MkdirAll(filepath.Dir(archive), 0o755)
-	data, _ := os.ReadFile(written)
-	os.WriteFile(archive, data, 0o644)
-	t.Cleanup(func() { exec.Command("podman", "rmi", "-f", "yoke/com.yoke.station:2.1.0").Run() })
+	refs := map[string]string{}
+	written := map[string]string{}
+	for _, unit := range []string{"panel", "pipeline"} {
+		refs[unit], written[unit] = enginetest.OCIArchive(t, "yoke-install-"+unit)
+	}
+	proj := imaged(t, refs, nil)
+	for unit, ref := range refs {
+		archive := filepath.Join(proj, "components", "images", strings.Replace(ref[strings.Index(ref, "@")+1:], ":", "-", 1)+".tar")
+		os.MkdirAll(filepath.Dir(archive), 0o755)
+		data, _ := os.ReadFile(written[unit])
+		os.WriteFile(archive, data, 0o644)
+		t.Cleanup(func() { exec.Command("podman", "rmi", "-f", "yoke/com.yoke.station/"+unit+":2.1.0").Run() })
+	}
 	s := enginetest.Serve(t)
 	pkg := build(t, proj, compose.BuildOptions{Sign: priv})
 	var said strings.Builder
@@ -192,12 +195,25 @@ func TestAPackageCarryingAnImageInstallsWithTheEngine(t *testing.T) {
 		t.Fatalf("%v\n%s", err, said.String())
 	}
 	if !strings.Contains(said.String(), "loaded from the package") || strings.Contains(said.String(), "pulled") {
-		t.Errorf("the image was not loaded from the package:\n%s", said.String())
+		t.Errorf("the images were not loaded from the package:\n%s", said.String())
 	}
-	if out, err := exec.Command("podman", "image", "inspect", "--format", "{{.Id}}", ref).Output(); err != nil || len(out) == 0 {
-		t.Errorf("the engine does not hold %s: %v", ref, err)
+	id := func(ref string) string {
+		out, err := exec.Command("podman", "image", "inspect", "--format", "{{.Id}}", ref).Output()
+		if err != nil {
+			return ""
+		}
+		return strings.TrimSpace(string(out))
 	}
-	if out, err := exec.Command("podman", "image", "inspect", "--format", "{{.Id}}", "yoke/com.yoke.station:2.1.0").Output(); err != nil || len(out) == 0 {
-		t.Errorf("the image is not tagged in the reserved namespace: %v", err)
+	for unit, ref := range refs {
+		held := id(ref)
+		if held == "" {
+			t.Errorf("the engine does not hold %s", ref)
+			continue
+		}
+		// Each image keeps its own tag once the installation ends: a tag that moved on to the next image
+		// would leave this one invisible to every reclaiming pass.
+		if tagged := id("yoke/com.yoke.station/" + unit + ":2.1.0"); tagged != held {
+			t.Errorf("the image of %s is not tagged yoke/com.yoke.station/%s:2.1.0: the tag names %q", unit, unit, tagged)
+		}
 	}
 }
