@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/80-security/03 §TLS 1.3 and nothing below it · arch/80-security/03 §Where the material comes from · arch/80-security/03 §What the two projections look like on a routable address · arch/80-security/03 §The caller's credential sits above the transport |
+| **Cites** | specs/70.14 · arch/80-security/03 §TLS 1.3 and nothing below it · arch/80-security/03 §Where the material comes from · arch/80-security/03 §What the two projections look like on a routable address · arch/80-security/03 §The caller's credential sits above the transport |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.12 · arch/70-interface-surface/04 §The eleven · arch/70-interface-surface/08 §One union, two projections · arch/70-interface-surface/08 §How this contract states its version · arch/00-system/05 §How a contract states its version |
+| **Cites** | specs/70.12 · specs/70.47 · arch/70-interface-surface/04 §The eleven · arch/70-interface-surface/08 §One union, two projections · arch/70-interface-surface/08 §How this contract states its version · arch/00-system/05 §How a contract states its version |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

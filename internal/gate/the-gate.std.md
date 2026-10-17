@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/14.50 · arch/15-gate/01 §What a pass produces |
+| **Cites** | specs/14.50 · arch/15-gate/01 §What a pass produces · arch/95-reference/02 §The shape, and the one namespace |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -113,7 +113,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/14.49 · specs/12.22 · arch/15-gate/05 §The formats · arch/15-gate/03 §`units` |
+| **Cites** | specs/12.22 · specs/14.49 · specs/40.6 · arch/15-gate/05 §The formats · arch/15-gate/03 §`units` |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

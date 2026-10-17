@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/60.36 · specs/60.49 · arch/60-administrative-surface/06 §What a subscription promises · arch/60-administrative-surface/05 §One model, not two |
+| **Cites** | specs/60.36 · specs/60.49 · specs/60.52 · arch/60-administrative-surface/06 §What a subscription promises · arch/60-administrative-surface/05 §One model, not two |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

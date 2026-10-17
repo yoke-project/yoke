@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/60.55 · specs/60.56 · specs/60.57 · arch/60-administrative-surface/07 §While the instance is stopping |
+| **Cites** | specs/60.55 · specs/60.56 · specs/60.57 · specs/60.58 · arch/60-administrative-surface/07 §While the instance is stopping |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -113,7 +113,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/60.47 · arch/60-administrative-surface/04 §Every operation terminates in the Core · arch/60-administrative-surface/07 §This surface's codes |
+| **Cites** | specs/60.2 · specs/60.47 · arch/60-administrative-surface/04 §Every operation terminates in the Core · arch/60-administrative-surface/07 §This surface's codes |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

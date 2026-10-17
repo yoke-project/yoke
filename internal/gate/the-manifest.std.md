@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/42.1 · specs/42.3 · specs/42.6 · specs/40.4 · arch/50-plugin-surface/02 §The document |
+| **Cites** | specs/40.1 · specs/40.4 · specs/42.1 · specs/42.3 · specs/42.6 · arch/50-plugin-surface/02 §The document |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/42.4 · specs/42.6 · specs/42.9 · arch/50-plugin-surface/02 §Where it lives, and what it is |
+| **Cites** | specs/42.4 · specs/42.5 · specs/42.6 · specs/42.9 · arch/50-plugin-surface/02 §Where it lives, and what it is |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/42.2 · arch/50-plugin-surface/02 §Where it lives, and what it is |
+| **Cites** | specs/40.6 · specs/42.2 · arch/50-plugin-surface/02 §Where it lives, and what it is |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/42.14 · specs/50.84 · arch/50-plugin-surface/02 §The four declared lists |
+| **Cites** | specs/42.14 · specs/42.22 · specs/50.79 · specs/50.84 · arch/50-plugin-surface/02 §The four declared lists |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -126,7 +126,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/42.18 · specs/42.20 · specs/42.21 · arch/50-plugin-surface/02 §`capabilities` |
+| **Cites** | specs/42.18 · specs/42.20 · specs/42.21 · specs/50.83 · arch/50-plugin-surface/02 §`capabilities` |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -139,7 +139,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/42.23 · specs/40.8 · specs/40.9 · specs/40.15 · arch/50-plugin-surface/02 §What it may not contain |
+| **Cites** | specs/40.8 · specs/40.9 · specs/40.15 · specs/42.23 · specs/42.24 · arch/50-plugin-surface/02 §What it may not contain |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

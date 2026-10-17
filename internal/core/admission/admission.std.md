@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.11 · specs/50.16 · specs/42.13 · arch/50-plugin-surface/03 §What the request claims |
+| **Cites** | specs/40.23 · specs/42.13 · specs/50.11 · specs/50.16 · arch/50-plugin-surface/03 §What the request claims |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -113,7 +113,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.17 · specs/50.31 · arch/50-plugin-surface/03 §Three outcomes · arch/50-plugin-surface/04 §Identity |
+| **Cites** | specs/50.17 · specs/50.31 · specs/50.42 · arch/50-plugin-surface/03 §Three outcomes · arch/50-plugin-surface/04 §Identity |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -165,7 +165,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.9 · specs/50.3 · arch/50-plugin-surface/01 §The order of the first four acts · arch/30-core/03 §The eleven steps |
+| **Cites** | specs/40.1 · specs/50.1 · specs/50.3 · specs/50.9 · arch/50-plugin-surface/01 §The order of the first four acts · arch/30-core/03 §The eleven steps |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | — |
