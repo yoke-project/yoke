@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/31.36 · arch/45-events/05 §The grammar |
+| **Cites** | specs/31.7 · specs/31.36 · arch/45-events/05 §The grammar |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/31.38 · specs/31.42 · arch/45-events/05 §A name is created when a producer exists · arch/45-events/06 §The set |
+| **Cites** | specs/31.37 · specs/31.38 · specs/31.42 · arch/45-events/05 §A name is created when a producer exists · arch/45-events/06 §The set |
 | **Level** | L1 |
 | **Method** | check |
 | **Not applicable in** | — |
@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/31.39 · specs/31.40 · arch/45-events/05 §Filtering has four independent axes |
+| **Cites** | specs/31.16 · specs/31.39 · specs/31.40 · arch/45-events/05 §Filtering has four independent axes |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.66 · arch/50-plugin-surface/05 §What a health report carries · arch/45-events/06 §The set |
+| **Cites** | specs/31.24 · specs/50.66 · arch/50-plugin-surface/05 §What a health report carries · arch/45-events/06 §The set |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

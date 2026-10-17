@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.62 · specs/15.65 · specs/15.66 · arch/10-manager/01 §`yoke instance` — records · arch/10-manager/07 §Copying an instance's state · arch/10-manager/07 §Reading an instance |
+| **Cites** | specs/15.62 · specs/15.65 · specs/15.66 · specs/30.32 · arch/10-manager/01 §`yoke instance` — records · arch/10-manager/07 §Copying an instance's state · arch/10-manager/07 §Reading an instance |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -113,7 +113,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/17.11 · specs/17.55 · specs/17.56 · arch/10-manager/01 §`yoke instance` — records · arch/10-manager/06 §Removing |
+| **Cites** | specs/17.11 · specs/17.55 · specs/17.56 · specs/30.26 · arch/10-manager/01 §`yoke instance` — records · arch/10-manager/06 §Removing |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -126,7 +126,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/17.42 · arch/10-manager/01 §`yoke instance` — records · arch/25-guardian/07 §2 — A manager arrives and nothing is running |
+| **Cites** | specs/17.42 · specs/30.11 · arch/10-manager/01 §`yoke instance` — records · arch/25-guardian/07 §2 — A manager arrives and nothing is running |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -179,7 +179,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.3 · specs/15.14 · specs/15.60 · specs/17.34 · arch/10-manager/01 §What it reports · arch/25-guardian/04 §When a start is refused |
+| **Cites** | specs/15.3 · specs/15.14 · specs/15.60 · specs/17.34 · specs/31.25 · arch/10-manager/01 §What it reports · arch/25-guardian/04 §When a start is refused |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

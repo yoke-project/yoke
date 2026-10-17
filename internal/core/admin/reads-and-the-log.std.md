@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/60.42 · arch/60-administrative-surface/05 §Which subjects are readable · arch/60-administrative-surface/05 §Authorised and observed, in one answer |
+| **Cites** | specs/30.11 · specs/30.12 · specs/60.42 · arch/60-administrative-surface/05 §Which subjects are readable · arch/60-administrative-surface/05 §Authorised and observed, in one answer |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/60.38 · specs/60.39 · arch/60-administrative-surface/05 §Which subjects are readable |
+| **Cites** | specs/31.6 · specs/31.46 · specs/60.38 · specs/60.39 · arch/60-administrative-surface/05 §Which subjects are readable |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

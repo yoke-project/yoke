@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/31.29 · arch/45-events/04 §3 — Overflow |
+| **Cites** | specs/31.29 · specs/31.31 · arch/45-events/04 §3 — Overflow |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

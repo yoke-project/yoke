@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.53 · specs/15.62 · specs/15.65 · specs/12.26 · specs/12.27 · specs/17.53 · specs/30.27 · specs/30.29 · specs/97.16 · specs/97.17 · specs/97.18 · arch/10-manager/06 §Updating is four operations and not a verb · arch/10-manager/06 §Rolling back · arch/10-manager/06 §Reclaiming |
+| **Cites** | specs/12.26 · specs/12.27 · specs/15.53 · specs/15.62 · specs/15.65 · specs/17.53 · specs/30.27 · specs/30.28 · specs/30.29 · specs/97.16 · specs/97.17 · specs/97.18 · arch/10-manager/06 §Updating is four operations and not a verb · arch/10-manager/06 §Rolling back · arch/10-manager/06 §Reclaiming |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | — |

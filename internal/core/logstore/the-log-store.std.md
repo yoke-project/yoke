@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/28.53 · specs/30.35 · specs/30.36 · specs/30.42 · arch/40-state/03 §What an entry belongs to |
+| **Cites** | specs/28.53 · specs/30.35 · specs/30.36 · specs/30.38 · specs/30.42 · arch/40-state/03 §What an entry belongs to |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -48,7 +48,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/30.39 · specs/30.40 · specs/30.41 · arch/40-state/03 §The counter |
+| **Cites** | specs/30.39 · specs/30.40 · specs/30.41 · specs/31.26 · arch/40-state/03 §The counter |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/31.21 · specs/30.17 · specs/31.18 · arch/40-state/03 §Where entries come from · arch/45-events/06 §Durable counterparts |
+| **Cites** | specs/30.17 · specs/31.18 · specs/31.21 · specs/32.31 · arch/40-state/03 §Where entries come from · arch/45-events/06 §Durable counterparts |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/40-state/03 §Insertion order is the total order · arch/30-core/03 §The fatal boundary is a rule and not a number |
+| **Cites** | specs/30.33 · arch/40-state/03 §Insertion order is the total order · arch/30-core/03 §The fatal boundary is a rule and not a number |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -87,7 +87,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/28.49 · specs/30.35 · specs/30.40 · specs/31.21 · arch/40-state/03 §What is in it |
+| **Cites** | specs/28.49 · specs/30.1 · specs/30.12 · specs/30.35 · specs/30.40 · specs/31.21 · arch/40-state/03 §What is in it |
 | **Level** | L3 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -121,3 +121,17 @@
 | **Precondition** | an open store, with a reader watching it |
 | **Action** | append ten thousand entries at once, more than the write queue holds |
 | **Expected** | every append returns, and all ten thousand are stored in the order appended, within ten seconds |
+
+## yoke:the-log-store.10 — deleting the log store loses history and changes no behaviour
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/30.45 · arch/40-state/03 §What is in it · arch/40-state/03 §The counter |
+| **Level** | L3 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a Core started on a composition whose one unit runs to completion, and stopped |
+| **Action** | delete the log store, and start the Core again |
+| **Expected** | the unit runs to completion as it did; its lives are counted afresh, the history having gone with the file; the new log store holds only what the second start wrote; the Registry is the file the first start left |
+

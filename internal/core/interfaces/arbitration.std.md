@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.24 · specs/70.27 · specs/70.31 · arch/70-interface-surface/06 §What the declaration says, and what holding means · arch/70-interface-surface/06 §When it is computed · arch/70-interface-surface/03 §What ends an attachment |
+| **Cites** | specs/31.45 · specs/70.24 · specs/70.27 · specs/70.31 · arch/70-interface-surface/06 §What the declaration says, and what holding means · arch/70-interface-surface/06 §When it is computed · arch/70-interface-surface/03 §What ends an attachment |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -22,7 +22,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.31 · specs/70.32 · specs/70.35 · arch/70-interface-surface/06 §How a suspension ends, in two halves |
+| **Cites** | specs/31.33 · specs/70.31 · specs/70.32 · specs/70.35 · arch/70-interface-surface/06 §How a suspension ends, in two halves |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.27 · arch/70-interface-surface/06 §How a displaced client learns · arch/70-interface-surface/05 §What a channel observes, and what it may address |
+| **Cites** | specs/31.47 · specs/70.27 · arch/70-interface-surface/06 §How a displaced client learns · arch/70-interface-surface/05 §What a channel observes, and what it may address |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

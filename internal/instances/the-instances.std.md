@@ -74,7 +74,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.62 · specs/15.64 · arch/10-manager/07 §Copying an instance's state |
+| **Cites** | specs/15.62 · specs/15.64 · specs/30.30 · specs/32.20 · arch/10-manager/07 §Copying an instance's state |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -87,7 +87,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.63 · specs/15.64 · specs/15.65 · arch/10-manager/07 §Copying an instance's state |
+| **Cites** | specs/15.63 · specs/15.64 · specs/15.65 · specs/30.31 · specs/30.32 · arch/10-manager/07 §Copying an instance's state |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -100,7 +100,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/15.66 · arch/10-manager/07 §Reading an instance |
+| **Cites** | specs/15.66 · specs/30.24 · specs/30.25 · arch/10-manager/07 §Reading an instance |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
