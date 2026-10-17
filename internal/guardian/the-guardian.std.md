@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/17.41 · specs/17.63 · arch/25-guardian/04 §When a start is refused · arch/15-gate/06 §The checks |
+| **Cites** | specs/17.41 · specs/17.63 · arch/25-guardian/04 §When a start is refused · arch/15-gate/06 §The phases |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

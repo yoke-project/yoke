@@ -192,7 +192,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/35-units/05 §What each expansion reads, and what it hands over · arch/25-guardian/02 §How it comes to be running · specs/97.12 |
+| **Cites** | arch/35-units/05 §What each declared need expands into · arch/25-guardian/02 §How it comes to be running · specs/97.12 |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |

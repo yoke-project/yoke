@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/20.5 · specs/20.44 · arch/30-core/03 §The fatal boundary is a rule and not a number · arch/15-gate/06 §The checks |
+| **Cites** | specs/20.5 · specs/20.44 · arch/30-core/03 §The fatal boundary is a rule and not a number · arch/15-gate/06 §The phases |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/25.64 · arch/30-core/01 §The application form · arch/15-gate/06 §The checks · arch/80-security/07 |
+| **Cites** | specs/25.64 · arch/30-core/01 §The application form · arch/15-gate/06 §Phase 5 — weaker arrangements · arch/80-security/07 §What qualifies |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
