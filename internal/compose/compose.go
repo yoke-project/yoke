@@ -132,6 +132,9 @@ type BuildOptions struct {
 // Build makes a package from the project in dir and returns its path, with the gate's report. Nothing is
 // written unless every step succeeded.
 func Build(dir string, o BuildOptions) (string, gate.Report, error) {
+	if _, err := os.Stat(o.Out); errors.Is(err, fs.ErrNotExist) {
+		return "", gate.Report{}, refusef("%s is not there, and a package is written into a directory that is", o.Out)
+	}
 	report, d := check(dir)
 	if report.Refused() {
 		var lines []string

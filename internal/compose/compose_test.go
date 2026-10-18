@@ -293,3 +293,19 @@ func TestAnImagesArchiveIsPackagedAndOneNoImagePinsIsRefused(t *testing.T) {
 		t.Errorf("an archive no image pins: %v", err)
 	}
 }
+
+// std: yoke:the-composer.12
+func TestBuildNamesTheOutDirectoryThatIsNotThere(t *testing.T) {
+	dir := project(t, "components/acquire", nil)
+	missing := filepath.Join(t.TempDir(), "pkgs")
+	_, report, err := Build(dir, BuildOptions{Out: missing})
+	if !IsRefusal(err) || !strings.Contains(err.Error(), missing) {
+		t.Errorf("a missing --out is refused naming it: %v", err)
+	}
+	if len(report.NotRun) != 0 {
+		t.Errorf("the refusal came after the gate ran: %v", report.NotRun)
+	}
+	if _, statErr := os.Stat(missing); statErr == nil {
+		t.Error("the directory was made")
+	}
+}
