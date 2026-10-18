@@ -1,8 +1,8 @@
 # A release's tag runs this repository's release verb where the tag is seen. The verb's lines are the
 # run's output the release command collects; it appends them to the manifest itself.
 #
-# A programs tag first runs the suite of its own commit against every family's newest publication, each
-# family's harness built from the commit its line names by the family's own conformance script, and the
+# A programs tag first runs the suite of its own commit against every family's newest release tag, each
+# family's harness built from the commit the tag names by the family's own conformance script, and the
 # release hands over the reports joined into one. Dispatched by hand, the run measures and releases
 # nothing, which is how the measuring is tried before a release depends on it.
 name: release
@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       heads:
-        description: measure each family's default branch rather than its newest publication
+        description: measure each family's default branch rather than its newest release tag
         type: boolean
         default: false
 
@@ -38,16 +38,24 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: '1.26'
-      # What each family last published, read from the manifest as it stands on the default branch.
-      # Dispatched with heads, each family's default branch stands in for its newest publication, which is
-      # how a change to a family's conformance script is tried before the family publishes it.
+      # What each family last released, read from the tags its repository carries now: the cut places every
+      # tag before a release run starts, where the manifest is appended after the last of them, so a manifest
+      # read here would name the publications the cut is replacing.
+      # Dispatched with heads, each family's default branch stands in for its newest release tag, which is
+      # how a change to a family's conformance script is tried before the family releases it.
       - id: plan
         env:
           HEADS: ${{ inputs.heads }}
           GH_TOKEN: ${{ github.token }}
         run: |
-          curl -fsSL --retry 5 https://raw.githubusercontent.com/yoke-project/yoke/main/releases/manifest.jsonl -o manifest.jsonl
-          measured="$(go run ./cmd/yoke-release -measure manifest.jsonl)"
+          # The families' repositories: the verb measures the ones it knows, so a missing name is silent.
+          tags='{}'
+          for repository in yoke-sdk-go yoke-sdk-rust yoke-sdk-python yoke-sdk-c yoke-sdk-cpp; do
+            carried="$(gh api "repos/yoke-project/$repository/tags" --paginate --jq '[.[] | {name, commit: .commit.sha}]' | jq -cs 'add // []')"
+            tags="$(jq -c --arg repository "$repository" --argjson carried "$carried" '.[$repository] = $carried' <<<"$tags")"
+          done
+          printf '%s\n' "$tags" > tags.json
+          measured="$(go run ./cmd/yoke-release -measure tags.json)"
           if [[ "$HEADS" == true ]]; then
             measured="$(jq -c '.[]' <<<"$measured" | while read -r one; do
               repository="$(jq -r .repository <<<"$one")"

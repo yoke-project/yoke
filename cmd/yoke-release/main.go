@@ -28,9 +28,10 @@ func main() {
 	// The tag whose placing invoked the run: a commit carrying two release tags runs the verb once for
 	// each, and each run publishes what its own tag names.
 	invoked := flag.String("tag", "", "the tag that invoked this run; none publishes every release tag on the commit")
-	// A programs release runs the suite against each family's newest publication: -measure names them,
-	// from a copy of the manifest, and -conformance hands over the report joined from what was measured.
-	measure := flag.String("measure", "", "print, from this copy of the manifest, the family publications a programs release measures, and nothing else")
+	// A programs release runs the suite against each family's newest release tag: -measure names them,
+	// from the tags the families' repositories carry, and -conformance hands over the report joined from
+	// what was measured.
+	measure := flag.String("measure", "", "print, from this file of the tags each family's repository carries, the family releases a programs release measures, and nothing else")
 	conformance := flag.String("conformance", "", "the directory the release's measuring left: the joined report is handed over with the programs")
 	flag.Parse()
 	if *measure != "" {

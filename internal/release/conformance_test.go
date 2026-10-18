@@ -15,26 +15,22 @@ import (
 )
 
 // std: yoke:the-conformance-report.01
-func TestWhatIsMeasuredIsEachFamilysNewestPublication(t *testing.T) {
-	manifest := strings.Join([]string{
-		`{"line":"publication","published":"github.com/yoke-project/yoke-sdk-go","version":"v0.5.0","commit":"g5"}`,
-		`{"line":"publication","published":"crates.io/yoke-sdk","version":"v0.4.1","commit":"r41"}`,
-		`{"line":"publication","published":"github.com/yoke-project/yoke-sdk-go","version":"v0.10.0","commit":"g10"}`,
-		`{"line":"publication","published":"crates.io/yoke-proto","version":"v0.9.0","commit":"p9"}`,
-		`{"line":"publication","published":"yoke-sdk-c-source","version":"v0.5.0","commit":"c5"}`,
-		`{"line":"publication","published":"github.com/yoke-project/yoke-sdk-go","version":"v0.6.0","commit":"g6"}`,
-		`{"line":"publication","published":"crates.io/yoke-sdk","version":"v0.3.0","commit":"r3"}`,
-		`{"line":"publication","published":"yoke-conformance-linux-amd64","version":"v0.7.0","commit":"y7"}`,
-		`{"line":"publication","published":"github.com/yoke-project/yoke","version":"v0.7.0","commit":"y7"}`,
-	}, "\n") + "\n"
-	measured, err := release.Measured([]byte(manifest))
+func TestWhatIsMeasuredIsEachFamilysNewestReleaseTag(t *testing.T) {
+	tags := `{
+		"yoke-sdk-go": [{"name":"v0.5.0","commit":"g5"},{"name":"v0.10.0","commit":"g10"},{"name":"v0.6.1","commit":"g61"},{"name":"proto/v0.4.0","commit":"gp"}],
+		"yoke-sdk-rust": [{"name":"v0.4.1","commit":"r41"},{"name":"v0.4.2","commit":"r42"},{"name":"not-a-version","commit":"rx"}],
+		"yoke-sdk-python": [],
+		"yoke-sdk-c": [{"name":"v0.5.1","commit":"c51"}],
+		"yoke-docs": [{"name":"v0.8.0","commit":"d8"}]
+	}`
+	measured, err := release.Measured([]byte(tags))
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := []release.Measure{
 		{Repository: "yoke-sdk-go", Version: "v0.10.0", Commit: "g10"},
-		{Repository: "yoke-sdk-rust", Version: "v0.4.1", Commit: "r41"},
-		{Repository: "yoke-sdk-c", Version: "v0.5.0", Commit: "c5"},
+		{Repository: "yoke-sdk-rust", Version: "v0.4.2", Commit: "r42"},
+		{Repository: "yoke-sdk-c", Version: "v0.5.1", Commit: "c51"},
 	}
 	if len(measured) != len(want) {
 		t.Fatalf("measured %+v", measured)

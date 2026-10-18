@@ -1,7 +1,6 @@
 package release
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -14,56 +13,42 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-// A family, by the repository its harnesses are built in and the name its publication lines carry in the
-// manifest, in the order the report lists them.
-var families = []struct{ repository, published string }{
-	{"yoke-sdk-go", "github.com/yoke-project/yoke-sdk-go"},
-	{"yoke-sdk-rust", "crates.io/yoke-sdk"},
-	{"yoke-sdk-python", "pypi.org/yoke-sdk"},
-	{"yoke-sdk-c", "yoke-sdk-c-source"},
-	{"yoke-sdk-cpp", "yoke-sdk-cpp-source"},
-}
+// The families, by the repository their harnesses are built in, in the order the report lists them.
+var families = []string{"yoke-sdk-go", "yoke-sdk-rust", "yoke-sdk-python", "yoke-sdk-c", "yoke-sdk-cpp"}
 
-// Measure is one family publication the suite is run against: the family's repository, and the version
-// and commit of its newest publication line.
+// Measure is one family release the suite is run against: the family's repository, and the version and
+// commit of its newest release tag.
 type Measure struct {
 	Repository string `json:"repository"`
 	Version    string `json:"version"`
 	Commit     string `json:"commit"`
 }
 
-// Measured reads the manifest and names, for each family that published, its newest publication — what a
-// programs release runs the suite against. A family with no publication is not measured.
-func Measured(manifest []byte) ([]Measure, error) {
-	newest := map[string]Measure{}
-	lines := bufio.NewScanner(bytes.NewReader(manifest))
-	lines.Buffer(make([]byte, 1<<20), 1<<20)
-	for lines.Scan() {
-		if len(bytes.TrimSpace(lines.Bytes())) == 0 {
-			continue
-		}
-		var l Line
-		if err := json.Unmarshal(lines.Bytes(), &l); err != nil {
-			return nil, fmt.Errorf("a line of the manifest cannot be read: %v", err)
-		}
-		if l.Line != "publication" || !semver.IsValid(l.Version) {
-			continue
-		}
-		for _, f := range families {
-			if f.published == l.Published {
-				if held, ok := newest[f.repository]; !ok || semver.Compare(l.Version, held.Version) > 0 {
-					newest[f.repository] = Measure{Repository: f.repository, Version: l.Version, Commit: l.Commit}
-				}
-			}
-		}
+// Measured reads the tags each repository carries, as an object of repository name to the list of its
+// tags, each a name and the commit it names, and names for each family its newest release tag — what a
+// programs release runs the suite against. A tag is a release's when its name is a version; a family with
+// none, and a repository that is no family, are not measured.
+func Measured(tags []byte) ([]Measure, error) {
+	var carried map[string][]struct {
+		Name   string `json:"name"`
+		Commit string `json:"commit"`
 	}
-	if err := lines.Err(); err != nil {
-		return nil, err
+	if err := json.Unmarshal(tags, &carried); err != nil {
+		return nil, fmt.Errorf("the tags cannot be read: %v", err)
 	}
 	var measured []Measure
-	for _, f := range families {
-		if m, ok := newest[f.repository]; ok {
-			measured = append(measured, m)
+	for _, repository := range families {
+		var newest *Measure
+		for _, tag := range carried[repository] {
+			if !semver.IsValid(tag.Name) {
+				continue
+			}
+			if newest == nil || semver.Compare(tag.Name, newest.Version) > 0 {
+				newest = &Measure{Repository: repository, Version: tag.Name, Commit: tag.Commit}
+			}
+		}
+		if newest != nil {
+			measured = append(measured, *newest)
 		}
 	}
 	return measured, nil
