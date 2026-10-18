@@ -147,3 +147,17 @@
 | **Precondition** | none |
 | **Action** | `yoke-compose set --help`, `yoke-compose add --help`, `yoke-compose block --help` |
 | **Expected** | each exits 0; `set` prints `set <path> <value>` and none of `add`'s options, such as `--kind` or `--transport`; `add` prints its three forms, `add unit`, `add channel` and `add parameter`; `block` prints `block add` and `block save` |
+
+## yoke:the-composer.12 — `build` into a directory that is not there is refused, naming the directory
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/20-composer/02 §Building a package · arch/20-composer/02 §The working directory |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a project that builds, and a directory for the package that does not exist |
+| **Action** | `build` it into that directory |
+| **Expected** | the build is refused as a refusal, naming the directory and saying it is not there, before the project is read; nothing is written and the directory is not made |
+
