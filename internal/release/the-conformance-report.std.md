@@ -5,7 +5,7 @@
 | **Feature** | the report a programs release carries: which family publication each run measures — the newest the manifest names for each family, at the commit its line names — the reports of those runs joined into one, `yoke-conformance-report-<version>.json`, and that file handed over beside the release's other files and named by its own line |
 | **Planning item** | yoke-project/yoke#339 |
 
-## yoke:the-conformance-report.01 — what is measured is each family's newest publication, at the commit its line names
+## yoke:the-conformance-report.01 — what is measured is each family's newest release tag, at the commit it names
 
 | Field | Value |
 | --- | --- |
@@ -14,9 +14,9 @@
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
-| **Precondition** | a manifest holding, out of order, three publications of the Go family, two of the Rust family's crate, one of the C family's source archive, the definitions' crate, and the programs' own lines; no publication of the Python or C++ family |
-| **Action** | read what is to be measured |
-| **Expected** | three entries, one per family that published — the Go family at its newest version, the Rust family's crate at its newest, the C family's source archive — each naming the family's repository, the version and the commit of that line; nothing for the definitions or the programs, and nothing for a family with no publication |
+| **Precondition** | the release tags each family's repository carries, out of order: three of the Go family beside a tag that is no release's, two of the Rust family beside a name that is no version, one of the C family, none of the Python or C++ family, and those of a repository that is no family |
+| **Action** | read what is to be measured, from the tags |
+| **Expected** | three entries, one per family that carries a release tag — the Go family at its newest version, the Rust family at its newest, the C family — each naming the family's repository, the tag and the commit it names; nothing for a family with no release tag, and nothing for a repository that is no family |
 
 ## yoke:the-conformance-report.02 — the joined report holds each family's reports, and a family that wrote none is named with why
 
