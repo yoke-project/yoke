@@ -147,3 +147,16 @@
 | **Precondition** | a running unit with a Session, which answers one question with an error |
 | **Action** | `unit.ask` with a type its Plugin never declared; then with the type it fails |
 | **Expected** | the first is refused `scope.undeclared` naming the type, its message not repeating its code; the second is refused `unit.failed`, its detail carrying the unit's code and its message the unit's |
+
+## yoke:the-operations.12 — a disable reaches a unit that holds no Session yet
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/60.62 · specs/28.57 · arch/60-administrative-surface/04 §What every answer carries |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | three units of one plugin: `acquire` running with a Session, `slow` in `Starting` with none, and `fallen` failed and waiting to be relaunched |
+| **Action** | disable the plugin |
+| **Expected** | three consequences: `acquire`'s Session was revoked; `slow` and `fallen` were refused, each named with its incarnation and the state it reached, `Refused` |

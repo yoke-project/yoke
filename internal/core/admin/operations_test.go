@@ -36,6 +36,7 @@ type fakeUnit struct {
 	since       time.Time
 	condition   *unit.Condition
 	backend     string
+	waiting     bool // failed, and waiting to be relaunched
 }
 
 // fakeUnits is a supervisor that does at once what it is asked.
@@ -130,6 +131,16 @@ func (f *fakeUnits) StopUnit(id string) error {
 
 func (f *fakeUnits) RestartUnit(id string) error {
 	return f.act(id, func(u *fakeUnit) { u.incarnation++; u.state = unit.Running })
+}
+
+func (f *fakeUnits) Withdraw(id string) (supervisor.Status, bool) {
+	moved := false
+	f.act(id, func(u *fakeUnit) {
+		if u.state == unit.Starting || u.state == unit.Admitted || u.waiting {
+			u.state, u.waiting, moved = unit.Refused, false, true
+		}
+	})
+	return f.Status(id), moved
 }
 
 // fakeSessions are Sessions that answer by the unit: reverse answers the bytes it was asked, reversed,
@@ -323,6 +334,34 @@ func count(n uint64) *uint64 { return &n }
 
 func running(plugin string, incarnation int) *fakeUnit {
 	return &fakeUnit{plugin: plugin, state: unit.Running, incarnation: incarnation}
+}
+
+// std: yoke:the-operations.12
+func TestADisableReachesAUnitThatHoldsNoSessionYet(t *testing.T) {
+	b := newBench(t, map[string]*fakeUnit{
+		"acquire": running(station, 3),
+		"slow":    {plugin: station, state: unit.Starting, incarnation: 1},
+		"fallen":  {plugin: station, state: unit.Failed, incarnation: 4, waiting: true},
+	}, map[string]string{"acquire": "reverse"})
+	resp, ref := b.call(t, disable(station))
+	if ref != nil {
+		t.Fatal(ref)
+	}
+	got := map[string]string{}
+	for _, q := range changed(resp).GetConsequences() {
+		got[q.GetUnit()] = fmt.Sprintf("#%d %s", q.GetIncarnation(), q.GetWhat())
+	}
+	if !strings.Contains(got["acquire"], "#3") || !strings.Contains(got["acquire"], "revoked") {
+		t.Errorf("acquire's consequence is %q, want its Session revoked at incarnation 3", got["acquire"])
+	}
+	for id, incarnation := range map[string]string{"slow": "#1", "fallen": "#4"} {
+		if !strings.HasPrefix(got[id], incarnation+" ") || !strings.Contains(got[id], string(unit.Refused)) {
+			t.Errorf("%s's consequence is %q, want it Refused at %s", id, got[id], incarnation)
+		}
+	}
+	if len(got) != 3 {
+		t.Errorf("the consequences are %v, want three", got)
+	}
 }
 
 // std: yoke:the-operations.01
