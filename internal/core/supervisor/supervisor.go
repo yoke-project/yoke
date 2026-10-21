@@ -108,6 +108,9 @@ type Config struct {
 	// Publish is told each state a unit's life enters, as the event the Core concluded. It never waits.
 	// Optional.
 	Publish func(event.Event)
+	// Disabled says a plugin is disabled, so that a unit of it is declined where it would be launched. It is
+	// read at every launch and never waits. Optional: nil disables nothing.
+	Disabled func(plugin string) bool
 	// Getenv reads the Core's own environment, where a display and an audio path are found at each
 	// launch. Nil reads the process's.
 	Getenv func(string) string
@@ -380,6 +383,10 @@ func (s *Supervisor) attempt(m *managed) {
 		s.skip(m)
 		return
 	}
+	if s.disabled(m.decl) {
+		s.decline(m)
+		return
+	}
 	m.machine = unit.NewMachine(m.decl.Kind)
 	// Until the launch is counted, this attempt's life has no number.
 	m.incarnation = 0
@@ -564,6 +571,55 @@ func (s *Supervisor) skip(m *managed) {
 	m.status.State, m.status.Since = unit.Completed, time.Now()
 	s.publish(event.SkippedOf(m.decl.ID, m.decl.Skipped.Range, m.decl.Skipped.Version))
 	s.release(m.decl.ID)
+}
+
+// disabled says the unit is a copy of a plugin an operator disabled. Lock held.
+func (s *Supervisor) disabled(u Unit) bool {
+	return u.Kind == unit.Plugin && s.cfg.Disabled != nil && s.cfg.Disabled(u.Plugin)
+}
+
+// decline is a Plugin unit of a disabled plugin where it would be launched: no process and no incarnation,
+// straight to Refused, which never restarts. Lock held.
+func (s *Supervisor) decline(m *managed) {
+	if m.restart != nil {
+		m.restart.Stop()
+		m.restart = nil
+	}
+	m.machine = unit.Declined(m.decl.Kind)
+	m.incarnation = 0
+	m.status.Waiting, m.status.Failure, m.windowOut = false, "", false
+	m.status.Attempt, m.status.Wait, m.status.NextAt = 0, 0, time.Time{}
+	m.exitStatus, m.hasExit = 0, false
+	m.running, m.exited = nil, nil
+	m.status.State, m.status.Since = unit.Refused, time.Now() // the incarnation reported stays the last one begun
+	s.publish(event.DeclinedOf(m.decl.ID, m.decl.Plugin))
+}
+
+// Withdraw concludes a unit of a disabled plugin Refused from the decision, whatever moment of its life it
+// is in, and says what it reached and whether it moved: a unit in Starting is declined, one in Admitted has
+// its admission withdrawn, and one waiting to be relaunched is declined at once. A unit holding a Session is
+// the Session's to end, and a unit whose life already ended stays as it is.
+func (s *Supervisor) Withdraw(unitID string) (Status, bool) {
+	s.mu.Lock()
+	m, ok := s.units[unitID]
+	if ok && m.decl.Kind == unit.Plugin && m.machine != nil {
+		switch state := m.machine.State(); {
+		case state == unit.Starting:
+			s.apply(m, unit.AdmissionDeclined{})
+			s.settle(m)
+		case state == unit.Admitted:
+			s.apply(m, unit.AdmissionWithdrawn{})
+			s.settle(m)
+		case state.Terminal() && m.status.Waiting:
+			s.decline(m)
+		default:
+			ok = false
+		}
+	} else {
+		ok = false
+	}
+	s.mu.Unlock()
+	return s.Status(unitID), ok
 }
 
 // pluginOf is the plugin a unit is a copy of, which its lifecycle events name; none for another kind.

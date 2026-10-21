@@ -90,6 +90,10 @@ func NewMachine(kind Kind) *Machine { return &Machine{kind: kind, state: Startin
 // admitting the version that last ran: already Completed, which is where a unit of its kind is ready.
 func Skipped(kind Kind) *Machine { return &Machine{kind: kind, state: Completed} }
 
+// Declined is the machine of a Plugin unit not launched because its plugin is disabled: Refused, with no
+// incarnation behind it.
+func Declined(kind Kind) *Machine { return &Machine{kind: kind, state: Refused} }
+
 func (m *Machine) State() State { return m.state }
 
 // Condition is the unit's last report, if it ever made one: silence is not a claim.

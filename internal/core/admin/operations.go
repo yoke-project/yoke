@@ -37,6 +37,8 @@ type Units interface {
 	StartUnit(unit string) error
 	StopUnit(unit string) error
 	RestartUnit(unit string) error
+	// Withdraw concludes a unit of a disabled plugin that holds no Session Refused, from the decision.
+	Withdraw(unit string) (supervisor.Status, bool)
 }
 
 // ErrUnreachable is what Units answers when the backend a unit runs on cannot be reached.
@@ -208,14 +210,19 @@ func (c *Core) policy(enabled bool) answer {
 		c.Publish(event.PolicyChanged(id, actor, &enabled, nil, nil))
 		c.record(actor, event.Plugin, id, 0, map[bool]string{true: "enabled ", false: "disabled "}[enabled]+id)
 		if !enabled {
-			// Disabling reaches every copy: each live Session of the plugin is revoked.
+			// Disabling reaches every copy whose life has not ended: a live Session is revoked, and a unit that
+			// holds none yet is concluded Refused from the decision.
 			for _, u := range c.Units.Of(id) {
-				if !c.Sessions.Open(u) {
+				if c.Sessions.Open(u) {
+					incarnation := c.Units.Status(u).Incarnation
+					if c.Sessions.Revoke(u, pluginv1.SessionMessage_Revoked_CAUSE_PLUGIN_DISABLED, "the plugin was disabled") == nil {
+						change.Consequences = append(change.Consequences, &administrativev1.Consequence{Unit: u, Incarnation: uint64(incarnation), What: "its Session was revoked"})
+					}
 					continue
 				}
-				incarnation := c.Units.Status(u).Incarnation
-				if c.Sessions.Revoke(u, pluginv1.SessionMessage_Revoked_CAUSE_PLUGIN_DISABLED, "the plugin was disabled") == nil {
-					change.Consequences = append(change.Consequences, &administrativev1.Consequence{Unit: u, Incarnation: uint64(incarnation), What: "its Session was revoked"})
+				if st, moved := c.Units.Withdraw(u); moved {
+					change.Consequences = append(change.Consequences, &administrativev1.Consequence{Unit: u, Incarnation: uint64(st.Incarnation),
+						What: "it held no Session yet, and is " + string(st.State)})
 				}
 			}
 		}

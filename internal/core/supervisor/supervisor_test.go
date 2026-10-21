@@ -120,6 +120,13 @@ func TestMain(m *testing.M) {
 		child.Start()
 		os.WriteFile(os.Getenv("YOKE_TEST_CHILD_PID"), []byte(fmt.Sprint(child.Process.Pid)), 0o600)
 		time.Sleep(time.Hour)
+	case "noted":
+		// A process that says, in a file, that it was asked to end.
+		ending := make(chan os.Signal, 1)
+		signal.Notify(ending, syscall.SIGTERM)
+		<-ending
+		os.WriteFile(os.Getenv("YOKE_TEST_LEAVING"), nil, 0o600)
+		os.Exit(0)
 	case "stubborn":
 		signal.Ignore(syscall.SIGTERM)
 		os.WriteFile(os.Getenv("YOKE_TEST_IGNORING"), nil, 0o600)

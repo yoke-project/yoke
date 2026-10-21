@@ -187,6 +187,13 @@ func SkippedOf(unitID, migratesFrom, version string) Event {
 		map[string]any{"to": unit.Completed, "skipped": map[string]string{"range": migratesFrom, "version": version}})
 }
 
+// DeclinedOf is a Plugin unit passing straight to Refused, never launched, because its plugin is disabled.
+// It names no incarnation, since none was begun, and carries the plugin as every change of a copy does.
+func DeclinedOf(unitID, plugin string) Event {
+	return concluded("unit.state.changed", UnitSubject(unitID, 0), Notable,
+		map[string]any{"to": unit.Refused, "plugin": plugin, "declined": map[string]string{"reason": "plugin.disabled"}})
+}
+
 // StateChangedOf is StateChanged for a unit that is a copy of plugin, which its detail names, so that the
 // event carries all three names. A unit of no plugin passes none.
 func StateChangedOf(unitID, plugin string, incarnation uint64, from, to unit.State) Event {

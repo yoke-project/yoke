@@ -264,3 +264,29 @@
 | **Precondition** | one log recording state changes and captured lines in the order they arrive; an engine whose container writes a line the instant it starts and then ends with status 0 |
 | **Action** | launch a unit of kind `oneshot` naming an image, and a unit of kind `oneshot` on the host that writes three lines and fails |
 | **Expected** | for each, the `Starting` of its first incarnation comes before every line that incarnation wrote, its first included |
+
+## yoke:the-supervisor.21 — a unit of a disabled plugin is not launched, and is refused
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/28.57 · arch/35-units/03 §The seven states · arch/45-events/06 §`unit` |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a supervisor told that the plugin `com.yoke.test` is disabled, and a Plugin unit `acquire` of it whose process would write a file if it ran |
+| **Action** | launch the unit; wait longer than the backoff |
+| **Expected** | the unit is `Refused` with no incarnation, no process ran, one `unit.state.changed` names it with no incarnation, carries its plugin and `declined` with `plugin.disabled`, and nothing is launched afterwards |
+
+## yoke:the-supervisor.22 — a unit withdrawn by a disable ends refused, whatever moment of its life it is in
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/28.57 · arch/35-units/03 §The seven states |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a Plugin unit `slow` in `Starting`, its process alive; and a Plugin unit `fallen` that failed and waits to be relaunched; their plugin is then disabled |
+| **Action** | withdraw each |
+| **Expected** | `slow` is `Refused` at its incarnation and its process ends; `fallen` is `Refused`, is not relaunched, and its wait is no longer reported |

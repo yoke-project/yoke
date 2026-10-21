@@ -943,6 +943,12 @@ func (u supervised) Status(id string) supervisor.Status {
 func (u supervised) StartUnit(id string) error   { return u.st.Supervisor.StartUnit(id) }
 func (u supervised) StopUnit(id string) error    { return u.st.Supervisor.StopUnit(id) }
 func (u supervised) RestartUnit(id string) error { return u.st.Supervisor.RestartUnit(id) }
+func (u supervised) Withdraw(id string) (supervisor.Status, bool) {
+	if u.st.Supervisor == nil {
+		return supervisor.Status{}, false
+	}
+	return u.st.Supervisor.Withdraw(id)
+}
 
 // held are the Sessions as the administrative operations reach them, by the unit that holds one.
 type held struct{ st *State }
@@ -1006,6 +1012,14 @@ func units(st *State) error {
 		Root: st.Paths.Root, Instance: st.Paths.Name, Policy: supervisor.DefaultPolicy(),
 		Incarnations: supervisor.NewCounter(), Tokens: supervisor.NewTokens(), Output: captured{st.Log, st.Logs},
 		Publish: st.publish,
+		// A unit of a plugin an operator disabled is declined where it would be launched.
+		Disabled: func(plugin string) bool {
+			if st.Registry == nil {
+				return false
+			}
+			p, ok, err := st.Registry.Plugin(plugin)
+			return err == nil && ok && !p.Enabled
+		},
 	}
 	if st.tokens != nil {
 		cfg.Tokens = st.tokens
