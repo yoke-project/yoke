@@ -77,7 +77,7 @@ func main() {
 		cfg.Conformance = *conformance
 		cfg.Releases = "https://github.com/yoke-project/yoke/releases/tag/"
 		cfg.Repository = "yoke-project/yoke"
-		cfg.Forge = release.GitHub{Repository: cfg.Repository, Root: "."}
+		cfg.Forge = release.GitHub{Repository: cfg.Repository}
 		cfg.Packages = func(version, dir string) (string, string, error) { return packages.Package(".", version, dir) }
 		cfg.Registries = []release.Registry{
 			release.Crates{API: "https://crates.io", Static: "https://static.crates.io", Root: "."},
