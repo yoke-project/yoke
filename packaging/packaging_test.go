@@ -104,3 +104,50 @@ func TestTheInstallRootsGroupIsCreatedWithIt(t *testing.T) {
 		t.Errorf("the sysusers lines are %v", got)
 	}
 }
+
+// unit is a systemd unit file's keys by section, each key with the values it is given, in order.
+func unit(t *testing.T, name string) map[string]map[string][]string {
+	t.Helper()
+	data, err := os.ReadFile(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := map[string]map[string][]string{}
+	section := ""
+	for _, l := range strings.Split(string(data), "\n") {
+		l = strings.TrimSpace(l)
+		switch {
+		case l == "" || strings.HasPrefix(l, "#"):
+		case strings.HasPrefix(l, "[") && strings.HasSuffix(l, "]"):
+			section = l[1 : len(l)-1]
+			out[section] = map[string][]string{}
+		case section != "" && strings.Contains(l, "="):
+			k, v, _ := strings.Cut(l, "=")
+			out[section][k] = append(out[section][k], v)
+		default:
+			t.Errorf("a line outside any section or not a key: %q", l)
+		}
+	}
+	return out
+}
+
+// std: yoke:the-packaging-inputs.04
+func TestTheGuardiansInitUnitRunsItForItsAccountAtBoot(t *testing.T) {
+	u := unit(t, "yoke-guardian.service")
+	want := map[string]map[string]string{
+		"Service": {"ExecStart": "/usr/bin/yoke-guardian --boot", "Restart": "on-failure"},
+		"Install": {"WantedBy": "default.target"},
+	}
+	for section, keys := range want {
+		for k, v := range keys {
+			if got := u[section][k]; len(got) != 1 || got[0] != v {
+				t.Errorf("[%s] %s is %q, where it should be %q", section, k, got, v)
+			}
+		}
+	}
+	for _, k := range []string{"User", "Group", "DynamicUser"} {
+		if v, found := u["Service"][k]; found {
+			t.Errorf("the user unit names an account of its own: %s=%v", k, v)
+		}
+	}
+}
