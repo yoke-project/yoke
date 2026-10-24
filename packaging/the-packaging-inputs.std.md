@@ -2,8 +2,8 @@
 
 | | |
 | --- | --- |
-| **Feature** | what `yoke` ships for a distribution beside the programs: the default `core.yaml`, and the directory layout with its ownership as systemd reads it — a `tmpfiles.d` file and a `sysusers.d` file |
-| **Planning item** | yoke-project/yoke#286 |
+| **Feature** | what `yoke` ships for a distribution beside the programs: the default `core.yaml`, the directory layout with its ownership as systemd reads it — a `tmpfiles.d` file and a `sysusers.d` file — and the guardian's init unit, a systemd user unit |
+| **Planning item** | yoke-project/yoke#286 · yoke-project/yoke#379 |
 
 ## yoke:the-packaging-inputs.01 — the default `core.yaml` states every key at its default
 
@@ -43,3 +43,16 @@
 | **Precondition** | `packaging/yoke.sysusers` as shipped |
 | **Action** | read its lines |
 | **Expected** | one line, a group `yoke-apps` with an identifier the system allocates; no account is created |
+
+## yoke:the-packaging-inputs.04 — the guardian's init unit runs it for its account when the host comes up
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/25-guardian/02 §How it comes to be running · 17.32 · prj_structure/40 F3 |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | `packaging/yoke-guardian.service` as shipped |
+| **Action** | read its sections and keys |
+| **Expected** | a unit whose service executes `/usr/bin/yoke-guardian --boot`, restarted on a failure and not on a clean exit, installed into `default.target` — the account's own, since it is a user unit — and naming no account of its own |
