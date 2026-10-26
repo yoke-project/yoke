@@ -51,6 +51,40 @@ func TestYokeInstanceCreatesListsShowsAndRePoints(t *testing.T) {
 	}
 }
 
+// std: yoke:the-manager-command-line.22
+func TestAnInstanceCreatedRunningIsToldToNobody(t *testing.T) {
+	apps := filepath.Join(t.TempDir(), "apps")
+	dir := filepath.Join(apps, "com.yoke.station", "2.1.0")
+	os.MkdirAll(filepath.Join(dir, "bundle", "components"), 0o775)
+	os.WriteFile(filepath.Join(dir, "bundle", "components", "setup"), []byte(setupProgram), 0o755)
+	os.WriteFile(filepath.Join(dir, "bundle", "yoke.yaml"), []byte("model: 1\nid: com.yoke.station\nversion: 2.1.0\narch: "+compose.HostArch()+"\ncore: \">=0.1\"\n"+
+		"units:\n  setup: { kind: oneshot, exec: components/setup, digest: \""+setupDigest+"\" }\n"), 0o644)
+	os.WriteFile(filepath.Join(dir, "install.yaml"), []byte("state: complete\nsealed: false\nshared: true\n"), 0o664)
+	vars := conf(t, "install_root: "+apps+"\n")
+	vars["XDG_STATE_HOME"], vars["XDG_RUNTIME_DIR"] = t.TempDir(), t.TempDir()
+	// A guardian that leaves a mark where it is started.
+	bin, mark := t.TempDir(), filepath.Join(t.TempDir(), "summoned")
+	os.WriteFile(filepath.Join(bin, "yoke-guardian"), []byte("#!/bin/sh\ntouch "+mark+"\n"), 0o755)
+	vars["PATH"] = bin + string(os.PathListSeparator) + os.Getenv("PATH")
+
+	if code, out := yoke(vars, "instance", "create", "com.yoke.station", "--name", "bench-a", "--running"); code != Done {
+		t.Fatalf("create --running exited %d:\n%s", code, out)
+	}
+	r, err := instancerecord.Read(filepath.Join(vars["XDG_STATE_HOME"], "yoke", "instances"), "bench-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.DesiredState != instancerecord.Running || r.LastStartedAt.IsZero() {
+		t.Errorf("the record wants %q, a start last asked for at %q", r.DesiredState, r.LastStartedAt)
+	}
+	if code, out := yoke(vars, "instance", "list"); code != Done || !strings.Contains(squash(out), "bench-a com.yoke.station 2.1.0 stopped, desired running") {
+		t.Errorf("list exited %d:\n%s", code, out)
+	}
+	if _, err := os.Stat(mark); err == nil {
+		t.Error("a guardian was started")
+	}
+}
+
 // std: yoke:the-manager-command-line.06
 func TestYokeInstanceCopiesRestoresAndShowsWhatItOccupies(t *testing.T) {
 	apps := filepath.Join(t.TempDir(), "apps")

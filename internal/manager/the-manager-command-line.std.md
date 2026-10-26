@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | **Feature** | `yoke`, one command whose lifecycle verbs are namespaced and whose client verbs are grouped by subject; an exit status that tells a refusal from a fault; and the client verbs — one per operation of the administrative contract — reaching a running instance through the published administrative library, on the operator projection, the instance a selector and never a namespace |
-| **Planning item** | yoke-project/yoke#224 |
+| **Planning item** | yoke-project/yoke#224 · yoke-project/yoke#381 |
 
 ## yoke:the-manager-command-line.01 — an exit status tells a refusal from a fault
 
@@ -278,3 +278,16 @@
 | **Precondition** | an instance declared stopped, with no Core running; the administrative contract's operations |
 | **Action** | `yoke unit restart` on the instance; read the operations the administrative contract carries |
 | **Expected** | the client verb is refused saying the instance is not running, and the record is unchanged — a client verb asks the Core and never the guardian; no administrative operation starts or stops the instance or its Core — what is running is the guardian's to be told, and what runs inside it is the Core's |
+
+## yoke:the-manager-command-line.22 — an instance created running is told to nobody
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/17.3 · arch/10-manager/07 §Creating an instance, and naming it · arch/25-guardian/01 · arch/25-guardian/02 §How it comes to be running |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the install root of `.05`; the account's state directory empty; a program named `yoke-guardian` first on the `PATH`, which leaves a mark when it runs; no guardian answering |
+| **Action** | run `yoke instance create com.yoke.station --name bench-a --running`, then `yoke instance list` |
+| **Expected** | each exits 0; the record's desired state is *running* and it says when a start was last asked for; the list says `bench-a` is stopped and wants to run; and the program named `yoke-guardian` never ran — the record is the intent, and a guardian acts on it when it next reconciles, its boot pass among them |
