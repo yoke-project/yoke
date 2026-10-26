@@ -17,7 +17,7 @@ import (
 
 // The lifecycle verbs on records: they act on the instance tree and reach no process.
 func init() {
-	register("instance", "create", verb{"<id> [--name <n>] [--version <v>] [--params <file>]", (*call).instanceCreate})
+	register("instance", "create", verb{"<id> [--name <n>] [--version <v>] [--params <file>] [--running]", (*call).instanceCreate})
 	register("instance", "list", verb{"", (*call).instanceList})
 	register("instance", "show", verb{"<name>", (*call).instanceShow})
 	register("instance", "set-version", verb{"<name> <version>", (*call).instanceSetVersion})
@@ -56,10 +56,12 @@ func refused(err error) error {
 
 func (c *call) instanceCreate() error {
 	var name, ver, params *string
+	var running *bool
 	if _, _, _, err := c.flags(func(fs *flag.FlagSet) {
 		name = fs.String("name", "", "the instance's name; one is generated where none is given")
 		ver = fs.String("version", "", "the version to pin; the newest complete release where none is given")
 		params = fs.String("params", "", "a values file, in TOML")
+		running = fs.Bool("running", false, "the desired state running, told to no guardian: one acts on it when it next reconciles")
 	}); err != nil {
 		return err
 	}
@@ -73,6 +75,13 @@ func (c *call) instanceCreate() error {
 	created, err := instances.Create(o, c.args[0], *name, *ver, *params)
 	if err != nil {
 		return refused(err)
+	}
+	// The intent alone: a device's first boot writes it before the account's guardian runs, whose boot
+	// pass then acts on it, so nothing is told and nothing summoned.
+	if *running {
+		if err := instances.SetDesired(o, created, instancerecord.Running); err != nil {
+			return err
+		}
 	}
 	r, err := instancerecord.Read(o.Instances, created)
 	if err != nil {
