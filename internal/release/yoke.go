@@ -6,7 +6,7 @@ package release
 // drive and the composer, and the verification tool.
 var Yoke = []Artifact{
 	{Name: "yoke", Packages: []string{"./cmd/yoke-core", "./cmd/yoke", "./cmd/yoke-guardian", "./cmd/yoke-auth"},
-		Files: []string{"packaging/yoke.service", "packaging/core.yaml", "packaging/yoke.tmpfiles", "packaging/yoke.sysusers"}},
+		Files: []string{"packaging/yoke.service", "packaging/yoke-guardian.service", "packaging/core.yaml", "packaging/yoke.tmpfiles", "packaging/yoke.sysusers"}},
 	{Name: "yoke-conformance", Packages: []string{"./cmd/yoke-conformance", "./cmd/yoke-core", "./cmd/yoke-compose"}},
 	{Name: "yoke-verify", Packages: []string{"./cmd/yoke-verify"}},
 }
