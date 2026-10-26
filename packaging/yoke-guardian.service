@@ -1,0 +1,18 @@
+# The application form's guardian, for the account this unit is enabled for: a user unit, run by the
+# account's own systemd. Enabled for an account that lingers, it runs when the host comes up and brings
+# the account's instances to their desired state; it exits when it has nothing left to watch.
+#
+# It is installed at /usr/lib/systemd/user/yoke-guardian.service, and enabled with
+# `systemctl --user enable yoke-guardian.service` as the account, or for every account with --global.
+[Unit]
+Description=Yoke guardian
+Documentation=https://github.com/yoke-project/yoke
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/yoke-guardian --boot
+# A guardian that exits with nothing left to watch is done; one that fails is started again.
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
