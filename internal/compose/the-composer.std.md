@@ -161,3 +161,16 @@
 | **Action** | `build` it into that directory |
 | **Expected** | the build is refused as a refusal, naming the directory and saying it is not there, before the project is read; nothing is written and the directory is not made |
 
+
+## yoke:the-composer.13 — a component whose digest no longer matches is refused by `check` and by `build`
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/95 §The rule that matters most · arch/15-gate/06 §Phase 4 — host facts · arch/20-composer/02 §Building a package |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a project that builds, its component then changed after the descriptor pinned it |
+| **Action** | `check` it, then `build` it |
+| **Expected** | `check` refuses with `component.digest`, naming both digests; `build` is refused with the same finding and writes nothing |

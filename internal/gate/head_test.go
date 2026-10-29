@@ -1,6 +1,8 @@
 package gate_test
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -94,8 +96,11 @@ func TestInsideABundleAManifestIsNamedByItsPlugin(t *testing.T) {
 	if err := os.MkdirAll(manifests, 0o755); err != nil {
 		t.Fatal(err)
 	}
+	program := []byte("#!/bin/sh\nexit 0\n")
+	os.MkdirAll(filepath.Join(dir, "components"), 0o755)
+	os.WriteFile(filepath.Join(dir, "components", "acquire"), program, 0o755)
 	document := identity + "units: { acquire: { kind: plugin, plugin: com.yoke.station.acquire, exec: components/acquire, digest: \"sha256:" +
-		strings.Repeat("ab", 32) + "\" } }\n"
+		fmt.Sprintf("%x", sha256.Sum256(program)) + "\" } }\n"
 	in := gate.Input{Document: gate.Document{Path: filepath.Join(dir, "yoke.yaml"), Kind: gate.Descriptor, Bytes: []byte(document)},
 		Moment: gate.Composing, Manifests: manifests}
 	path := filepath.Join(manifests, "com.yoke.station.acquire.yaml")

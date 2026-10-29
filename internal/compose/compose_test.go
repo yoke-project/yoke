@@ -309,3 +309,30 @@ func TestBuildNamesTheOutDirectoryThatIsNotThere(t *testing.T) {
 		t.Error("the directory was made")
 	}
 }
+
+// std: yoke:the-composer.13
+func TestAComponentThatChangedIsRefusedByCheckAndBuild(t *testing.T) {
+	dir := project(t, "components/acquire", nil)
+	if err := os.WriteFile(filepath.Join(dir, "components", "acquire"), []byte("#!/bin/sh\nexit 1\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	digest := func(r gate.Report) bool {
+		for _, f := range r.Findings {
+			if f.Code == "component.digest" && strings.Count(f.Message, "sha256:") == 2 {
+				return true
+			}
+		}
+		return false
+	}
+	if r := Check(dir); !r.Refused() || !digest(r) {
+		t.Errorf("check does not refuse the changed component: %v", r.Findings)
+	}
+	out := t.TempDir()
+	path, report, err := Build(dir, BuildOptions{Out: out})
+	if err == nil || !digest(report) || path != "" {
+		t.Errorf("build is not refused with component.digest: %q %v %v", path, err, report.Findings)
+	}
+	if entries, _ := os.ReadDir(out); len(entries) != 0 {
+		t.Errorf("build wrote %v", entries)
+	}
+}

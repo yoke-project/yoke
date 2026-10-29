@@ -2,6 +2,8 @@ package compose
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -171,7 +173,7 @@ var sample = map[string][2]string{
 	"parameters.*.*.label": {"parameters.shared.s.label", "S"},
 	"units.*.kind":         {"units.a.kind", "oneshot"}, "units.*.plugin": {"units.p.plugin", "com.example.bench"},
 	"units.*.exec": {"units.a.exec", "components/setup"}, "units.*.image": {"units.c.image", "docker.io/library/busybox@sha256:" + strings.Repeat("a", 64)},
-	"units.*.digest": {"units.a.digest", "sha256:" + strings.Repeat("0", 64)}, "units.*.manifest_digest": {"units.p.manifest_digest", "sha256:" + strings.Repeat("0", 64)},
+	"units.*.digest": {"units.a.digest", fmt.Sprintf("sha256:%x", sha256.Sum256([]byte("#!/bin/sh\nexit 0\n")))}, "units.*.manifest_digest": {"units.p.manifest_digest", "sha256:" + strings.Repeat("0", 64)},
 	"units.*.args": {"units.a.args", "[x]"}, "units.*.env.*": {"units.a.env.MODE", "fast"}, "units.*.needs": {"units.a.needs", "[network]"},
 	"units.*.bind.*": {"units.d.bind.zero", "/dev/zero"}, "units.*.depends_on": {"units.a.depends_on", "[p]"}, "units.*.autostart": {"units.a.autostart", "true"},
 	"units.*.migrates_from": {"units.a.migrates_from", ">=0.9"},

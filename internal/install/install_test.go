@@ -253,8 +253,19 @@ func TestAnEntryThatWouldLeaveTheBundleIsRefused(t *testing.T) {
 // std: yoke:the-installation.05
 func TestAComponentWhoseDigestDisagreesIsRefused(t *testing.T) {
 	apps := root(t)
-	pkg := build(t, project(t, "2.1.0", "aarch64", "sha256:"+strings.Repeat("ab", 32)), compose.BuildOptions{Sign: priv})
-	_, err := Install(options(apps, pkg))
+	// The composer refuses such a project, so the package is packed by hand, as another tool could.
+	dir := project(t, "2.1.0", "aarch64", "sha256:"+strings.Repeat("ab", 32))
+	var b bytes.Buffer
+	z := zip.NewWriter(&b)
+	for _, name := range []string{"yoke.yaml", "manifests/com.yoke.station.acquire.yaml", "components/plugins/acquire", "components/setup"} {
+		h := &zip.FileHeader{Name: name, Method: zip.Deflate}
+		h.SetMode(0o755)
+		w, _ := z.CreateHeader(h)
+		body, _ := os.ReadFile(filepath.Join(dir, name))
+		w.Write(body)
+	}
+	z.Close()
+	_, err := Install(options(apps, packPayload(t, b.Bytes(), "2.1.0")))
 	refused(t, err, "component.digest", "components/plugins/acquire")
 	assertIncomplete(t, apps, "2.1.0")
 }
