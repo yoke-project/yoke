@@ -124,11 +124,49 @@ func written(n Need) string {
 	return n.Class
 }
 
+// component checks the executable of the unit name, at where in the document: there, executable, and of
+// the digest a descriptor states for it. A finding names it as shown.
+func (c *checker) component(executable, shown, where, name string, u Unit) {
+	location := joined("units", name)
+	info, err := os.Stat(executable)
+	switch {
+	case err != nil:
+		c.refuse("component.missing", where, "the executable %s of the unit %s is not there", shown, name)
+	case !info.Mode().IsRegular() || info.Mode().Perm()&0o111 == 0:
+		c.refuse("component.not_executable", where, "the executable %s of the unit %s is there and cannot be executed", shown, name)
+	case c.doc.Kind == Descriptor && u.Digest != "":
+		if got, err := fileDigest(executable); err != nil {
+			c.refuse("component.missing", where, "the executable %s of the unit %s cannot be read: %v", shown, name, err)
+		} else if got != u.Digest {
+			c.refuse("component.digest", joined(location, "digest"), "the executable %s of the unit %s is %s, and the descriptor states %s", shown, name, got, u.Digest)
+		}
+	}
+}
+
+// projectComponents is what phase 4 checks while composing: the components a descriptor names are the
+// project's and not the host's, at the path each `exec` names beside the descriptor, and they are the
+// files the bundle will carry. Nothing else of the host is checked, and the phase is named as not run.
+func (c *checker) projectComponents() {
+	if c.doc.Kind != Descriptor || c.deployment == nil {
+		return
+	}
+	dir := filepath.Dir(c.doc.Path)
+	for _, name := range c.deployment.Order {
+		if u := c.deployment.Units[name]; u.Exec != "" {
+			c.component(filepath.Join(dir, u.Exec), u.Exec, joined(joined("units", name), "exec"), name, u)
+		}
+	}
+}
+
 // hostFacts is phase 4: what the host that will run the deployment must hold. It is not run while
 // composing, where the host in hand is not the target.
 func (c *checker) hostFacts() bool {
+	if c.in.Moment == Composing {
+		c.projectComponents()
+		return false
+	}
 	h := c.in.Host
-	if h == nil || c.in.Moment == Composing {
+	if h == nil {
 		return false
 	}
 	at := func(marks ...Moment) bool { return slices.Contains(marks, c.in.Moment) }
@@ -171,19 +209,7 @@ func (c *checker) hostFacts() bool {
 			}
 		}
 		if executable != "" && at(Installing, Creating, Starting) {
-			info, err := os.Stat(executable)
-			switch {
-			case err != nil:
-				c.refuse("component.missing", where, "the executable %s of the unit %s is not there", executable, name)
-			case !info.Mode().IsRegular() || info.Mode().Perm()&0o111 == 0:
-				c.refuse("component.not_executable", where, "the executable %s of the unit %s is there and cannot be executed", executable, name)
-			case c.doc.Kind == Descriptor && u.Digest != "":
-				if got, err := fileDigest(executable); err != nil {
-					c.refuse("component.missing", where, "the executable %s of the unit %s cannot be read: %v", executable, name, err)
-				} else if got != u.Digest {
-					c.refuse("component.digest", joined(location, "digest"), "the executable %s of the unit %s is %s, and the descriptor states %s", executable, name, got, u.Digest)
-				}
-			}
+			c.component(executable, executable, where, name, u)
 		}
 		if m := c.manifests[u.Plugin]; u.Kind == "plugin" && u.ManifestDigest != "" && m != nil && at(Installing, Creating, Starting) {
 			if got, err := fileDigest(m.Path); err == nil && got != u.ManifestDigest {

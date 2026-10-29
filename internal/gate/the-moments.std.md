@@ -82,3 +82,16 @@
 | **Precondition** | a descriptor declaring a routable channel `panel` whose caller is authenticated, its material in the store; the host's answer about its authentication service supplied as a failure, then as a success; then a descriptor declaring no routable channel, with the failure |
 | **Action** | check each at installing, at creating and at starting |
 | **Expected** | at starting with the failure, `auth.unavailable` naming `panel` and why; nothing of it with the success, nor for the descriptor with no routable channel, nor at installing or at creating |
+
+## yoke:the-moments.07 — while composing, the components a descriptor names are checked against the project, and nothing else of the host is
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/95 §The rule that matters most · arch/15-gate/06 §The moments · arch/15-gate/06 §Phase 4 — host facts |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a project whose descriptor pins its component by digest, with no host in hand; the component then changed, then not executable, then absent |
+| **Action** | check it while composing, each time |
+| **Expected** | nothing is refused for the project as written; then `component.digest` naming both digests, `component.not_executable` and `component.missing`, each naming the component; every time the host facts are named as not run |

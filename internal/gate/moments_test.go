@@ -163,3 +163,30 @@ func TestARoutableChannelOnAHostThatCannotBeAskedIsRefusedWhenItStarts(t *testin
 		t.Error("a descriptor with no routable channel was refused")
 	}
 }
+
+// std: yoke:the-moments.07
+func TestAComponentIsCheckedWhileComposing(t *testing.T) {
+	const h = "arch: x86_64\ncore: \">=0.1\"\n"
+	composing := func(dir string) gate.Report {
+		r, _ := gate.Check(gate.Input{Document: gate.Read(filepath.Join(dir, "yoke.yaml"), gate.Descriptor), Moment: gate.Composing,
+			Manifests: filepath.Join(dir, "manifests")})
+		if !slices.Contains(r.NotRun, gate.PhaseHostFacts) {
+			t.Errorf("the host facts are not named as not run: %v", r.NotRun)
+		}
+		return r
+	}
+	wants(t, composing(bundleOf(t, h, "", "")))
+
+	changed := composing(bundleOf(t, h, "", "#!/bin/sh\nexit 1\n"))
+	wants(t, changed, "component.digest")
+	if f := changed.Findings[0]; strings.Count(f.Message, "sha256:") != 2 || !strings.Contains(f.Message, "components/setup") {
+		t.Errorf("the finding does not name the component and both digests: %s", f.Message)
+	}
+
+	dir := bundleOf(t, h, "", "")
+	os.Chmod(filepath.Join(dir, "components", "setup"), 0o644)
+	wants(t, composing(dir), "component.not_executable")
+
+	os.Remove(filepath.Join(dir, "components", "setup"))
+	wants(t, composing(dir), "component.missing")
+}

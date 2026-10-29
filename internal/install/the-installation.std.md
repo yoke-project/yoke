@@ -66,7 +66,7 @@
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
-| **Precondition** | a package whose descriptor states for its executable a digest other than the file's |
+| **Precondition** | a package whose descriptor states for its executable a digest other than the file's, packed by another tool than the composer, which refuses such a project |
 | **Action** | install it |
 | **Expected** | it is refused `component.digest`, naming the component; the record stays `incomplete` |
 
