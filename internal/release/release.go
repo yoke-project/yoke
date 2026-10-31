@@ -58,6 +58,9 @@ type Config struct {
 	// Conformance is the directory the release's measuring left, one directory per family measured;
 	// where it is set, the joined report is handed over beside the other files.
 	Conformance string
+	// Installer is the path, in the tagged tree, of the script that obtains a release; where it is set,
+	// the script is handed over beside the other files, carrying the release's version and their digests.
+	Installer string
 
 	// What a definitions tag publishes beside its module: the packages, made at a version into a
 	// directory, each to its registry. Settle is how many times, Pause apart, a registry is asked for a
@@ -436,6 +439,29 @@ func handOver(cfg Config, tag, version string, notices []string) ([]handed, erro
 		sum := sha256.Sum256(data)
 		files[i].digest = "sha256:" + hex.EncodeToString(sum[:])
 		paths = append(paths, f.path)
+	}
+	if cfg.Installer != "" {
+		script, err := os.ReadFile(filepath.Join(tree, filepath.FromSlash(cfg.Installer)))
+		if err != nil {
+			return nil, err
+		}
+		var sums []string
+		for _, f := range files {
+			if strings.HasSuffix(f.path, ".tar.gz") {
+				sums = append(sums, strings.TrimPrefix(f.digest, "sha256:")+"  "+filepath.Base(f.path))
+			}
+		}
+		stamped, err := StampInstaller(script, version, sums)
+		if err != nil {
+			return nil, err
+		}
+		path := filepath.Join(dir, InstallerName)
+		if err := os.WriteFile(path, stamped, 0o755); err != nil {
+			return nil, err
+		}
+		sum := sha256.Sum256(stamped)
+		files = append(files, handed{published: "yoke-install", path: path, digest: "sha256:" + hex.EncodeToString(sum[:])})
+		paths = append(paths, path)
 	}
 	if err := cfg.Upload(tag, paths); err != nil {
 		return nil, err
