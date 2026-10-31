@@ -33,9 +33,10 @@ lint:
     #!/usr/bin/env bash
     set -euo pipefail
     bash -n checks/run.sh checks/*/*.sh ci/*.sh
+    sh -n install/yoke-install.sh
     go vet ./...
     go vet -C proto ./...
-    echo "lint: every shell script parses and go vet is clean in both modules"
+    echo "lint: every shell script parses, the installer as sh, and go vet is clean in both modules"
 
 # Fail, naming each file, when the tree is not formatted.
 fmt:

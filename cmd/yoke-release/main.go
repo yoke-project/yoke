@@ -75,6 +75,7 @@ func main() {
 		cfg.Artifacts, cfg.Source, cfg.Upload = release.Yoke, "yoke", release.ToForge
 		cfg.Modules = true
 		cfg.Conformance = *conformance
+		cfg.Installer = "install/yoke-install.sh"
 		cfg.Releases = "https://github.com/yoke-project/yoke/releases/tag/"
 		cfg.Repository = "yoke-project/yoke"
 		cfg.Forge = release.GitHub{Repository: cfg.Repository}

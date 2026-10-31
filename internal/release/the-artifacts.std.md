@@ -134,3 +134,29 @@
 | **Precondition** | a repository tagged `v0.1.0` whose command imports a module it requires through a replacement inside the tree, and a source archive asked for |
 | **Action** | run the verb |
 | **Expected** | the upload holds `yk-0.1.0-modules.tar.gz`, holding `yk-0.1.0/vendor/modules.txt` and the required module's source beneath `yk-0.1.0/vendor/`; one line names it as `yk-modules` with its digest; and the verb built the command from the source archive and that archive, unpacked together, with no module proxy and an empty module cache, before it handed either over |
+
+## yoke:the-artifacts.11 — a programs tag hands over the script that obtains it, carrying its version and its files' digests
+
+| Field | Value |
+| --- | --- |
+| **Cites** | prj_structure/95 §The built binaries · prj_structure/85 §The release record |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a repository tagged `v0.1.0` with two commands in one artifact, and a script in the tree holding `YOKE_RELEASE=""` and `YOKE_DIGESTS=""` once each, named as the installer |
+| **Action** | run the verb |
+| **Expected** | the upload holds `yoke-install.sh`, with no version in its name, executable; it says `YOKE_RELEASE="0.1.0"`, and its digests are one `<sha256>  <file>` line for each archive uploaded beside it and for nothing else, each the digest of that archive's bytes; and one line names it as `yoke-install` with its own digest — the newest release's copy is always at one address, and checks its own release without the manifest |
+
+## yoke:the-artifacts.12 — a script that cannot carry a release is refused, and `yoke`'s own can
+
+| Field | Value |
+| --- | --- |
+| **Cites** | prj_structure/95 §The built binaries |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a script holding `YOKE_RELEASE=""` twice, one holding no `YOKE_DIGESTS=""`, and `install/yoke-install.sh` of this tree |
+| **Action** | write a version and two digest lines into each |
+| **Expected** | the first two are refused, naming the line; `yoke`'s own is written, and then says the version and both digest lines — a script handed over unable to check anything would check nothing silently |

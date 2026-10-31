@@ -428,3 +428,89 @@ func TestAProgramsTagHandsOverItsModulesBuiltOfflineFirst(t *testing.T) {
 		t.Errorf("the verb does not say it built from the two archives offline:\n%s", errs.String())
 	}
 }
+
+// std: yoke:the-artifacts.11
+func TestAProgramsTagHandsOverTheScriptThatObtainsIt(t *testing.T) {
+	script := "#!/bin/sh\nset -eu\nYOKE_RELEASE=\"\"\nYOKE_DIGESTS=\"\"\necho \"$YOKE_RELEASE\"\n"
+	root := withCommandsAnd(t, map[string]string{"get.sh": script}, "v0.1.0")
+	s := &shelf{}
+	var out, errs bytes.Buffer
+	code := release.Run(release.Config{Root: root, Out: &out, Err: &errs,
+		Proxy: func(m, v string) (string, error) {
+			if m == "example.com/yk/proto" {
+				return treeHash(t, root, m, v, "proto/"+v, "proto"), nil
+			}
+			return treeHash(t, root, m, v, v, ""), nil
+		},
+		Today:     func() time.Time { return time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC) },
+		Artifacts: []release.Artifact{{Name: "yk-tools", Packages: []string{"./cmd/a", "./cmd/b"}}},
+		Source:    "yk", Releases: "https://forge.example/yk/releases/tag/", Upload: s.upload, Installer: "get.sh"})
+	if code != 0 {
+		t.Fatalf("exit %d: %s%s", code, out.String(), errs.String())
+	}
+	stamped, uploaded := s.files[release.InstallerName]
+	if !uploaded {
+		t.Fatalf("uploaded %v", keys(s.files))
+	}
+	if !strings.Contains(string(stamped), "\nYOKE_RELEASE=\"0.1.0\"\n") {
+		t.Errorf("the script does not carry its version:\n%s", stamped)
+	}
+	var want []string
+	for name, data := range s.files {
+		if strings.HasSuffix(name, ".tar.gz") {
+			sum := sha256.Sum256(data)
+			want = append(want, hex.EncodeToString(sum[:])+"  "+name)
+		}
+	}
+	sort.Strings(want)
+	body := string(stamped)
+	from := strings.Index(body, "YOKE_DIGESTS=\"\n")
+	if from < 0 {
+		t.Fatalf("no digests in:\n%s", body)
+	}
+	rest := body[from+len("YOKE_DIGESTS=\"\n"):]
+	got := strings.Split(strings.TrimSuffix(rest[:strings.Index(rest, "\"")], "\n"), "\n")
+	sort.Strings(got)
+	if strings.Join(got, "|") != strings.Join(want, "|") {
+		t.Errorf("the script carries %v, the archives are %v", got, want)
+	}
+	_, lines, _, _ := parse(t, out.String())
+	sum := sha256.Sum256(stamped)
+	found := false
+	for _, l := range lines {
+		digests, _ := l["digests"].([]any)
+		if l["published"] == "yoke-install" && len(digests) == 1 && digests[0] == "sha256:"+hex.EncodeToString(sum[:]) &&
+			l["version"] == "v0.1.0" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("no line names the script with its digest: %s", out.String())
+	}
+}
+
+// std: yoke:the-artifacts.12
+func TestAScriptThatCannotCarryAReleaseIsRefused(t *testing.T) {
+	sums := []string{strings.Repeat("a", 64) + "  yoke-0.1.0-linux-amd64.tar.gz", strings.Repeat("b", 64) + "  yoke-0.1.0-linux-arm64.tar.gz"}
+	for name, script := range map[string]string{
+		"twice":     "#!/bin/sh\nYOKE_RELEASE=\"\"\nYOKE_RELEASE=\"\"\nYOKE_DIGESTS=\"\"\n",
+		"no digest": "#!/bin/sh\nYOKE_RELEASE=\"\"\n",
+	} {
+		if _, err := release.StampInstaller([]byte(script), "0.1.0", sums); err == nil || !strings.Contains(err.Error(), "YOKE_") {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	own, err := os.ReadFile(filepath.Join("..", "..", "install", "yoke-install.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	stamped, err := release.StampInstaller(own, "0.1.0", sums)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range append([]string{"\nYOKE_RELEASE=\"0.1.0\"\n"}, sums...) {
+		if !strings.Contains(string(stamped), want) {
+			t.Errorf("yoke's own script does not say %q", want)
+		}
+	}
+}
