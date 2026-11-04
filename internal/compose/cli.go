@@ -22,6 +22,7 @@ const usage = `usage: yoke-compose <verb> [options]
   init <id> [--dir D] [--arch A] [--version V] [--core R]   make a project
   check [--dir D]                                           run the gate over it, then the advice
   build [--dir D] [--out O] [--sign KEY] [--seal FILE]      make a package from it
+  build [--dir D] [--arch A]                                in a Plugin project, build the Plugin
 
   add unit <name> --kind K [--exec P | --image R | --plugin ID] [--arg A]... [--depends-on U]... [--bind N=V]...
   add channel <name> --transport T --clients C [--unit U] [--class C [--host H] [--port N]] [--on-suspend G]
@@ -182,8 +183,28 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		out := fs.String("out", ".", "where the package is written")
 		key := fs.String("sign", "", "a private key in PEM to sign with; none builds an unsigned package")
 		seal := fs.String("seal", "", "a file holding the seal credential; none leaves the payload in clear")
+		arch := fs.String("arch", "", "in a Plugin project, the architecture to build for; by default this host's")
 		if fs.Parse(rest) != nil {
 			return Refused
+		}
+		var kind ProjectKind
+		if kind, err = KindOf(*dir); err != nil {
+			break
+		}
+		if kind == PluginProject {
+			if *key != "" || *seal != "" || *out != "." {
+				err = refusef("%s is a Plugin project: --out, --sign and --seal are an application's package's, and a Plugin's build leaves its executable in build/<arch>/", *dir)
+				break
+			}
+			var exe string
+			if exe, err = BuildPlugin(*dir, PluginBuildOptions{Arch: *arch, Stdout: stdout, Stderr: stderr}); err == nil {
+				fmt.Fprintln(stdout, exe)
+			}
+			break
+		}
+		if *arch != "" {
+			err = refusef("--arch builds a Plugin project; an application's architecture is its descriptor's arch")
+			break
 		}
 		o := BuildOptions{Out: *out}
 		if *key != "" {
