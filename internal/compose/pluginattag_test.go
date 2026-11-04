@@ -1,6 +1,9 @@
 package compose
 
 import (
+	"archive/zip"
+	"bytes"
+	"io"
 	"crypto/sha256"
 	"fmt"
 	"os"
@@ -85,7 +88,7 @@ func TestUpdatePluginTakesAnotherTagAndReplacesWhatTheFirstOnePlaced(t *testing.
 	if _, _, err := Build(app, BuildOptions{Out: t.TempDir()}); err != nil {
 		t.Fatalf("build: %v", err)
 	}
-	if !strings.Contains(mustArchive(t, app), builds["v1.0.0"]) {
+	if bundled(t, app, "components/plugins/greeter") != builds["v1.0.0"] {
 		t.Errorf("the first package does not carry v1.0.0's executable")
 	}
 	file := filepath.Join(app, Descriptor)
@@ -117,7 +120,7 @@ func TestUpdatePluginTakesAnotherTagAndReplacesWhatTheFirstOnePlaced(t *testing.
 	if _, _, err := Build(app, BuildOptions{Out: t.TempDir()}); err != nil {
 		t.Fatalf("build: %v", err)
 	}
-	if !strings.Contains(mustArchive(t, app), builds["v1.1.0"]) {
+	if bundled(t, app, "components/plugins/greeter") != builds["v1.1.0"] {
 		t.Errorf("the second package does not carry v1.1.0's executable")
 	}
 
@@ -188,12 +191,28 @@ func updating(t *testing.T, at time.Time, args ...string) (int, string) {
 	return run(append([]string{"update", "plugin"}, args...)...)
 }
 
-// mustArchive is the project's bundle as text, to look for an executable's bytes in.
-func mustArchive(t *testing.T, dir string) string {
+// bundled is the file at path in the project's bundle, as text.
+func bundled(t *testing.T, dir, path string) string {
 	t.Helper()
 	data, err := archive(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return string(data)
+	z, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range z.File {
+		if f.Name == path {
+			r, err := f.Open()
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer r.Close()
+			b, _ := io.ReadAll(r)
+			return string(b)
+		}
+	}
+	t.Fatalf("the bundle holds no %s", path)
+	return ""
 }
