@@ -3,9 +3,9 @@ package compose
 import (
 	"archive/zip"
 	"bytes"
-	"io"
 	"crypto/sha256"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
