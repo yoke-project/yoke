@@ -77,6 +77,9 @@ type Config struct {
 	// SourceRelease is a family consumed as its source: its `vX.Y.Z` tags hand over the source archive,
 	// named for Source, to the tag's release, and nothing else is published.
 	SourceRelease bool
+	// Template, where it is set, is the family whose `vX.Y.Z` tags also hand over the archive of the tagged
+	// tree's `template/` directory to the tag's release: the starting tree of a Plugin project.
+	Template string
 
 	// Forge, where it is set, is asked what was merged since the previous programs tag, and the release
 	// a programs tag hands its files to is described with it. Repository is where, as owner/name.
@@ -160,6 +163,18 @@ func Run(cfg Config) int {
 	}
 	sort.Slice(modules, func(i, j int) bool { return modules[i].subdir < modules[j].subdir })
 
+	// A family's template is checked before anything is handed over, so that a tree without one publishes
+	// nothing.
+	if cfg.Template != "" {
+		for _, m := range modules {
+			if m.subdir == "" {
+				if _, err := gitIn(cfg.Root, "cat-file", "-e", m.tag+":template"); err != nil {
+					return fail("the family's template is handed over from template/, and %s holds no template/", m.tag)
+				}
+			}
+		}
+	}
+
 	// The notices the tree states, which every artifact of it carries (E3).
 	notices := []string{}
 	if _, err := os.Stat(filepath.Join(cfg.Root, "NOTICE")); err == nil {
@@ -227,6 +242,19 @@ func Run(cfg Config) int {
 				Digests: []string{f.digest}, Where: cfg.Releases + m.tag, Authenticated: origin(cfg.Releases),
 				Licence: licence, Notices: notices, Day: cfg.Today().UTC().Format(time.DateOnly)})
 		}
+	}
+	// A family's release tag also hands over its template: the archive of the tagged tree's template/.
+	for _, m := range modules {
+		if cfg.Template == "" || m.subdir != "" {
+			continue
+		}
+		f, err := handOverTemplate(cfg, m.tag, strings.TrimPrefix(m.version, "v"))
+		if err != nil {
+			return fail("the template of %s could not be handed over: %v", m.tag, err)
+		}
+		lines = append(lines, Line{Line: "publication", Published: f.published, Version: m.version, Commit: commit,
+			Digests: []string{f.digest}, Where: cfg.Releases + m.tag, Authenticated: origin(cfg.Releases),
+			Licence: licence, Notices: notices, Day: cfg.Today().UTC().Format(time.DateOnly)})
 	}
 	out := json.NewEncoder(cfg.Out)
 	out.SetEscapeHTML(false)
@@ -467,6 +495,34 @@ func handOver(cfg Config, tag, version string, notices []string) ([]handed, erro
 		return nil, err
 	}
 	return files, nil
+}
+
+// handOverTemplate archives the tagged tree's template/ as git makes it, compressed as every other archive
+// here is, so two runs give the same bytes, and uploads it to the tag's release.
+func handOverTemplate(cfg Config, tag, version string) (handed, error) {
+	dir, err := os.MkdirTemp("", "yoke-release-template-")
+	if err != nil {
+		return handed{}, err
+	}
+	defer os.RemoveAll(dir)
+	tarred, err := exec.Command("git", "-C", cfg.Root, "archive", "--format=tar", tag, "template/").Output()
+	if err != nil {
+		return handed{}, fmt.Errorf("the template's archive cannot be made: %v", err)
+	}
+	name := fmt.Sprintf("yoke-plugin-template-%s-%s.tar.gz", cfg.Template, version)
+	path := filepath.Join(dir, name)
+	if err := writeCompressed(path, tarred); err != nil {
+		return handed{}, err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return handed{}, err
+	}
+	sum := sha256.Sum256(data)
+	if err := cfg.Upload(tag, []string{path}); err != nil {
+		return handed{}, err
+	}
+	return handed{published: "yoke-plugin-template-" + cfg.Template, path: path, digest: "sha256:" + hex.EncodeToString(sum[:])}, nil
 }
 
 type entry struct {
