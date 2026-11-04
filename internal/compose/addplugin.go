@@ -58,6 +58,9 @@ func AddPlugin(dir, source string, o TakeOptions) (string, error) {
 	} else if kind != ApplicationProject {
 		return "", refusef("%s is a Plugin project: a Plugin is taken into an application project", dir)
 	}
+	if url, tag, ok := remote(source); ok {
+		return takeRemote(dir, url, tag, o)
+	}
 	abs, err := filepath.Abs(source)
 	if err != nil {
 		return "", err

@@ -24,7 +24,9 @@ const usage = `usage: yoke-compose <verb> [options]
   build [--dir D] [--out O] [--sign KEY] [--seal FILE]      make a package from it
   build [--dir D] [--arch A]                                in a Plugin project, build the Plugin
 
-  add plugin <path> [--as U] [--yes] [--dir D]              take a Plugin into the application, recorded in plugins.yaml
+  add plugin <url>@<tag>|<path> [--as U] [--yes] [--dir D]  take a Plugin into the application, recorded in plugins.yaml
+  update plugin <id> --to <tag> [--yes] [--dir D]           take a Plugin again, at another tag
+  plugins [--dir D]                                         what was taken, and whether each tag still names its commit
   add unit <name> --kind K [--exec P | --image R | --plugin ID] [--arg A]... [--depends-on U]... [--bind N=V]...
   add channel <name> --transport T --clients C [--unit U] [--class C [--host H] [--port N]] [--on-suspend G]
   add parameter <group>.<name> --type T [--range R] [--pattern P] [--values A,B] [--required] [--default V] [--label L]
@@ -244,6 +246,25 @@ func Run(args []string, stdout, stderr io.Writer) int {
 			break
 		}
 		return author(verb, rest, stdout, stderr)
+	case "update":
+		to := fs.String("to", "", "the tag to take the Plugin at")
+		yes := fs.Bool("yes", false, "run the author's build without asking, for continuous integration")
+		positional, flags := positionals(rest, fs)
+		if fs.Parse(flags) != nil {
+			return Refused
+		}
+		if len(positional) != 2 || positional[0] != "plugin" || *to == "" {
+			fmt.Fprint(stderr, synopsis("update"))
+			return Refused
+		}
+		if err = UpdatePlugin(*dir, positional[1], *to, TakeOptions{Yes: *yes, Out: stdout}); err == nil {
+			fmt.Fprintf(stdout, "took %s at %s, recorded in %s\n", positional[1], *to, Plugins)
+		}
+	case "plugins":
+		if fs.Parse(rest) != nil {
+			return Refused
+		}
+		err = ListPlugins(*dir, stdout)
 	case "block":
 		as := fs.String("as", "", "the name the block's unit is placed as")
 		positional, flags := positionals(rest, fs)
