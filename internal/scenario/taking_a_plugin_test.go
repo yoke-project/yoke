@@ -75,8 +75,18 @@ func TestAPluginTakenFromItsSourceIsAdmittedByACore(t *testing.T) {
 	sh("yoke", "instance", "create", "com.example.station", "--name", "station")
 	sh("yoke", "instance", "start", "station")
 
+	// Until its Core is up the instance answers nothing, which is not yet a failure.
+	ask := func(args ...string) string {
+		cmd := exec.Command(filepath.Join(bin, "yoke"), args...)
+		cmd.Env = env
+		out, _ := cmd.CombinedOutput()
+		return strings.Join(strings.Fields(string(out)), " ")
+	}
+	eventually("station listed observable", 2*time.Minute, func() bool {
+		return strings.Contains(ask("instance", "list"), "station com.example.station 0.1.0 observable")
+	})
 	eventually("the greeter admitted and running", 2*time.Minute, func() bool {
-		return strings.Contains(strings.Join(strings.Fields(sh("yoke", "unit", "show", "greeter", "--instance", "station")), " "), `"state": "Running"`)
+		return strings.Contains(ask("unit", "show", "greeter", "--instance", "station"), `"state": "Running"`)
 	})
 	filepath.Walk(apps, func(path string, info os.FileInfo, err error) error {
 		if err == nil && info.Name() == "plugins.yaml" {
