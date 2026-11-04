@@ -221,7 +221,8 @@ func Set(d Document, path, raw string) error {
 // beneath it; a mapping it leaves empty below the document's own keys goes with it, and so does a
 // parameter group named after the unit or channel removed once neither of the two is left. The result is kept
 // only where the gate refuses nothing it did not refuse already, and a path that names nothing is
-// refused as one. A unit placed from a block loses its line in blocks.yaml; a waiver at the place
+// refused as one. A unit placed from a block loses its line in blocks.yaml, and a Plugin taken its line in
+// plugins.yaml; a waiver at the place
 // removed is left, and is stale from then on. No file beside the document is deleted.
 func Remove(d Document, path string) error {
 	parts := strings.Split(path, ".")
@@ -278,7 +279,10 @@ func Remove(d Document, path string) error {
 	if err != nil || d.Project == "" || len(parts) != 2 || parts[0] != "units" {
 		return err
 	}
-	return unrecord(d.Project, parts[1])
+	if err := unrecord(d.Project, parts[1]); err != nil {
+		return err
+	}
+	return untake(d.Project, parts[1])
 }
 
 // child is the node under key in a mapping, or at the index key names in a sequence, or nil.

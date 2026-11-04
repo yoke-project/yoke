@@ -24,6 +24,7 @@ const usage = `usage: yoke-compose <verb> [options]
   build [--dir D] [--out O] [--sign KEY] [--seal FILE]      make a package from it
   build [--dir D] [--arch A]                                in a Plugin project, build the Plugin
 
+  add plugin <path> [--as U] [--yes] [--dir D]              take a Plugin into the application, recorded in plugins.yaml
   add unit <name> --kind K [--exec P | --image R | --plugin ID] [--arg A]... [--depends-on U]... [--bind N=V]...
   add channel <name> --transport T --clients C [--unit U] [--class C [--host H] [--port N]] [--on-suspend G]
   add parameter <group>.<name> --type T [--range R] [--pattern P] [--values A,B] [--required] [--default V] [--label L]
@@ -225,6 +226,23 @@ func Run(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stdout, path)
 		}
 	case "add", "set", "remove", "arbitrate":
+		if verb == "add" && len(rest) > 0 && rest[0] == "plugin" {
+			as := fs.String("as", "", "the unit's name; by default the program's")
+			yes := fs.Bool("yes", false, "run the author's build without asking, for continuous integration")
+			positional, flags := positionals(rest[1:], fs)
+			if fs.Parse(flags) != nil {
+				return Refused
+			}
+			if len(positional) != 1 {
+				fmt.Fprint(stderr, synopsis("add"))
+				return Refused
+			}
+			var unit string
+			if unit, err = AddPlugin(*dir, positional[0], TakeOptions{As: *as, Yes: *yes, Out: stdout}); err == nil {
+				fmt.Fprintf(stdout, "took %s as the unit %s, recorded in %s\n", positional[0], unit, Plugins)
+			}
+			break
+		}
 		return author(verb, rest, stdout, stderr)
 	case "block":
 		as := fs.String("as", "", "the name the block's unit is placed as")
