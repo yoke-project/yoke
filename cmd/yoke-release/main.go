@@ -25,6 +25,7 @@ func main() {
 	wheel := flag.String("wheel", "", "publish the family's wheel of this name at its release tag, and nothing else")
 	// A family consumed as its source — C, C++ — names the archive, and the verb hands that over alone.
 	source := flag.String("source", "", "hand over the family's source archive of this name at its release tag, and nothing else")
+	template := flag.String("template", "", "with a family's release, also hand over the archive of template/, the family's Plugin template, named for this family")
 	// The tag whose placing invoked the run: a commit carrying two release tags runs the verb once for
 	// each, and each run publishes what its own tag names.
 	invoked := flag.String("tag", "", "the tag that invoked this run; none publishes every release tag on the commit")
@@ -87,6 +88,12 @@ func main() {
 		// A registry may take minutes to serve what it was just given.
 		cfg.Settle, cfg.Pause = 30, 10*time.Second
 		cfg.PackagesOnly = *packagesOnly
+	}
+	if *template != "" {
+		cfg.Template, cfg.Upload = *template, release.ToForge
+		if cfg.Releases == "" {
+			cfg.Releases = "https://github.com/" + os.Getenv("GITHUB_REPOSITORY") + "/releases/tag/"
+		}
 	}
 	os.Exit(release.Run(cfg))
 }
