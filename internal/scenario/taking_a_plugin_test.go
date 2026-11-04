@@ -67,7 +67,8 @@ func TestAPluginTakenFromItsSourceIsAdmittedByACore(t *testing.T) {
 	}
 
 	project := filepath.Join(t.TempDir(), "station")
-	sh("yoke-compose", "init", "com.example.station", "--dir", project)
+	// The Core is built here from a tree that is no release, so the project wants any Core.
+	sh("yoke-compose", "init", "com.example.station", "--dir", project, "--core", ">=0.0.0-0")
 	sh("yoke-compose", "add", "plugin", source, "--yes", "--dir", project)
 	built := strings.Fields(sh("yoke-compose", "build", "--dir", project, "--out", t.TempDir()))
 	sh("yoke", "app", "install", built[len(built)-1])
