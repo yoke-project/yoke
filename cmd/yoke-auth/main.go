@@ -5,11 +5,19 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/yoke-project/yoke/internal/pam"
+
+	"github.com/yoke-project/yoke/internal/version"
 )
 
 func main() {
+	// --version alone is answered before anything else, and nothing is started (prj_structure/95).
+	if version.Asked(os.Args[1:]) {
+		fmt.Println(version.Line("yoke-auth", version.BuildStated()))
+		return
+	}
 	os.Exit(pam.Run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr, os.Getenv))
 }

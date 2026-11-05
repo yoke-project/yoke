@@ -16,9 +16,16 @@ import (
 	"github.com/yoke-project/yoke/internal/guardian"
 	"github.com/yoke-project/yoke/internal/instancerecord"
 	"github.com/yoke-project/yoke/internal/managerconf"
+
+	"github.com/yoke-project/yoke/internal/version"
 )
 
 func main() {
+	// --version alone is answered before anything else, and nothing is started (prj_structure/95).
+	if version.Asked(os.Args[1:]) {
+		fmt.Println(version.Line("yoke-guardian", version.BuildStated()))
+		return
+	}
 	os.Exit(run(os.Args[1:]))
 }
 
