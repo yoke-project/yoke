@@ -160,3 +160,16 @@
 | **Precondition** | a tree with a description and its test, a symbolic link to a directory holding another description and a marker, and a symbolic link to a file carrying a marker |
 | **Action** | check the descriptions and scan the markers |
 | **Expected** | both pass; nothing reached through either link is read, so neither the linked description nor the linked markers appear |
+
+## yoke:descriptions-and-markers.13 — the machine an image boots on is a dimension of its own
+
+| Field | Value |
+| --- | --- |
+| **Cites** | testing/20 §The environments · testing/20 §The board pass |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | descriptions whose case declares **Not applicable in** `machine: raspberrypi5`, `machine: qemu · deployment form: service`, and `machine: qemux86-64` |
+| **Action** | run `yoke-verify descriptions` over each |
+| **Expected** | the first two are read; the third is refused naming the field, the value, and the two values the dimension takes, `qemu` and `raspberrypi5` |
