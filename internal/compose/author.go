@@ -140,6 +140,11 @@ func mapping(m *yaml.Node, key string) (*yaml.Node, error) {
 	if v.Kind != yaml.MappingNode {
 		return nil, refusef("%s is not a mapping", key)
 	}
+	// An empty mapping is read back as `{}`, a flow mapping; what is written into it is in block form, as
+	// in a mapping never emptied.
+	if len(v.Content) == 0 {
+		v.Style &^= yaml.FlowStyle
+	}
 	return v, nil
 }
 

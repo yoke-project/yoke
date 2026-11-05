@@ -113,3 +113,16 @@ func TestAPlacedBlocksLineGoesWithItsUnitAndNothingElseIsDeleted(t *testing.T) {
 		}
 	}
 }
+
+// std: yoke:the-remove-verb.04
+func TestASectionEmptiedAndWrittenAgainIsInBlockForm(t *testing.T) {
+	dir := authored(t)
+	file := filepath.Join(dir, Descriptor)
+	must(t, "add", "unit", "setup", "--kind", "oneshot", "--exec", "components/setup", "--dir", dir)
+	must(t, "remove", "units.setup", "--dir", dir)
+	must(t, "add", "unit", "probe", "--kind", "oneshot", "--exec", "components/setup", "--dir", dir)
+	text := raw(t, file)
+	if strings.Contains(text, "{") || !strings.Contains(text, "units:\n  probe:\n    kind: oneshot\n") {
+		t.Errorf("the unit written again is not in block form:\n%s", text)
+	}
+}
