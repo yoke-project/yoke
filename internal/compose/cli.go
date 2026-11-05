@@ -24,6 +24,9 @@ const usage = `usage: yoke-compose <verb> [options]
   build [--dir D] [--out O] [--sign KEY] [--seal FILE]      make a package from it
   build [--dir D] [--arch A]                                in a Plugin project, build the Plugin
 
+  new plugin <id> --language L [--dir D] [--program P] [--release V | --template FILE]
+                                                            make a Plugin project from its family's template
+
   add plugin <url>@<tag>|<path> [--as U] [--yes] [--dir D]  take a Plugin into the application, recorded in plugins.yaml
   update plugin <id> --to <tag> [--yes] [--dir D]           take a Plugin again, at another tag
   plugins [--dir D]                                         what was taken, and whether each tag still names its commit
@@ -246,6 +249,31 @@ func Run(args []string, stdout, stderr io.Writer) int {
 			break
 		}
 		return author(verb, rest, stdout, stderr)
+	case "new":
+		language := fs.String("language", "", "the family whose template the Plugin starts from")
+		program := fs.String("program", "", "the program's name; by default the id's last segment")
+		release := fs.String("release", "", "a published release whose templates to use, for a composer that is none")
+		template := fs.String("template", "", "a template's archive already obtained, read with no network")
+		positional, flags := positionals(rest, fs)
+		if fs.Parse(flags) != nil {
+			return Refused
+		}
+		if len(positional) != 2 || positional[0] != "plugin" {
+			fmt.Fprint(stderr, synopsis("new"))
+			return Refused
+		}
+		dest := ""
+		fs.Visit(func(f *flag.Flag) {
+			if f.Name == "dir" {
+				dest = f.Value.String()
+			}
+		})
+		var made string
+		made, err = NewPlugin(positional[1], NewOptions{Language: *language, Dir: dest, Program: *program,
+			Release: *release, Template: *template, Out: stdout})
+		if err == nil {
+			fmt.Fprintf(stdout, "%s made: a Plugin project of %s in %s, and try/ an application taking it\n", made, positional[1], *language)
+		}
 	case "update":
 		to := fs.String("to", "", "the tag to take the Plugin at")
 		yes := fs.Bool("yes", false, "run the author's build without asking, for continuous integration")
