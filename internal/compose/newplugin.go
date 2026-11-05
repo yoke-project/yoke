@@ -14,28 +14,20 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"runtime/debug"
 	"slices"
 	"strings"
 	"time"
 
-	"golang.org/x/mod/module"
-	"golang.org/x/mod/semver"
-
 	"github.com/yoke-project/yoke/internal/gate"
+	"github.com/yoke-project/yoke/internal/version"
 )
 
 // manifestURL is the release manifest on yoke's default branch, where a cut line names the family
 // releases current with a programs version; composerVersion is the version this composer states.
 var (
 	manifestURL     = "https://raw.githubusercontent.com/yoke-project/yoke/main/releases/manifest.jsonl"
-	composerVersion = func() string {
-		if info, ok := debug.ReadBuildInfo(); ok {
-			return info.Main.Version
-		}
-		return ""
-	}
-	fetchClient = &http.Client{Timeout: 2 * time.Minute}
+	composerVersion = version.BuildStated
+	fetchClient     = &http.Client{Timeout: 2 * time.Minute}
 )
 
 // The two values a template is written with, and the directory its archive holds the tree in.
@@ -58,12 +50,6 @@ type NewOptions struct {
 	Release, Template string
 	// Out receives what is said and the take's output.
 	Out io.Writer
-}
-
-// isRelease says whether v is a version a release's build states: a semantic version from a clean tree
-// at a tag, neither a pseudo-version nor carrying build metadata such as +dirty.
-func isRelease(v string) bool {
-	return semver.IsValid(v) && semver.Build(v) == "" && !module.IsPseudoVersion(v)
 }
 
 // NewPlugin writes a Plugin project from the family's template, as arch/20-composer/07 §The template
@@ -114,14 +100,14 @@ func NewPlugin(id string, o NewOptions) (string, error) {
 		}
 		body = data
 		fmt.Fprintf(out, "the template %s is sha256:%x, checked against no record: it is the archive you obtained\n", o.Template, sha256.Sum256(body))
-		if v := composerVersion(); isRelease(v) {
+		if v := composerVersion(); version.IsRelease(v) {
 			core = ">=" + strings.TrimPrefix(v, "v")
 		}
 	} else {
 		release := o.Release
 		if release == "" {
 			v := composerVersion()
-			if !isRelease(v) {
+			if !version.IsRelease(v) {
 				if v == "" {
 					v = "no version"
 				}

@@ -21,9 +21,16 @@ import (
 	"github.com/yoke-project/yoke/internal/core/logstore"
 	"github.com/yoke-project/yoke/internal/core/trunk"
 	"github.com/yoke-project/yoke/internal/gate"
+
+	"github.com/yoke-project/yoke/internal/version"
 )
 
 func main() {
+	// --version alone is answered before anything else, and nothing is started (prj_structure/95).
+	if version.Asked(os.Args[1:]) {
+		fmt.Println(version.Line("yoke-core", version.BuildStated()))
+		return
+	}
 	os.Exit(run(os.Args[1:]))
 }
 

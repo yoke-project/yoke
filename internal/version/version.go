@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 
+	"golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
 )
 
@@ -169,3 +170,33 @@ func stated(what, v string) (Version, error) {
 	}
 	return parsed, nil
 }
+
+// BuildStated is the version this program's build information states, as Go wrote it, or "" where there is
+// none.
+func BuildStated() string {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		return info.Main.Version
+	}
+	return ""
+}
+
+// IsRelease says whether a version Go stated is a release's build: a semantic version from a clean tree at a
+// tag, neither a pseudo-version nor carrying build metadata such as +dirty.
+func IsRelease(stated string) bool {
+	return semver.IsValid(stated) && semver.Build(stated) == "" && !module.IsPseudoVersion(stated)
+}
+
+// Line is what a program prints for --version: its name and the version its build states, without the v;
+// a build that is no release's says so.
+func Line(program, stated string) string {
+	if IsRelease(stated) {
+		return program + " " + strings.TrimPrefix(stated, "v")
+	}
+	if stated == "" {
+		stated = "(devel)"
+	}
+	return program + " " + strings.TrimPrefix(stated, "v") + " — built from a tree that is no release's tag, so no release"
+}
+
+// Asked says whether a program's arguments are --version alone, which it answers before anything else.
+func Asked(args []string) bool { return len(args) == 1 && args[0] == "--version" }

@@ -9,9 +9,16 @@ import (
 	"os"
 
 	"github.com/yoke-project/yoke/internal/conformance"
+
+	"github.com/yoke-project/yoke/internal/version"
 )
 
 func main() {
+	// --version alone is answered before anything else, and nothing is started (prj_structure/95).
+	if version.Asked(os.Args[1:]) {
+		fmt.Println(version.Line("yoke-conformance", version.BuildStated()))
+		return
+	}
 	flags := flag.NewFlagSet("yoke-conformance", flag.ExitOnError)
 	core := flags.String("core", "yoke-core", "the yoke-core binary to drive")
 	harness := flags.String("harness", "", "the harness of the library under test")
