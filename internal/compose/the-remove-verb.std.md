@@ -43,3 +43,16 @@
 | **Precondition** | a project with a block placed as `acquire-2`, recorded in `blocks.yaml` beside another placement, and a oneshot `store` keeping storage while no data range is stated, its advisory waived in `advisories.yaml`; a Manifest and the programs under `components/` |
 | **Action** | remove `channels.acquire-2`, then `units.acquire-2`; remove `units.store`; list the waivers |
 | **Expected** | the group `acquire-2` went with the unit and `acquire-1`'s is untouched; `blocks.yaml` no longer holds the placement as `acquire-2` and still holds the other; the waiver is still in `advisories.yaml` and `waivers` marks it stale; every program under `components/` and the Manifest are still there |
+
+## yoke:the-remove-verb.04 — a section emptied by `remove` and written again is written in block form
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/95.30 · arch/20-composer/01 §The verbs |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a project whose descriptor, written by the composer, declares one unit |
+| **Action** | remove that unit, then add another |
+| **Expected** | the descriptor declares the new unit in block form, one field to a line, as `add unit` writes into a section never emptied — never as a flow mapping on one line |
