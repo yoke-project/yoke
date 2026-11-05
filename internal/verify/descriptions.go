@@ -24,6 +24,8 @@ var theDimensions = map[string][]string{
 	"unit backend":             {"host", "container"},
 	"container engine":         {"podman", "docker"},
 	"control-group delegation": {"present", "absent"},
+	// Of L5 alone: the emulated machines an image run boots together, or the board (653).
+	"machine": {"qemu", "raspberrypi5"},
 }
 
 type field struct{ name, value string }

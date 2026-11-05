@@ -174,3 +174,17 @@ func TestAStruckNumberCannotComeBackAndNothingMayNameIt(t *testing.T) {
 		refused(t, "markers", root, "yoke:sample.02")
 	})
 }
+
+// std: yoke:descriptions-and-markers.13
+func TestTheMachineAnImageBootsOnIsADimensionOfItsOwn(t *testing.T) {
+	for _, value := range []string{"machine: raspberrypi5", "machine: qemu · deployment form: service"} {
+		root := tree(t, map[string]string{
+			"sample.std.md": description(caseBlock("yoke:sample.01", "a case", set(fields(), "Not applicable in", value))),
+		})
+		accepted(t, "descriptions", root)
+	}
+	root := tree(t, map[string]string{
+		"sample.std.md": description(caseBlock("yoke:sample.01", "a case", set(fields(), "Not applicable in", "machine: qemux86-64"))),
+	})
+	refused(t, "descriptions", root, "yoke:sample.01", "Not applicable in", "machine: qemux86-64", "qemu or raspberrypi5")
+}
