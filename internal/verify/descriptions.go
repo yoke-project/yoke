@@ -26,6 +26,8 @@ var theDimensions = map[string][]string{
 	"control-group delegation": {"present", "absent"},
 	// Of L5 alone: the emulated machines an image run boots together, or the board (653).
 	"machine": {"qemu", "raspberrypi5"},
+	// Of L4 alone: the system scenarios run daily, or the agent's run at a cut.
+	"scenario": {"system", "agent"},
 }
 
 type field struct{ name, value string }
