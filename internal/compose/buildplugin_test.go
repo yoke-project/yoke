@@ -55,16 +55,20 @@ func TestTheBuildRunsTheFilesCommandWithTheFiveVariablesAndLeavesTheExecutable(t
 	}
 	assertExecutable(t, filepath.Join(dir, "build", "aarch64", "greeter"))
 
-	if HostArch() != "x86_64" {
-		t.Skipf("the workstation's own architecture is %s; the case is written for x86_64", HostArch())
+	own, listed := map[string]string{
+		"x86_64":  "x86_64 amd64 x86_64-unknown-linux-gnu amd64",
+		"aarch64": "aarch64 arm64 aarch64-unknown-linux-gnu arm64",
+	}[HostArch()]
+	if !listed {
+		t.Fatalf("the workstation's own architecture %s is not one the project lists", HostArch())
 	}
 	if code, out := run("build", "--dir", dir); code != Done {
 		t.Fatalf("build: %d %s", code, out)
 	}
-	if got := lines(t, record); strings.Join(got[2:], " ") != "x86_64 amd64 x86_64-unknown-linux-gnu amd64" {
+	if got := lines(t, record); strings.Join(got[2:], " ") != own {
 		t.Errorf("the variables for the workstation's own are %v", got[2:])
 	}
-	assertExecutable(t, filepath.Join(dir, "build", "x86_64", "greeter"))
+	assertExecutable(t, filepath.Join(dir, "build", HostArch(), "greeter"))
 	if raw(t, filepath.Join(dir, "plugin", "com.example.greeter.yaml")) != before {
 		t.Errorf("the build changed the Manifest kept in plugin/")
 	}
