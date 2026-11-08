@@ -9,7 +9,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/95.31 · arch/20-composer/07 §The template · prj_structure/97 §A family's Plugin template |
+| **Cites** | specs/95.31 · arch/20-composer/07 §The template · prj_structure/97 §A family's Plugin template · specs/95.46 · specs/95.47 |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -35,7 +35,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/95.31 · arch/20-composer/07 §The template |
+| **Cites** | specs/95.31 · arch/20-composer/07 §The template · specs/95.48 |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
@@ -61,7 +61,7 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/20-composer/07 §The template |
+| **Cites** | arch/20-composer/07 §The template · specs/95.46 · specs/95.47 |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
