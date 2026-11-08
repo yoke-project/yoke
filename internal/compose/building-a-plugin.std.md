@@ -15,8 +15,8 @@
 | **Not applicable in** | — |
 | **Label** | blocking |
 | **Precondition** | a Plugin project whose file lists `x86_64` and `aarch64` and whose `build.run` is a shell command that records its working directory and the values of `YOKE_OUT`, `YOKE_ARCH`, `YOKE_GOARCH`, `YOKE_RUST_TARGET` and `YOKE_DEB_ARCH` into a file outside the project, then writes an executable script named as `program` into `$YOKE_OUT` |
-| **Action** | `build --arch aarch64` in the project; then `build` with no `--arch`, on a workstation whose architecture is `x86_64` |
-| **Expected** | both exit 0; the command ran in `build.in`; for `aarch64` the variables were `aarch64`, `arm64`, `aarch64-unknown-linux-gnu` and `arm64`, and `YOKE_OUT` an empty directory; for the workstation's own, `x86_64`, `amd64`, `x86_64-unknown-linux-gnu` and `amd64`; the executable is at `build/aarch64/<program>` and `build/x86_64/<program>` beside the file, executable; nothing under `plugin/` other than what the command itself wrote has changed |
+| **Action** | `build --arch aarch64` in the project; then `build` with no `--arch` |
+| **Expected** | both exit 0; the command ran in `build.in`; for `aarch64` the variables were `aarch64`, `arm64`, `aarch64-unknown-linux-gnu` and `arm64`, and `YOKE_OUT` an empty directory; for the workstation's own, `x86_64`, `amd64`, `x86_64-unknown-linux-gnu` and `amd64` on `x86_64`, and those of `aarch64` on `aarch64`; the executable is at `build/aarch64/<program>` and at `build/<the workstation's own>/<program>` beside the file, executable; nothing under `plugin/` other than what the command itself wrote has changed |
 
 ## yoke:building-a-plugin.02 — an architecture the file does not list is refused before anything runs
 
