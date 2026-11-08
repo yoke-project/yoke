@@ -161,7 +161,7 @@
 | **Action** | check the descriptions and scan the markers |
 | **Expected** | both pass; nothing reached through either link is read, so neither the linked description nor the linked markers appear |
 
-## yoke:descriptions-and-markers.13 — the machine an image boots on is a dimension of its own
+## yoke:descriptions-and-markers.13 — the machine an image boots on, and the scenario a system run is of, are dimensions of their own
 
 | Field | Value |
 | --- | --- |
@@ -170,6 +170,6 @@
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
-| **Precondition** | descriptions whose case declares **Not applicable in** `machine: raspberrypi5`, `machine: qemu · deployment form: service`, and `machine: qemux86-64` |
+| **Precondition** | descriptions whose case declares **Not applicable in** `machine: raspberrypi5`, `machine: qemu · deployment form: service`, `scenario: system`, `scenario: agent`, `machine: qemux86-64`, and `scenario: board` |
 | **Action** | run `yoke-verify descriptions` over each |
-| **Expected** | the first two are read; the third is refused naming the field, the value, and the two values the dimension takes, `qemu` and `raspberrypi5` |
+| **Expected** | the first four are read; each of the last two is refused naming the field, the value, and the two values its dimension takes: `qemu` and `raspberrypi5`, and `system` and `agent` |
