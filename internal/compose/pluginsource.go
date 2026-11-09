@@ -109,7 +109,8 @@ func takeRemote(dir, url, tag string, o TakeOptions) (string, error) {
 	return take(dir, path, &taking{source: url, tag: tag, commit: commit, clean: true, tracked: true}, o)
 }
 
-// UpdatePlugin takes the Plugin taken as id again, from the same repository at another tag: the
+// UpdatePlugin takes the Plugin taken as id again, from the same source: a repository at the tag given,
+// which it requires, or a path as it now stands, which takes no tag. The
 // executable, the Manifest, the pinned digest and the record are replaced, and the unit keeps its name
 // and its other declarations. Any refusal leaves the project as it was.
 func UpdatePlugin(dir, id, tag string, o TakeOptions) error {
@@ -127,40 +128,50 @@ func UpdatePlugin(dir, id, tag string, o TakeOptions) error {
 		return refusef("%s is not taken into this project: it is taken with add plugin", id)
 	}
 	e := entries[i]
-	if e.Tag == "" {
-		return refusef("%s was taken from a path, which has no tags: take it again with remove units.%s and add plugin", id, e.Unit)
-	}
-	commit, err := resolve(e.Source, tag)
-	if err != nil {
-		return err
-	}
 	out := o.Out
 	if out == nil {
 		out = io.Discard
 	}
-	if tag == e.Tag && commit != e.Commit {
-		fmt.Fprintf(out, "The tag %s now names %s; it named %s when %s was taken.\n", tag, commit, e.Commit, id)
+	var path, commit string
+	clean, tracked := true, true
+	if e.Tag == "" {
+		if tag != "" {
+			return refusef("%s was taken from a path, which has no tags: update it without --to", id)
+		}
+		if path, err = pathOf(dir, e.Source); err != nil {
+			return err
+		}
+		commit, clean, tracked = revision(path)
+	} else {
+		if tag == "" {
+			return refusef("%s was taken from a repository: name the tag to take with --to", id)
+		}
+		if commit, err = resolve(e.Source, tag); err != nil {
+			return err
+		}
+		if tag == e.Tag && commit != e.Commit {
+			fmt.Fprintf(out, "The tag %s now names %s; it named %s when %s was taken.\n", tag, commit, e.Commit, id)
+		}
+		if path, err = obtain(e.Source, commit); err != nil {
+			return err
+		}
+		defer os.RemoveAll(path)
 	}
-	path, err := obtain(e.Source, commit)
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(path)
 	report, p := CheckPlugin(path)
 	if p == nil {
 		return refusef("%s", refusalLines(report))
 	}
 	if p.ID != id {
-		return refusef("%s at %s is %s, not %s", e.Source, tag, p.ID, id)
+		return refusef("%s is %s, not %s", e.Source, p.ID, id)
 	}
 	arch, err := descriptorArch(dir)
 	if err != nil {
 		return err
 	}
 	if !slices.Contains(p.Architectures, arch) {
-		return refusef("the application is for %s, and %s at %s is built for %s: nothing was run", arch, id, tag, strings.Join(p.Architectures, ", "))
+		return refusef("the application is for %s, and %s is built for %s: nothing was run", arch, id, strings.Join(p.Architectures, ", "))
 	}
-	if err := ask(&taking{source: e.Source, tag: tag, commit: commit, clean: true, tracked: true, project: p}, o); err != nil {
+	if err := ask(&taking{source: e.Source, tag: tag, commit: commit, clean: clean, tracked: tracked, project: p}, o); err != nil {
 		return err
 	}
 	built, err := buildPlugin(p, arch, PluginBuildOptions{Stdout: o.Out, Stderr: o.Out})
@@ -195,11 +206,27 @@ func UpdatePlugin(dir, id, tag string, o TakeOptions) error {
 		restore()
 		return err
 	}
-	e.Tag, e.Commit, e.Digest, e.Taken = tag, commit, digest, pluginClock().UTC().Format(time.RFC3339)
-	clean := true
-	e.Clean = &clean
+	e.Tag, e.Digest, e.Taken = tag, digest, pluginClock().UTC().Format(time.RFC3339)
+	e.Commit, e.Clean = "", nil
+	if tracked {
+		e.Commit, e.Clean = commit, &clean
+	}
 	entries[i] = e
 	return writePlugins(dir, entries)
+}
+
+// pathOf is the Plugin project a recorded path names: as add plugin read it, or beside the application.
+func pathOf(dir, source string) (string, error) {
+	candidates := []string{source}
+	if !filepath.IsAbs(source) {
+		candidates = append(candidates, filepath.Join(dir, source))
+	}
+	for _, c := range candidates {
+		if abs, err := filepath.Abs(c); err == nil && exists(filepath.Join(abs, PluginFile)) {
+			return abs, nil
+		}
+	}
+	return "", refusef("%s holds no %s at its root: it is not a Plugin project", source, PluginFile)
 }
 
 // ListPlugins writes what was taken into the project: identity, unit, source, tag and commit, and for a

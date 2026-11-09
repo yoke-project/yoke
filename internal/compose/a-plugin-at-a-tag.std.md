@@ -56,3 +56,31 @@
 | **Precondition** | the project of `.01` after `v1.0.0` was taken, and a second Plugin taken from a path |
 | **Action** | `plugins`; move the repository's tag `v1.0.0` to another commit; `plugins` again; `update plugin com.example.greeter --to v1.0.0 --yes` |
 | **Expected** | the first listing gives, for each, the identity, the unit, the source, the tag (none for the path) and the commit, and says the tag still names it; the second says `v1.0.0` now names another commit, both commits stated, and changes nothing in the project; the `update` reports the same before it builds, and records the commit the tag names now |
+
+## yoke:a-plugin-at-a-tag.05 — `update plugin` without a tag retakes a Plugin from its path as it now stands
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/95.42 · arch/20-composer/07 §The verbs |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a Plugin taken from a path, whose build has since changed and is not committed |
+| **Action** | `update plugin com.example.greeter --yes`; then the same with `--to v1.0.0` |
+| **Expected** | the executable and the digest are what the path builds now, the record keeps the path with no tag and says not clean; `--to` on a path is refused |
+
+
+## yoke:a-plugin-at-a-tag.06 — `update plugin` of a repository still requires a tag
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/95.42 · arch/20-composer/07 §The verbs |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a Plugin taken from a repository at a tag |
+| **Action** | `update plugin com.example.greeter --yes` |
+| **Expected** | it is refused naming `--to`, and nothing changes |
+

@@ -28,7 +28,7 @@ const usage = `usage: yoke-compose <verb> [options]
                                                             make a Plugin project from its family's template
 
   add plugin <url>@<tag>|<path> [--as U] [--yes] [--dir D]  take a Plugin into the application, recorded in plugins.yaml
-  update plugin <id> --to <tag> [--yes] [--dir D]           take a Plugin again, at another tag
+  update plugin <id> [--to <tag>] [--yes] [--dir D]         take a Plugin again: a repository at a tag, a path as it stands
   plugins [--dir D]                                         what was taken, and whether each tag still names its commit
   add unit <name> --kind K [--exec P | --image R | --plugin ID] [--arg A]... [--depends-on U]... [--bind N=V]...
   add channel <name> --transport T --clients C [--unit U] [--class C [--host H] [--port N]] [--on-suspend G]
@@ -281,12 +281,16 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		if fs.Parse(flags) != nil {
 			return Refused
 		}
-		if len(positional) != 2 || positional[0] != "plugin" || *to == "" {
+		if len(positional) != 2 || positional[0] != "plugin" {
 			fmt.Fprint(stderr, synopsis("update"))
 			return Refused
 		}
 		if err = UpdatePlugin(*dir, positional[1], *to, TakeOptions{Yes: *yes, Out: stdout}); err == nil {
-			fmt.Fprintf(stdout, "took %s at %s, recorded in %s\n", positional[1], *to, Plugins)
+			if *to == "" {
+				fmt.Fprintf(stdout, "took %s again from its path, recorded in %s\n", positional[1], Plugins)
+			} else {
+				fmt.Fprintf(stdout, "took %s at %s, recorded in %s\n", positional[1], *to, Plugins)
+			}
 		}
 	case "plugins":
 		if fs.Parse(rest) != nil {
