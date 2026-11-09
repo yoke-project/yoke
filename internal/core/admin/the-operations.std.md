@@ -120,7 +120,7 @@
 | **Label** | blocking |
 | **Precondition** | the Core's operations, and the contract's union |
 | **Action** | list the operations it serves, and every member of the union |
-| **Expected** | the two are the same sixteen: the eleven changes, `unit.ask`, `read`, `log.query`, `log.follow` and `subscribe`; since streams travel on transports of their own, `unit.stream.start` and `unit.stream.stop` are among them |
+| **Expected** | the two are the same seventeen: the eleven changes, `unit.ask`, `unit.command`, `read`, `log.query`, `log.follow` and `subscribe`; since streams travel on transports of their own, `unit.stream.start` and `unit.stream.stop` are among them |
 
 ## yoke:the-operations.10 — through the Core, an operator disables a plugin and the decision is theirs
 
@@ -160,3 +160,44 @@
 | **Precondition** | three units of one plugin: `acquire` running with a Session, `slow` in `Starting` with none, and `fallen` failed and waiting to be relaunched |
 | **Action** | disable the plugin |
 | **Expected** | three consequences: `acquire`'s Session was revoked; `slow` and `fallen` were refused, each named with its incarnation and the state it reached, `Refused` |
+
+## yoke:the-operations.13 — a command is carried opaque, and announced naming the actor and the type
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/60.63 · specs/60.64 · specs/31.54 · arch/60-administrative-surface/04 §The two operations whose content the Core does not read |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a running unit with a Session, granted the command `calibrate` |
+| **Action** | `unit.command` of `calibrate` with some bytes |
+| **Expected** | the unit is handed one control message carrying those bytes; the answer is its acknowledgement; one `unit.command.issued` names the unit, the operator and the type at severity 10, without the bytes; the log store holds one entry naming the actor, the life and the type, without the bytes |
+
+
+## yoke:the-operations.14 — a command refused reaches nothing and emits nothing
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/60.63 · arch/60-administrative-surface/07 §This surface's codes · arch/60-administrative-surface/04 §The two operations whose content the Core does not read |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a running unit with a Session, and a stopped one |
+| **Action** | `unit.command` of a type never declared, of one not granted, of a stopped unit, and with more than 1 MiB |
+| **Expected** | refused `scope.undeclared` and `scope.withheld` naming the type, `unit.not_running`, and `operation.malformed`; nothing reaches the unit, no event is emitted, and the two scope refusals are recorded |
+
+
+## yoke:the-operations.15 — a failed acknowledgement is the answer, not a refusal
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/60.63 · arch/60-administrative-surface/04 §The two operations whose content the Core does not read |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a running unit that acknowledges a command `failed`, with a line |
+| **Action** | `unit.command` of that command |
+| **Expected** | the answer carries `failed` and the line; `unit.command.issued` was emitted |

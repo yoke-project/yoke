@@ -503,6 +503,99 @@ arbitration:
 	}
 }
 
+// std: yoke:arbitration.07
+func TestThroughTheCoreAnOperatorsCommandStandsOutsideArbitration(t *testing.T) {
+	run, lines := startCore(t, `units:
+  acquire: { kind: plugin, plugin: com.example.station, env: { %[2]s: commanded } }
+channels:
+  bench: { transport: local, clients: single }
+  panel: { transport: local, clients: single }
+arbitration:
+  - { prevails: bench, over: [ panel ] }
+# %[1]s
+`)
+	opened, announced := make(chan struct{}, 4), make(chan string, 1)
+	go func() {
+		for line := range lines {
+			if strings.Contains(line, "msg=session") && strings.Contains(line, "event=opened") {
+				opened <- struct{}{}
+			}
+			if strings.Contains(line, "type=unit.command.issued") {
+				select {
+				case announced <- line:
+				default:
+				}
+			}
+		}
+	}()
+	await := func(what string) {
+		t.Helper()
+		select {
+		case <-opened:
+		case <-time.After(20 * time.Second):
+			t.Fatalf("no %s within twenty seconds", what)
+		}
+	}
+	await("first Session")
+	conn, err := grpc.NewClient("unix://"+filepath.Join(run, "operator.sock"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	operator := administrativev1.NewOperatorClient(conn)
+	for _, r := range []*administrativev1.Request{
+		{Version: 1, Operation: &administrativev1.Request_PluginGrant{PluginGrant: &administrativev1.PluginGrant{Plugin: "com.example.station", Capability: "command.calibrate.accept"}}},
+		{Version: 1, Operation: &administrativev1.Request_UnitRestart{UnitRestart: &administrativev1.UnitAct{Unit: "acquire"}}},
+	} {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		_, err := operator.Call(ctx, r)
+		cancel()
+		if err != nil {
+			t.Fatalf("%v was refused: %v", r, err)
+		}
+	}
+	await("next life's Session")
+	panel, err := attachTo(t, filepath.Join(run, "interfaces", "panel.sock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	panel.next(t)
+	bench, err := attachTo(t, filepath.Join(run, "interfaces", "bench.sock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	bench.next(t)
+	if ref := panel.answerTo(t, "before", command("acquire", "calibrate", nil)).GetRefusal(); ref.GetCode() != "channel.suspended" {
+		t.Fatalf("panel's command was answered %v, want it suspended by bench", ref)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	resp, err := operator.Call(ctx, &administrativev1.Request{Version: 1, Operation: &administrativev1.Request_UnitCommand{
+		UnitCommand: &administrativev1.UnitCommand{Unit: "acquire", Type: "calibrate", Payload: []byte("the-secret-payload")}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ack := resp.GetUnitCommand(); ack.GetOutcome() != administrativev1.Commanded_OUTCOME_DONE || ack.GetLine() != "calibrated" {
+		t.Errorf("the operator's command was answered %v", resp)
+	}
+	select {
+	case line := <-announced:
+		if !strings.Contains(line, "acquire") || strings.Contains(line, "the-secret-payload") {
+			t.Errorf("the announcement is %q", line)
+		}
+	case <-time.After(5 * time.Second):
+		t.Error("the Core announced no unit.command.issued")
+	}
+	// The channel that held control keeps it: bench still commands, and panel is still suspended by it.
+	if ack := bench.answerTo(t, "after", command("acquire", "calibrate", nil)).GetAnswer().GetCommand(); ack.GetOutcome() != interfacev1.Acknowledged_OUTCOME_DONE {
+		t.Errorf("bench no longer commands: %v", ack)
+	}
+	if ref := panel.answerTo(t, "still", command("acquire", "calibrate", nil)).GetRefusal(); ref.GetCode() != "channel.suspended" || ref.GetSuspension().GetBy() != "bench" {
+		t.Errorf("panel's standing changed: %v", ref)
+	}
+}
+
 // emitWhenActivated registers as acknowledgeCommands does; told to activate its stream it accepts,
 // connects to the address it was given and sends three data messages.
 func emitWhenActivated() int {

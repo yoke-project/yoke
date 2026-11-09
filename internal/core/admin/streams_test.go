@@ -30,6 +30,17 @@ func (f *fakeSessions) Instruct(_ context.Context, id string, c *pluginv1.Contro
 	if _, ok := f.open[id]; !ok {
 		return nil, fmt.Errorf("no Session")
 	}
+	if t := c.GetCommand().GetType(); t == "undeclared.type" || t == "withheld.type" {
+		code := pluginv1.Code_CODE_SCOPE_UNDECLARED
+		if t == "withheld.type" {
+			code = pluginv1.Code_CODE_SCOPE_WITHHELD
+		}
+		return nil, &session.Refused{Code: code, Reason: t}
+	}
+	if c.GetCommand().GetType() == "report" {
+		f.instructed = append(f.instructed, instruction{unit: id, control: c})
+		return &pluginv1.Ack{Outcome: pluginv1.Ack_OUTCOME_FAILED, Line: "the lamp is cold"}, nil
+	}
 	stream := c.GetActivate().GetStream() + c.GetStop().GetStream()
 	if stream == "station.preview" {
 		return nil, &session.Refused{Code: pluginv1.Code_CODE_SCOPE_WITHHELD, Reason: "not granted"}
@@ -45,7 +56,7 @@ func (f *fakeSessions) Instruct(_ context.Context, id string, c *pluginv1.Contro
 
 // Granted is the scope each unit was admitted with: every stream of the station but station.preview.
 func (f *fakeSessions) Granted(string) (streams, commands, queries []string) {
-	return []string{"station.spectra"}, nil, nil
+	return []string{"station.spectra"}, []string{"calibrate", "report"}, nil
 }
 
 // opening is a transport service that remembers every transport it was asked to create.
