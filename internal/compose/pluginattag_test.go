@@ -216,3 +216,57 @@ func bundled(t *testing.T, dir, path string) string {
 	t.Fatalf("the bundle holds no %s", path)
 	return ""
 }
+
+// std: yoke:a-plugin-at-a-tag.05
+func TestUpdatePluginWithoutATagRetakesAPathAsItNowStands(t *testing.T) {
+	app := authored(t)
+	dir := greeterSource(t)
+	first := "#!/bin/sh\necho first\n"
+	build := func(says string) {
+		run := `printf '#!/bin/sh\necho ` + says + `\n' > "$YOKE_OUT/greeter" && chmod +x "$YOKE_OUT/greeter"`
+		file := strings.Replace(withRun(run), "architectures: [x86_64, aarch64]", "architectures: ["+HostArch()+"]", 1)
+		os.WriteFile(filepath.Join(dir, PluginFile), []byte(file), 0o644)
+	}
+	build("first")
+	git(t, dir, "commit", "-q", "-am", "first")
+	if code, out := takePlugin(t, "", dir, "--yes", "--dir", app); code != Done {
+		t.Fatalf("add plugin: %d %s", code, out)
+	}
+	if got := raw(t, filepath.Join(app, Components, "plugins", "greeter")); got != first {
+		t.Fatalf("taken: %q", got)
+	}
+	build("second")
+	later := time.Date(2026, 11, 9, 9, 0, 0, 0, time.UTC)
+	code, out := updating(t, later, "com.example.greeter", "--yes", "--dir", app)
+	if code != Done {
+		t.Fatalf("update plugin: %d %s", code, out)
+	}
+	second := "#!/bin/sh\necho second\n"
+	if got := raw(t, filepath.Join(app, Components, "plugins", "greeter")); got != second {
+		t.Errorf("the executable is %q, not what the path builds now", got)
+	}
+	entries, err := readPlugins(app)
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("the record: %v %v", entries, err)
+	}
+	e := entries[0]
+	if e.Tag != "" || e.Source != dir || e.Clean == nil || *e.Clean || e.Digest != fmt.Sprintf("sha256:%x", sha256.Sum256([]byte(second))) {
+		t.Errorf("the record is %+v, want the path, no tag, not clean, the new digest", e)
+	}
+	if code, out := updating(t, later, "com.example.greeter", "--to", "v1.0.0", "--yes", "--dir", app); code == Done || !strings.Contains(out, "path") {
+		t.Errorf("--to on a path: %d %s", code, out)
+	}
+}
+
+// std: yoke:a-plugin-at-a-tag.06
+func TestUpdatePluginOfARepositoryStillRequiresATag(t *testing.T) {
+	app := authored(t)
+	url, _ := taggedGreeter(t)
+	if code, out := takePlugin(t, "", url+"@v1.0.0", "--yes", "--dir", app); code != Done {
+		t.Fatalf("add plugin: %d %s", code, out)
+	}
+	code, out := updating(t, time.Now(), "com.example.greeter", "--yes", "--dir", app)
+	if code == Done || !strings.Contains(out, "--to") {
+		t.Errorf("no --to on a repository: %d %s", code, out)
+	}
+}
