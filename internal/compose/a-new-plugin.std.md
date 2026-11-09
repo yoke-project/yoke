@@ -80,8 +80,8 @@
 | **Not applicable in** | — |
 | **Label** | blocking |
 | **Precondition** | the composer and manifest of `.01`; a directory `greeter/` already there |
-| **Action** | `new plugin` with an identifier that is not one; with `--language java`; with `--language python`; with both `--release` and `--template`; with `--program a/b`; with no `--language`; and `com.example.greeter --language go` beside `greeter/` |
-| **Expected** | each exits 1 naming what is wrong — Python's saying its template is carried later — reads nothing from the network, and `greeter/` is left as it was |
+| **Action** | `new plugin` with an identifier that is not one; with `--language java`; with both `--release` and `--template`; with `--program a/b`; with no `--language`; and `com.example.greeter --language go` beside `greeter/` |
+| **Expected** | each exits 1 naming what is wrong, reads nothing from the network, and `greeter/` is left as it was |
 
 ## yoke:a-new-plugin.07 — an archive that is not a template is refused, and the destination removed
 

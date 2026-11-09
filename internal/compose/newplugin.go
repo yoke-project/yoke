@@ -67,8 +67,6 @@ func NewPlugin(id string, o NewOptions) (string, error) {
 	switch {
 	case o.Language == "":
 		return "", refusef("new plugin takes --language, one of %s", strings.Join(withTemplate(), ", "))
-	case o.Language == "python":
-		return "", refusef("a Python Plugin's template is carried later, with its image; the families with one are %s", strings.Join(withTemplate(), ", "))
 	case !slices.Contains(gate.Families, o.Language):
 		return "", refusef("the language %q is not a family; the families with a template are %s", o.Language, strings.Join(withTemplate(), ", "))
 	}
@@ -161,7 +159,7 @@ func NewPlugin(id string, o NewOptions) (string, error) {
 
 // withTemplate are the families that hand over a template.
 func withTemplate() []string {
-	return slices.DeleteFunc(slices.Clone(gate.Families), func(f string) bool { return f == "python" })
+	return slices.Clone(gate.Families)
 }
 
 // manifestLine is the part of a release manifest's line new plugin reads.

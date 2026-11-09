@@ -1,11 +1,14 @@
 package compose
 
 import (
+	"archive/tar"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -117,6 +120,13 @@ func buildPlugin(p *gate.PluginProject, arch string, o PluginBuildOptions) (stri
 		return "", fmt.Errorf("%s's build could not be run: %w", p.ID, err)
 	}
 	exe := filepath.Join(out, p.Program)
+	if travelsAsImage(p) {
+		if _, err := imageDigest(exe); err != nil {
+			os.RemoveAll(out)
+			return "", err
+		}
+		return exe, nil
+	}
 	info, err := os.Stat(exe)
 	switch {
 	case err != nil:
@@ -174,4 +184,41 @@ func copyExecutable(from, to string) error {
 		return err
 	}
 	return nil
+}
+
+// travelsAsImage says whether a Plugin's program is an OCI image archive rather than an executable.
+func travelsAsImage(p *gate.PluginProject) bool { return p.Language == "python" }
+
+// imageDigest is the digest of the one image manifest an OCI archive holds, which is what names it.
+func imageDigest(archive string) (string, error) {
+	f, err := os.Open(archive)
+	if err != nil {
+		return "", refusef("the build left no OCI image archive at $YOKE_OUT/%s", filepath.Base(archive))
+	}
+	defer f.Close()
+	r := tar.NewReader(f)
+	for {
+		h, err := r.Next()
+		if err != nil {
+			return "", refusef("$YOKE_OUT/%s is not an OCI image archive: it holds no index.json", filepath.Base(archive))
+		}
+		if path.Clean(h.Name) != "index.json" {
+			continue
+		}
+		var index struct {
+			Manifests []struct {
+				Digest string `json:"digest"`
+			} `json:"manifests"`
+		}
+		if err := json.NewDecoder(r).Decode(&index); err != nil || len(index.Manifests) != 1 || !strings.HasPrefix(index.Manifests[0].Digest, "sha256:") {
+			return "", refusef("$YOKE_OUT/%s is not an OCI image archive of one image", filepath.Base(archive))
+		}
+		return index.Manifests[0].Digest, nil
+	}
+}
+
+// imagePlace is where an image archive of that digest goes in a project, and the reference naming it.
+func imagePlace(p *gate.PluginProject, digest string) (at, ref string) {
+	at = filepath.ToSlash(filepath.Join(Components, "images", strings.Replace(digest, ":", "-", 1)+".tar"))
+	return at, "localhost/yoke-plugin/" + p.Program + "@" + digest
 }

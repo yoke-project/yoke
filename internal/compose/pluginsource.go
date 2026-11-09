@@ -180,12 +180,30 @@ func UpdatePlugin(dir, id, tag string, o TakeOptions) error {
 	}
 	defer os.RemoveAll(filepath.Dir(built))
 
-	program := filepath.Join(dir, Components, "plugins", e.Unit)
 	manifest := filepath.Join(dir, Manifests, id+".yaml")
-	oldProgram, _ := os.ReadFile(program)
+	program := filepath.Join(dir, Components, "plugins", e.Unit)
+	field := "units." + e.Unit + ".digest"
+	var image, oldArchive string
+	if travelsAsImage(p) {
+		sum, err := imageDigest(built)
+		if err != nil {
+			return err
+		}
+		at, ref := imagePlace(p, sum)
+		program, image, field = filepath.Join(dir, filepath.FromSlash(at)), ref, "units."+e.Unit+".image"
+		oldArchive = filepath.Join(dir, Components, "images", strings.Replace(e.Digest, ":", "-", 1)+".tar")
+		if err := os.MkdirAll(filepath.Dir(program), 0o755); err != nil {
+			return err
+		}
+	}
+	oldProgram, hadProgram := os.ReadFile(program)
 	oldManifest, _ := os.ReadFile(manifest)
 	restore := func() {
-		os.WriteFile(program, oldProgram, 0o755)
+		if hadProgram == nil {
+			os.WriteFile(program, oldProgram, 0o755)
+		} else {
+			os.Remove(program)
+		}
 		os.WriteFile(manifest, oldManifest, 0o644)
 	}
 	if err := copyExecutable(built, program); err != nil {
@@ -202,9 +220,17 @@ func UpdatePlugin(dir, id, tag string, o TakeOptions) error {
 	}
 	data, _ := os.ReadFile(program)
 	digest := fmt.Sprintf("sha256:%x", sha256.Sum256(data))
-	if err := Set(ProjectDocument(dir), "units."+e.Unit+".digest", digest); err != nil {
+	value := digest
+	if image != "" {
+		value = image
+		digest = image[strings.LastIndex(image, "@")+1:]
+	}
+	if err := Set(ProjectDocument(dir), field, value); err != nil {
 		restore()
 		return err
+	}
+	if oldArchive != "" && oldArchive != program {
+		os.Remove(oldArchive)
 	}
 	e.Tag, e.Digest, e.Taken = tag, digest, pluginClock().UTC().Format(time.RFC3339)
 	e.Commit, e.Clean = "", nil
