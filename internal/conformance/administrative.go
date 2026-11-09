@@ -53,6 +53,12 @@ func AdministrativeCases() []Case {
 			Issues:       "`query-log`, from the beginning",
 			Requires:     "entries, among them `instance.ready`",
 			Run:          logQueried},
+		{ID: "yoke:administrative.07", Title: "a command that names no unit is refused as what it names", Contract: "administrative",
+			Cites:        []string{"specs/60.63", "arch/60-administrative-surface/07 §This surface's codes"},
+			Precondition: "the Core, ready, declaring the fixture, which is a plugin and no unit",
+			Issues:       "`command` naming the fixture as its unit",
+			Requires:     "the refusal `subject.wrong_kind`",
+			Run:          commandRefused},
 	}
 }
 
@@ -228,4 +234,20 @@ func logQueried(r *Run) Outcome {
 		}
 	}
 	return Fail("`query-log`", "entries, among them `instance.ready`", fmt.Sprintf("%d entries %s", len(entries), res.Refusal))
+}
+
+// std: yoke:administrative.07
+func commandRefused(r *Run) Outcome {
+	h, absent := administrator(r, "`command`")
+	if absent != nil {
+		return *absent
+	}
+	res := h.Do("command", map[string]any{"unit": Fixture, "type": "calibrate", "payload": ""})
+	if res.Unrecognised {
+		return Absent("command")
+	}
+	if res.Refusal != "subject.wrong_kind" {
+		return Fail("`command` naming the fixture as its unit", "the refusal `subject.wrong_kind`", fmt.Sprintf("%q %v", res.Refusal, res.Value))
+	}
+	return Pass()
 }

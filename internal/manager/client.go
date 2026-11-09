@@ -58,6 +58,7 @@ func init() {
 		return o.RestartUnit(ctx, a[0])
 	})})
 	register("unit", "ask", verb{"<unit> <type> [--input <file>|-]", (*call).ask})
+	register("unit", "command", verb{"<unit> <type> [--input <file>|-]", (*call).command})
 	register("unit", "retention", verb{"<unit> [--age D] [--bytes S] [--entries N] | --clear", (*call).retention})
 	register("stream", "start", verb{"<unit> <stream>", c2(func(o admin.Operations, ctx context.Context, a []string) (admin.Changed, error) {
 		return o.StartStream(ctx, a[0], a[1])
@@ -382,17 +383,7 @@ func (c *call) ask() error {
 	if err := c.positional(2, "a unit and a question's type"); err != nil {
 		return err
 	}
-	var question []byte
-	switch *input {
-	case "":
-	case "-":
-		if c.held != nil {
-			return refusef("--input - reads the standard input, and in a shell that is where the lines come from")
-		}
-		question, err = io.ReadAll(os.Stdin)
-	default:
-		question, err = os.ReadFile(*input)
-	}
+	question, err := c.input(*input)
 	if err != nil {
 		return err
 	}
@@ -407,6 +398,54 @@ func (c *call) ask() error {
 	}
 	_, err = c.out.Write(answer)
 	return err
+}
+
+// input is the bytes --input names: none, a file, or the standard input.
+func (c *call) input(from string) ([]byte, error) {
+	switch from {
+	case "":
+		return nil, nil
+	case "-":
+		if c.held != nil {
+			return nil, refusef("--input - reads the standard input, and in a shell that is where the lines come from")
+		}
+		return io.ReadAll(os.Stdin)
+	}
+	return os.ReadFile(from)
+}
+
+// command gives a unit a command and prints what became of it. A unit's acknowledgement that it failed
+// exits as a refusal, so that a script reading only the status does not take it for done.
+func (c *call) command() error {
+	var input *string
+	_, instance, selected, err := c.flags(func(fs *flag.FlagSet) {
+		input = fs.String("input", "", "a file holding the payload, or - for standard input")
+	})
+	if err != nil {
+		return err
+	}
+	if err := c.positional(2, "a unit and a command's type"); err != nil {
+		return err
+	}
+	payload, err := c.input(*input)
+	if err != nil {
+		return err
+	}
+	o, done, err := c.link(instance, selected)
+	if err != nil {
+		return err
+	}
+	defer done()
+	ack, err := o.Command(c.context(), c.args[0], c.args[1], payload)
+	if err != nil {
+		return unreached(err)
+	}
+	outcome := strings.ToLower(strings.TrimPrefix(ack.GetOutcome().String(), "OUTCOME_"))
+	if ack.GetOutcome() == administrativev1.Commanded_OUTCOME_FAILED {
+		return refusef("%s failed the command: %s", c.args[0], ack.GetLine())
+	}
+	fmt.Fprintln(c.out, strings.TrimRight(outcome+" "+ack.GetLine(), " "))
+	return nil
 }
 
 func (c *call) retention() error {

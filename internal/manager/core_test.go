@@ -138,3 +138,12 @@ func TestAClientVerbReachesARunningInstance(t *testing.T) {
 		}
 	}
 }
+
+// std: yoke:the-manager-command-line.23
+func TestACommandTheUnitNeverDeclaredIsRefusedByNameAndNothingElseIsSaid(t *testing.T) {
+	vars := startCore(t)
+	code, out := yoke(vars, "unit", "command", "bench", "never.declared")
+	if code == Done || !strings.Contains(out, "scope.undeclared") || !strings.Contains(out, "never.declared") {
+		t.Errorf("yoke unit command exited %d:\n%s", code, out)
+	}
+}

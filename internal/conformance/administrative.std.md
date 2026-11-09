@@ -83,3 +83,16 @@
 | **Precondition** | the Core, ready |
 | **Action** | `query-log`, from the beginning |
 | **Expected** | entries, among them `instance.ready` |
+
+## yoke:administrative.07 — a command that names no unit is refused as what it names
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/60.63 · arch/60-administrative-surface/07 §This surface's codes |
+| **Level** | L2 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the Core, ready, declaring the fixture, which is a plugin and no unit |
+| **Action** | `command` naming the fixture as its unit |
+| **Expected** | the refusal `subject.wrong_kind` |
