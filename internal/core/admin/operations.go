@@ -112,6 +112,7 @@ func (c *Core) Operations() map[string]Operation {
 		"unit.retention.set":   {Answer: c.retention(true)},
 		"unit.retention.clear": {Answer: c.retention(false)},
 		"unit.ask":             {Answer: c.ask},
+		"unit.command":         {Answer: c.command},
 		"read":                 {Answer: c.read},
 		"log.query":            {Answer: c.logQuery},
 		"log.follow":           {Stream: c.logFollow},
@@ -381,6 +382,27 @@ func (c *Core) retention(set bool) answer {
 	}
 }
 
+// refusedBy is how a unit's Session having refused or failed an exchange reads to the caller.
+func refusedBy(err error, id, typ string, wait time.Duration) *administrativev1.Refusal {
+	var refused *session.Refused
+	var failed *session.UnitFailed
+	switch {
+	case err == nil:
+		return nil
+	case errors.As(err, &refused) && refused.Code == pluginv1.Code_CODE_SCOPE_WITHHELD:
+		return &administrativev1.Refusal{Code: "scope.withheld", Message: refused.Reason, Detail: &administrativev1.Refusal_Item{Item: typ}}
+	case errors.As(err, &refused) && refused.Code == pluginv1.Code_CODE_SCOPE_UNDECLARED:
+		return &administrativev1.Refusal{Code: "scope.undeclared", Message: refused.Reason, Detail: &administrativev1.Refusal_Item{Item: typ}}
+	case errors.As(err, &failed):
+		return unitFailed(failed)
+	case errors.As(err, &refused):
+		return refusal("operation.malformed", refused.Error())
+	case errors.Is(err, context.DeadlineExceeded):
+		return about("unit.unanswered", "unit", id, fmt.Sprintf("%s did not answer within %v", id, wait))
+	}
+	return about("unit.no_session", "unit", id, err.Error())
+}
+
 // ask carries a question to a unit and its answer back. Neither is read, and neither is recorded.
 func (c *Core) ask(ctx context.Context, actor event.Actor, r *administrativev1.Request) (*administrativev1.Response, *administrativev1.Refusal) {
 	q := r.GetUnitAsk()
@@ -406,24 +428,57 @@ func (c *Core) ask(ctx context.Context, actor event.Actor, r *administrativev1.R
 	defer cancel()
 	c.record(actor, event.Unit, id, uint64(st.Incarnation), "asked "+id+" of the type "+q.GetType())
 	a, err := c.Sessions.Ask(waiting, id, &pluginv1.Query_Question{Type: q.GetType(), Payload: q.GetQuestion()})
-	var refused *session.Refused
-	var failed *session.UnitFailed
-	switch {
-	case errors.As(err, &refused) && refused.Code == pluginv1.Code_CODE_SCOPE_WITHHELD:
-		return nil, &administrativev1.Refusal{Code: "scope.withheld", Message: refused.Reason, Detail: &administrativev1.Refusal_Item{Item: q.GetType()}}
-	case errors.As(err, &refused) && refused.Code == pluginv1.Code_CODE_SCOPE_UNDECLARED:
-		return nil, &administrativev1.Refusal{Code: "scope.undeclared", Message: refused.Reason, Detail: &administrativev1.Refusal_Item{Item: q.GetType()}}
-	case errors.As(err, &failed):
-		return nil, unitFailed(failed)
-	case errors.As(err, &refused):
-		return nil, refusal("operation.malformed", refused.Error())
-	case errors.Is(err, context.DeadlineExceeded):
-		return nil, about("unit.unanswered", "unit", id, fmt.Sprintf("%s did not answer within %v", id, wait))
-	case err != nil:
-		return nil, about("unit.no_session", "unit", id, err.Error())
+	if ref := refusedBy(err, id, q.GetType(), wait); ref != nil {
+		return nil, ref
 	}
 	if len(a.GetPayload()) > Bound {
 		return nil, about("unit.unanswered", "unit", id, "the answer exceeds 1 MiB, and is not carried")
 	}
 	return &administrativev1.Response{Answer: &administrativev1.Response_UnitAsk{UnitAsk: &administrativev1.Asked{Answer: a.GetPayload()}}}, nil
+}
+
+// command carries an operator's instruction to a unit and answers with its first acknowledgement. The
+// payload is neither read nor recorded. It is not arbitrated: arbitration is between channels and this
+// surface is not one, so no channel's holding is consulted.
+func (c *Core) command(ctx context.Context, actor event.Actor, r *administrativev1.Request) (*administrativev1.Response, *administrativev1.Refusal) {
+	q := r.GetUnitCommand()
+	id := q.GetUnit()
+	if ref := c.unit(id); ref != nil {
+		return nil, ref
+	}
+	if len(q.GetPayload()) > Bound {
+		return nil, refusal("operation.malformed", "a command is bounded at 1 MiB")
+	}
+	st := c.Units.Status(id)
+	if !live(st.State) {
+		return nil, about("unit.not_running", "unit", id, id+" is not running")
+	}
+	if !c.Sessions.Open(id) {
+		return nil, about("unit.no_session", "unit", id, id+" is running and holds no Session")
+	}
+	wait := c.Wait
+	if wait == 0 {
+		wait = Wait
+	}
+	waiting, cancel := context.WithTimeout(ctx, wait)
+	defer cancel()
+	// The Session refuses a type outside its scope without sending anything, and a command refused there
+	// emits nothing: the event says the Core issued it.
+	_, granted, _ := c.Sessions.Granted(id)
+	issued := slices.Contains(granted, q.GetType())
+	if issued {
+		c.record(actor, event.Unit, id, uint64(st.Incarnation), "commanded "+id+" with the type "+q.GetType())
+		if c.Publish != nil {
+			c.Publish(event.CommandIssued(id, uint64(st.Incarnation), q.GetType(), actor))
+		}
+	}
+	ack, err := c.Sessions.Instruct(waiting, id, &pluginv1.Control{Kind: &pluginv1.Control_Command_{Command: &pluginv1.Control_Command{Type: q.GetType(), Payload: q.GetPayload()}}})
+	if ref := refusedBy(err, id, q.GetType(), wait); ref != nil {
+		if !issued {
+			c.record(actor, event.Unit, id, uint64(st.Incarnation), "refused a command to "+id+" of the type "+q.GetType()+": "+ref.GetCode())
+		}
+		return nil, ref
+	}
+	return &administrativev1.Response{Answer: &administrativev1.Response_UnitCommand{UnitCommand: &administrativev1.Commanded{
+		Outcome: administrativev1.Commanded_Outcome(ack.GetOutcome()), Line: ack.GetLine()}}}, nil
 }

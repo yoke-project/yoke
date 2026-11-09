@@ -82,3 +82,16 @@
 | **Precondition** | `yoke-core` built, with a composition declaring two local channels, `bench` prevailing over `panel` |
 | **Action** | attach to `panel`, then to `bench`; command a unit on `panel` |
 | **Expected** | the Core's output records `channel.suspended` about `panel`; the command is refused `channel.suspended` naming `bench` |
+
+## yoke:arbitration.07 — an operator's command stands outside arbitration, and is announced
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/70.50 · specs/60.64 · specs/31.54 · arch/70-interface-surface/06 §What each grade withdraws |
+| **Level** | L3 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | `yoke-core` built, `bench` prevailing over `panel`, both attached, and a unit granted the command `calibrate` |
+| **Action** | give the unit the command on the administrative surface, with some bytes; then command it on each channel |
+| **Expected** | the operator's command is answered with the unit's acknowledgement; the Core's output records `unit.command.issued`, without the bytes; `bench` still commands and `panel` is still suspended by it |
