@@ -160,3 +160,17 @@
 | **Precondition** | two OCI archives written by the test, each named by its manifest's digest and placed in a project's `components/images/`; no image under either reference in the engine; the project's descriptor naming one for `panel` and the other for `pipeline` |
 | **Action** | build a signed package with the composer, and install it with the engine |
 | **Expected** | the installation completes; the engine holds each image under its pinned reference, loaded from the package and not pulled, and each still tagged when the installation ends — `yoke/com.yoke.station/panel:2.1.0` and `yoke/com.yoke.station/pipeline:2.1.0` on the images they name. Not applicable under Docker, whose classic store loads an archive with no digest |
+
+## yoke:the-installation.17 — a run from a working directory loads what it carries, and pulls nothing
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/45.40 · arch/10-manager/05 §Obtaining images |
+| **Level** | L3 |
+| **Method** | test |
+| **Not applicable in** | container engine: docker |
+| **Label** | blocking |
+| **Precondition** | a working directory carrying an image's archive, then one carrying none; an engine reachable |
+| **Action** | obtain the images a run from each loads |
+| **Expected** | the first image is loaded and the engine holds it under its pinned reference; for the second the engine is not reached |
+

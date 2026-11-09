@@ -19,6 +19,7 @@ import (
 	"github.com/yoke-project/yoke/internal/compose"
 	"github.com/yoke-project/yoke/internal/core/engine"
 	"github.com/yoke-project/yoke/internal/core/engine/enginetest"
+	"github.com/yoke-project/yoke/internal/gate"
 	"github.com/yoke-project/yoke/internal/installroot"
 )
 
@@ -217,3 +218,41 @@ func TestAPackageCarryingAnImageInstallsWithTheEngine(t *testing.T) {
 		}
 	}
 }
+
+// std: yoke:the-installation.17
+func TestARunFromAWorkingDirectoryLoadsWhatItCarriesAndPullsNothing(t *testing.T) {
+	enginetest.Not(t, enginetest.Docker)
+	ref, written := enginetest.OCIArchive(t, "yoke-carried")
+	proj := imaged(t, map[string]string{"panel": ref}, nil)
+	archive := filepath.Join(proj, "components", "images", strings.Replace(ref[strings.Index(ref, "@")+1:], ":", "-", 1)+".tar")
+	os.MkdirAll(filepath.Dir(archive), 0o755)
+	data, _ := os.ReadFile(written)
+	os.WriteFile(archive, data, 0o644)
+	t.Cleanup(func() { exec.Command("podman", "rmi", "-f", "yoke/com.yoke.station/panel:2.1.0").Run() })
+	s := enginetest.Serve(t)
+	_, d := gate.Check(gate.Input{Document: gate.Read(filepath.Join(proj, "yoke.yaml"), gate.Descriptor), Moment: gate.Composing,
+		Manifests: filepath.Join(proj, "manifests")})
+	if d == nil {
+		t.Fatal("the project does not check")
+	}
+	var said strings.Builder
+	o := withEngine(Options{}, "unix://"+s.Socket)
+	o.Out = &said
+	if err := ObtainCarried(o, proj, d); err != nil {
+		t.Fatalf("%v\n%s", err, said.String())
+	}
+	if !strings.Contains(said.String(), "loaded from the package") {
+		t.Errorf("nothing was loaded:\n%s", said.String())
+	}
+	if exec.Command("podman", "image", "exists", ref).Run() != nil {
+		t.Errorf("the engine does not hold %s", ref)
+	}
+	// With nothing carried, the engine is not asked at all.
+	asked := false
+	o.Engine = func(context.Context) (*engine.Engine, error) { asked = true; return nil, fmt.Errorf("no engine") }
+	bare := imaged(t, map[string]string{"panel": ref}, nil)
+	if err := ObtainCarried(o, bare, d); err != nil || asked {
+		t.Errorf("a directory carrying nothing: %v, engine asked %t", err, asked)
+	}
+}
+

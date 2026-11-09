@@ -220,5 +220,5 @@ func imageDigest(archive string) (string, error) {
 // imagePlace is where an image archive of that digest goes in a project, and the reference naming it.
 func imagePlace(p *gate.PluginProject, digest string) (at, ref string) {
 	at = filepath.ToSlash(filepath.Join(Components, "images", strings.Replace(digest, ":", "-", 1)+".tar"))
-	return at, "localhost/yoke-plugin/" + p.Program + "@" + digest
+	return at, "localhost/yoke-plugin-" + p.Program + "@" + digest
 }
