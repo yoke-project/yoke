@@ -255,4 +255,3 @@ func TestARunFromAWorkingDirectoryLoadsWhatItCarriesAndPullsNothing(t *testing.T
 		t.Errorf("a directory carrying nothing: %v, engine asked %t", err, asked)
 	}
 }
-
