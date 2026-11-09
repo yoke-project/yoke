@@ -97,6 +97,7 @@ var declared = map[string]Class{
 	"unit.state.changed":         Level,
 	"unit.condition.changed":     Level,
 	"unit.occurrence.reported":   Edge,
+	"unit.command.issued":        Edge,
 	"unit.stream.activated":      Level,
 	"unit.stream.stopped":        Level,
 	"document.resolved":          Level,
@@ -212,6 +213,14 @@ func StateChangedOf(unitID, plugin string, incarnation uint64, from, to unit.Sta
 		detail["plugin"] = plugin
 	}
 	return concluded("unit.state.changed", UnitSubject(unitID, incarnation), severity, detail)
+}
+
+// CommandIssued is the edge a command given on the administrative surface leaves: who gave it and its type,
+// never its payload, and no outcome.
+func CommandIssued(unitID string, incarnation uint64, command string, actor Actor) Event {
+	e := concluded("unit.command.issued", UnitSubject(unitID, incarnation), Routine, map[string]any{"command": command})
+	e.Actor = actor
+	return e
 }
 
 // StreamActivated is the Core's conclusion that a stream of a unit's life was activated: its transport

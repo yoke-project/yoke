@@ -322,6 +322,10 @@ func ask(id string, question []byte) *administrativev1.Request {
 	return v1(&administrativev1.Request{Operation: &administrativev1.Request_UnitAsk{UnitAsk: &administrativev1.UnitAsk{Unit: id, Type: "status", Question: question}}})
 }
 
+func command(id, typ string, payload []byte) *administrativev1.Request {
+	return v1(&administrativev1.Request{Operation: &administrativev1.Request_UnitCommand{UnitCommand: &administrativev1.UnitCommand{Unit: id, Type: typ, Payload: payload}}})
+}
+
 func retain(id string, age time.Duration, entries *uint64) *administrativev1.Request {
 	r := &administrativev1.UnitRetention{Unit: id, Entries: entries}
 	if age > 0 {
@@ -585,7 +589,7 @@ func TestWhileStoppingAChangeIsRefusedAndAReadAnswered(t *testing.T) {
 	_, operator, _ := served(t, admin.Config{Operations: ops, Stopping: func() bool { return true }})
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	for name, r := range map[string]*administrativev1.Request{"plugin.enable": enable(station), "unit.ask": ask("acquire", []byte("x"))} {
+	for name, r := range map[string]*administrativev1.Request{"plugin.enable": enable(station), "unit.command": command("acquire", "calibrate", nil), "unit.ask": ask("acquire", []byte("x"))} {
 		_, err := operator.Call(ctx, r)
 		if ref := refusalOf(err); ref.GetCode() != "instance.stopping" {
 			t.Errorf("%s while stopping was answered %v, want instance.stopping", name, err)
@@ -612,5 +616,90 @@ func TestTheCoreServesEveryOperationTheContractDefines(t *testing.T) {
 	slices.Sort(defined)
 	if !slices.Equal(served, defined) {
 		t.Errorf("the Core serves %v, and the contract defines %v", served, defined)
+	}
+}
+
+// std: yoke:the-operations.13
+func TestACommandIsCarriedOpaqueAndAnnounced(t *testing.T) {
+	b := newBench(t, map[string]*fakeUnit{"acquire": running(station, 4)}, map[string]string{"acquire": "reverse"})
+	secret := []byte("abc-the-payload")
+	resp, ref := b.call(t, command("acquire", "calibrate", secret))
+	if ref != nil {
+		t.Fatal(ref)
+	}
+	if got := resp.GetUnitCommand().GetOutcome(); got != administrativev1.Commanded_OUTCOME_DONE {
+		t.Errorf("the outcome is %v, want the unit's acknowledgement", got)
+	}
+	if len(b.sessions.instructed) != 1 || b.sessions.instructed[0].control.GetCommand().GetType() != "calibrate" ||
+		!bytes.Equal(b.sessions.instructed[0].control.GetCommand().GetPayload(), secret) {
+		t.Errorf("the unit was handed %+v, want one command carrying the bytes", b.sessions.instructed)
+	}
+	got := b.events.of("unit.command.issued")
+	if len(got) != 1 {
+		t.Fatalf("%d events, want one", len(got))
+	}
+	if e := got[0]; e.Subject.ID != "acquire" || e.Actor.Class != event.ByOperator || e.Actor.Person != me(t).Username ||
+		e.Severity != event.Routine || !strings.Contains(string(e.Detail), `"command":"calibrate"`) || bytes.Contains(e.Detail, secret) {
+		t.Errorf("the event is %+v", e)
+	}
+	all := entries(t, b.core.Logs, func(all []logstore.Entry) bool { return len(all) > 0 })
+	var said []logstore.Entry
+	for _, e := range all {
+		if e.Unit == "acquire" {
+			said = append(said, e)
+		}
+	}
+	if len(said) != 1 || said[0].Incarnation != 4 || said[0].Actor != "operator:"+me(t).Username ||
+		!strings.Contains(said[0].Message, "calibrate") || strings.Contains(said[0].Message, string(secret)) {
+		t.Errorf("the log store holds %+v, want one entry naming the command type and not the payload", said)
+	}
+}
+
+// std: yoke:the-operations.14
+func TestACommandRefusedReachesNothingAndEmitsNothing(t *testing.T) {
+	b := newBench(t, map[string]*fakeUnit{"acquire": running(station, 4), "idle": {plugin: station, state: unit.Stopped, incarnation: 1}},
+		map[string]string{"acquire": "reverse"})
+	for typ, code := range map[string]string{"undeclared.type": "scope.undeclared", "withheld.type": "scope.withheld"} {
+		_, ref := b.call(t, command("acquire", typ, nil))
+		if ref.GetCode() != code || ref.GetItem() != typ {
+			t.Errorf("%s: refused %+v, want %s naming the type", typ, ref, code)
+		}
+	}
+	if _, ref := b.call(t, command("idle", "calibrate", nil)); ref.GetCode() != "unit.not_running" {
+		t.Errorf("a stopped unit: refused %+v", ref)
+	}
+	if _, ref := b.call(t, command("acquire", "calibrate", make([]byte, admin.Bound+1))); ref.GetCode() != "operation.malformed" {
+		t.Errorf("too large: refused %+v", ref)
+	}
+	if n := len(b.sessions.instructed); n != 0 {
+		t.Errorf("%d instructions reached the unit", n)
+	}
+	if n := len(b.events.of("unit.command.issued")); n != 0 {
+		t.Errorf("%d events for a refused command", n)
+	}
+	all := entries(t, b.core.Logs, func(all []logstore.Entry) bool { return len(all) >= 2 })
+	refused := 0
+	for _, e := range all {
+		if strings.HasPrefix(e.Message, "refused a command") {
+			refused++
+		}
+	}
+	if refused != 2 {
+		t.Errorf("%d refusals recorded, want the two scope refusals: %+v", refused, all)
+	}
+}
+
+// std: yoke:the-operations.15
+func TestAFailedAcknowledgementIsTheAnswerNotARefusal(t *testing.T) {
+	b := newBench(t, map[string]*fakeUnit{"acquire": running(station, 4)}, map[string]string{"acquire": "reverse"})
+	resp, ref := b.call(t, command("acquire", "report", nil))
+	if ref != nil {
+		t.Fatal(ref)
+	}
+	if c := resp.GetUnitCommand(); c.GetOutcome() != administrativev1.Commanded_OUTCOME_FAILED || c.GetLine() != "the lamp is cold" {
+		t.Errorf("the answer is %+v, want the unit's failed acknowledgement and its line", c)
+	}
+	if n := len(b.events.of("unit.command.issued")); n != 1 {
+		t.Errorf("%d events; a command issued is announced whatever became of it", n)
 	}
 }
