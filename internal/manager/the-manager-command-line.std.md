@@ -291,3 +291,17 @@
 | **Precondition** | the install root of `.05`; the account's state directory empty; a program named `yoke-guardian` first on the `PATH`, which leaves a mark when it runs; no guardian answering |
 | **Action** | run `yoke instance create com.yoke.station --name bench-a --running`, then `yoke instance list` |
 | **Expected** | each exits 0; the record's desired state is *running* and it says when a start was last asked for; the list says `bench-a` is stopped and wants to run; and the program named `yoke-guardian` never ran — the record is the intent, and a guardian acts on it when it next reconciles, its boot pass among them |
+
+## yoke:the-manager-command-line.23 — `yoke unit command` reaches the instance, and a type never declared is refused by name
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/60.63 · arch/60-administrative-surface/04 §The two operations whose content the Core does not read |
+| **Level** | L3 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a Core running a composition of one Plugin unit that declares no such command |
+| **Action** | run `yoke unit command bench never.declared` |
+| **Expected** | it exits with a refusal naming `scope.undeclared` and the type |
+
