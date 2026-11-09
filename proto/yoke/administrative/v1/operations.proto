@@ -34,6 +34,8 @@ message Request {
     LogQuery log_query = 15;
     LogFollow log_follow = 16;
     Subscribe subscribe = 17;
+    // An instruction for a unit, on the same footing as a question and last only by when it was added.
+    UnitCommand unit_command = 18;
   }
 }
 
@@ -68,6 +70,13 @@ message UnitAsk {
   string unit = 1;
   string type = 2;
   bytes question = 3;
+}
+
+// A command for a unit, opaque to the Core and bounded at 1 MiB.
+message UnitCommand {
+  string unit = 1;
+  string type = 2;
+  bytes payload = 3;
 }
 
 // A subject kind, and an identity where one is named: with none, every subject of that kind.
@@ -116,6 +125,7 @@ message Response {
     LogPage log_query = 14;
     Followed log_follow = 15;
     Subscribed subscribe = 16;
+    Commanded unit_command = 17;
   }
 }
 
@@ -159,6 +169,18 @@ message Consequence {
 // A unit's answer, opaque to the Core and bounded at 1 MiB.
 message Asked {
   bytes answer = 1;
+}
+
+// What became of a command: the unit's first acknowledgement, and no payload.
+message Commanded {
+  enum Outcome {
+    OUTCOME_UNSPECIFIED = 0;
+    OUTCOME_ACCEPTED = 1;
+    OUTCOME_DONE = 2;
+    OUTCOME_FAILED = 3;
+  }
+  Outcome outcome = 1;
+  string line = 2;
 }
 
 // A page of the log store, in the order it keeps, and the cursor to continue from.

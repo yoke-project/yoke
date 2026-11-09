@@ -28,12 +28,12 @@ func adm(t *testing.T, files *protoregistry.Files, name string) protoreflect.Mes
 	return md
 }
 
-// The sixteen operations, as the union names them, in the order the contract states them.
+// The seventeen operations, as the union names them, in the order the contract states them.
 var operations = []string{
 	"plugin_enable", "plugin_disable", "plugin_grant", "plugin_withdraw",
 	"unit_start", "unit_stop", "unit_restart", "unit_stream_start", "unit_stream_stop",
 	"unit_retention_set", "unit_retention_clear", "unit_ask",
-	"read", "log_query", "log_follow", "subscribe",
+	"read", "log_query", "log_follow", "subscribe", "unit_command",
 }
 
 // std: yoke:administrative-contract.01

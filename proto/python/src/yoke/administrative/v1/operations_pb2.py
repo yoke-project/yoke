@@ -28,7 +28,7 @@ from yoke.administrative.v1 import events_pb2 as yoke_dot_administrative_dot_v1_
 from yoke.administrative.v1 import records_pb2 as yoke_dot_administrative_dot_v1_dot_records__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\'yoke/administrative/v1/operations.proto\x12\x16yoke.administrative.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a#yoke/administrative/v1/events.proto\x1a$yoke/administrative/v1/records.proto\"\xdb\x07\n\x07Request\x12\x0f\n\x07version\x18\x01 \x01(\r\x12=\n\rplugin_enable\x18\x02 \x01(\x0b\x32$.yoke.administrative.v1.PluginPolicyH\x00\x12>\n\x0eplugin_disable\x18\x03 \x01(\x0b\x32$.yoke.administrative.v1.PluginPolicyH\x00\x12;\n\x0cplugin_grant\x18\x04 \x01(\x0b\x32#.yoke.administrative.v1.PluginGrantH\x00\x12>\n\x0fplugin_withdraw\x18\x05 \x01(\x0b\x32#.yoke.administrative.v1.PluginGrantH\x00\x12\x35\n\nunit_start\x18\x06 \x01(\x0b\x32\x1f.yoke.administrative.v1.UnitActH\x00\x12\x34\n\tunit_stop\x18\x07 \x01(\x0b\x32\x1f.yoke.administrative.v1.UnitActH\x00\x12\x37\n\x0cunit_restart\x18\x08 \x01(\x0b\x32\x1f.yoke.administrative.v1.UnitActH\x00\x12?\n\x11unit_stream_start\x18\t \x01(\x0b\x32\".yoke.administrative.v1.UnitStreamH\x00\x12>\n\x10unit_stream_stop\x18\n \x01(\x0b\x32\".yoke.administrative.v1.UnitStreamH\x00\x12\x43\n\x12unit_retention_set\x18\x0b \x01(\x0b\x32%.yoke.administrative.v1.UnitRetentionH\x00\x12?\n\x14unit_retention_clear\x18\x0c \x01(\x0b\x32\x1f.yoke.administrative.v1.UnitActH\x00\x12\x33\n\x08unit_ask\x18\r \x01(\x0b\x32\x1f.yoke.administrative.v1.UnitAskH\x00\x12,\n\x04read\x18\x0e \x01(\x0b\x32\x1c.yoke.administrative.v1.ReadH\x00\x12\x35\n\tlog_query\x18\x0f \x01(\x0b\x32 .yoke.administrative.v1.LogQueryH\x00\x12\x37\n\nlog_follow\x18\x10 \x01(\x0b\x32!.yoke.administrative.v1.LogFollowH\x00\x12\x36\n\tsubscribe\x18\x11 \x01(\x0b\x32!.yoke.administrative.v1.SubscribeH\x00\x42\x0b\n\toperation\"\x1e\n\x0cPluginPolicy\x12\x0e\n\x06plugin\x18\x01 \x01(\t\"1\n\x0bPluginGrant\x12\x0e\n\x06plugin\x18\x01 \x01(\t\x12\x12\n\ncapability\x18\x02 \x01(\t\"\x17\n\x07UnitAct\x12\x0c\n\x04unit\x18\x01 \x01(\t\"*\n\nUnitStream\x12\x0c\n\x04unit\x18\x01 \x01(\t\x12\x0e\n\x06stream\x18\x02 \x01(\t\"\x85\x01\n\rUnitRetention\x12\x0c\n\x04unit\x18\x01 \x01(\t\x12&\n\x03\x61ge\x18\x02 \x01(\x0b\x32\x19.google.protobuf.Duration\x12\x12\n\x05\x62ytes\x18\x03 \x01(\x04H\x00\x88\x01\x01\x12\x14\n\x07\x65ntries\x18\x04 \x01(\x04H\x01\x88\x01\x01\x42\x08\n\x06_bytesB\n\n\x08_entries\"7\n\x07UnitAsk\x12\x0c\n\x04unit\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12\x10\n\x08question\x18\x03 \x01(\x0c\"&\n\x04Read\x12\x0c\n\x04kind\x18\x01 \x01(\t\x12\x10\n\x08identity\x18\x02 \x01(\t\"\xa1\x01\n\x08LogQuery\x12\x0c\n\x04unit\x18\x01 \x01(\t\x12\x13\n\x0bincarnation\x18\x02 \x01(\x04\x12(\n\x04\x66rom\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12)\n\x05until\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\r\n\x05\x66loor\x18\x05 \x01(\r\x12\x0e\n\x06\x63ursor\x18\x06 \x01(\x04\"M\n\tLogFollow\x12\x0c\n\x04unit\x18\x01 \x01(\t\x12\x13\n\x0bincarnation\x18\x02 \x01(\x04\x12\r\n\x05\x66loor\x18\x03 \x01(\r\x12\x0e\n\x06\x63ursor\x18\x04 \x01(\x04\";\n\tSubscribe\x12.\n\x06\x66ilter\x18\x01 \x01(\x0b\x32\x1e.yoke.administrative.v1.Filter\"\xaa\x07\n\x08Response\x12\x38\n\rplugin_enable\x18\x01 \x01(\x0b\x32\x1f.yoke.administrative.v1.ChangedH\x00\x12\x39\n\x0eplugin_disable\x18\x02 \x01(\x0b\x32\x1f.yoke.administrative.v1.ChangedH\x00\x12\x37\n\x0cplugin_grant\x18\x03 \x01(\x0b\x32\x1f.yoke.administrative.v1.ChangedH\x00\x12:\n\x0fplugin_withdraw\x18\x04 \x01(\x0b\x32\x1f.yoke.administrative.v1.ChangedH\x00\x12\x35\n\nunit_start\x18\x05 \x01(\x0b\x32\x1f.yoke.administrative.v1.ChangedH\x00\x12\x34\n\tunit_stop\x18\x06 \x01(\x0b\x32\x1f.yoke.administrative.v1.ChangedH\x00\x12\x37\n\x0cunit_restart\x18\x07 \x01(\x0b\x32\x1f.yoke.administrative.v1.ChangedH\x00\x12<\n\x11unit_stream_start\x18\x08 \x01(\x0b\x32\x1f.yoke.administrative.v1.ChangedH\x00\x12;\n\x10unit_stream_stop\x18\t \x01(\x0b\x32\x1f.yoke.administrative.v1.ChangedH\x00\x12=\n\x12unit_retention_set\x18\n \x01(\x0b\x32\x1f.yoke.administrative.v1.ChangedH\x00\x12?\n\x14unit_retention_clear\x18\x0b \x01(\x0b\x32\x1f.yoke.administrative.v1.ChangedH\x00\x12\x31\n\x08unit_ask\x18\x0c \x01(\x0b\x32\x1d.yoke.administrative.v1.AskedH\x00\x12/\n\x04read\x18\r \x01(\x0b\x32\x1f.yoke.administrative.v1.RecordsH\x00\x12\x34\n\tlog_query\x18\x0e \x01(\x0b\x32\x1f.yoke.administrative.v1.LogPageH\x00\x12\x36\n\nlog_follow\x18\x0f \x01(\x0b\x32 .yoke.administrative.v1.FollowedH\x00\x12\x37\n\tsubscribe\x18\x10 \x01(\x0b\x32\".yoke.administrative.v1.SubscribedH\x00\x42\x08\n\x06\x61nswer\"\x9e\x02\n\x07\x43hanged\x12\x36\n\npreviously\x18\x01 \x01(\x0b\x32\".yoke.administrative.v1.Previously\x12<\n\teffective\x18\x02 \x01(\x0e\x32).yoke.administrative.v1.Changed.Effective\x12\x39\n\x0c\x63onsequences\x18\x03 \x03(\x0b\x32#.yoke.administrative.v1.Consequence\"b\n\tEffective\x12\x19\n\x15\x45\x46\x46\x45\x43TIVE_UNSPECIFIED\x10\x00\x12\x19\n\x15\x45\x46\x46\x45\x43TIVE_IMMEDIATELY\x10\x01\x12\x1f\n\x1b\x45\x46\x46\x45\x43TIVE_AT_NEXT_ADMISSION\x10\x02\"\x84\x01\n\nPreviously\x12\x11\n\x07\x65nabled\x18\x01 \x01(\x08H\x00\x12\x11\n\x07granted\x18\x02 \x01(\x08H\x00\x12\x0f\n\x05state\x18\x03 \x01(\tH\x00\x12\x36\n\tretention\x18\x04 \x01(\x0b\x32!.yoke.administrative.v1.RetentionH\x00\x42\x07\n\x05value\"s\n\tRetention\x12&\n\x03\x61ge\x18\x01 \x01(\x0b\x32\x19.google.protobuf.Duration\x12\x12\n\x05\x62ytes\x18\x02 \x01(\x04H\x00\x88\x01\x01\x12\x14\n\x07\x65ntries\x18\x03 \x01(\x04H\x01\x88\x01\x01\x42\x08\n\x06_bytesB\n\n\x08_entries\">\n\x0b\x43onsequence\x12\x0c\n\x04unit\x18\x01 \x01(\t\x12\x13\n\x0bincarnation\x18\x02 \x01(\x04\x12\x0c\n\x04what\x18\x03 \x01(\t\"\x17\n\x05\x41sked\x12\x0e\n\x06\x61nswer\x18\x01 \x01(\x0c\"[\n\x07LogPage\x12\x31\n\x07\x65ntries\x18\x01 \x03(\x0b\x32 .yoke.administrative.v1.LogEntry\x12\x0c\n\x04next\x18\x02 \x01(\x04\x12\x0f\n\x07resumed\x18\x03 \x01(\x08\"\xfb\x01\n\x08LogEntry\x12\x0b\n\x03seq\x18\x01 \x01(\x04\x12&\n\x02\x61t\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0c\n\x04unit\x18\x03 \x01(\t\x12\x13\n\x0bincarnation\x18\x04 \x01(\x04\x12\x0e\n\x06source\x18\x05 \x01(\t\x12\x10\n\x08severity\x18\x06 \x01(\r\x12\x0c\n\x04type\x18\x07 \x01(\t\x12\x14\n\x0csubject_kind\x18\x08 \x01(\t\x12\x12\n\nsubject_id\x18\t \x01(\t\x12\r\n\x05\x61\x63tor\x18\n \x01(\t\x12\r\n\x05\x63\x61use\x18\x0b \x01(\x04\x12\x0f\n\x07message\x18\x0c \x01(\t\x12\x0e\n\x06\x64\x65tail\x18\r \x01(\x0c\"]\n\x08\x46ollowed\x12\x31\n\x05\x65ntry\x18\x01 \x01(\x0b\x32 .yoke.administrative.v1.LogEntryH\x00\x12\x13\n\tbehind_at\x18\x02 \x01(\x04H\x00\x42\t\n\x07\x63\x61rries\"\xb3\x01\n\nSubscribed\x12\x34\n\x08snapshot\x18\x01 \x01(\x0b\x32 .yoke.administrative.v1.SnapshotH\x00\x12.\n\x05\x65vent\x18\x02 \x01(\x0b\x32\x1d.yoke.administrative.v1.EventH\x00\x12\x34\n\x08overflow\x18\x03 \x01(\x0b\x32 .yoke.administrative.v1.SnapshotH\x00\x42\t\n\x07\x63\x61rriesBLZJgithub.com/yoke-project/yoke/proto/yoke/administrative/v1;administrativev1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\'yoke/administrative/v1/operations.proto\x12\x16yoke.administrative.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a#yoke/administrative/v1/events.proto\x1a$yoke/administrative/v1/records.proto\"\x98\x08\n\x07Request\x12\x0f\n\x07version\x18\x01 \x01(\r\x12=\n\rplugin_enable\x18\x02 \x01(\x0b\x32$.yoke.administrative.v1.PluginPolicyH\x00\x12>\n\x0eplugin_disable\x18\x03 \x01(\x0b\x32$.yoke.administrative.v1.PluginPolicyH\x00\x12;\n\x0cplugin_grant\x18\x04 \x01(\x0b\x32#.yoke.administrative.v1.PluginGrantH\x00\x12>\n\x0fplugin_withdraw\x18\x05 \x01(\x0b\x32#.yoke.administrative.v1.PluginGrantH\x00\x12\x35\n\nunit_start\x18\x06 \x01(\x0b\x32\x1f.yoke.administrative.v1.UnitActH\x00\x12\x34\n\tunit_stop\x18\x07 \x01(\x0b\x32\x1f.yoke.administrative.v1.UnitActH\x00\x12\x37\n\x0cunit_restart\x18\x08 \x01(\x0b\x32\x1f.yoke.administrative.v1.UnitActH\x00\x12?\n\x11unit_stream_start\x18\t \x01(\x0b\x32\".yoke.administrative.v1.UnitStreamH\x00\x12>\n\x10unit_stream_stop\x18\n \x01(\x0b\x32\".yoke.administrative.v1.UnitStreamH\x00\x12\x43\n\x12unit_retention_set\x18\x0b \x01(\x0b\x32%.yoke.administrative.v1.UnitRetentionH\x00\x12?\n\x14unit_retention_clear\x18\x0c \x01(\x0b\x32\x1f.yoke.administrative.v1.UnitActH\x00\x12\x33\n\x08unit_ask\x18\r \x01(\x0b\x32\x1f.yoke.administrative.v1.UnitAskH\x00\x12,\n\x04read\x18\x0e \x01(\x0b\x32\x1c.yoke.administrative.v1.ReadH\x00\x12\x35\n\tlog_query\x18\x0f \x01(\x0b\x32 .yoke.administrative.v1.LogQueryH\x00\x12\x37\n\nlog_follow\x18\x10 \x01(\x0b\x32!.yoke.administrative.v1.LogFollowH\x00\x12\x36\n\tsubscribe\x18\x11 \x01(\x0b\x32!.yoke.administrative.v1.SubscribeH\x00\x12;\n\x0cunit_command\x18\x12 \x01(\x0b\x32#.yoke.administrative.v1.UnitCommandH\x00\x42\x0b\n\toperation\"\x1e\n\x0cPluginPolicy\x12\x0e\n\x06plugin\x18\x01 \x01(\t\"1\n\x0bPluginGrant\x12\x0e\n\x06plugin\x18\x01 \x01(\t\x12\x12\n\ncapability\x18\x02 \x01(\t\"\x17\n\x07UnitAct\x12\x0c\n\x04unit\x18\x01 \x01(\t\"*\n\nUnitStream\x12\x0c\n\x04unit\x18\x01 \x01(\t\x12\x0e\n\x06stream\x18\x02 \x01(\t\"\x85\x01\n\rUnitRetention\x12\x0c\n\x04unit\x18\x01 \x01(\t\x12&\n\x03\x61ge\x18\x02 \x01(\x0b\x32\x19.google.protobuf.Duration\x12\x12\n\x05\x62ytes\x18\x03 \x01(\x04H\x00\x88\x01\x01\x12\x14\n\x07\x65ntries\x18\x04 \x01(\x04H\x01\x88\x01\x01\x42\x08\n\x06_bytesB\n\n\x08_entries\"7\n\x07UnitAsk\x12\x0c\n\x04unit\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12\x10\n\x08question\x18\x03 \x01(\x0c\":\n\x0bUnitCommand\x12\x0c\n\x04unit\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12\x0f\n\x07payload\x18\x03 \x01(\x0c\"&\n\x04Read\x12\x0c\n\x04kind\x18\x01 \x01(\t\x12\x10\n\x08identity\x18\x02 \x01(\t\"\xa1\x01\n\x08LogQuery\x12\x0c\n\x04unit\x18\x01 \x01(\t\x12\x13\n\x0bincarnation\x18\x02 \x01(\x04\x12(\n\x04\x66rom\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12)\n\x05until\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\r\n\x05\x66loor\x18\x05 \x01(\r\x12\x0e\n\x06\x63ursor\x18\x06 \x01(\x04\"M\n\tLogFollow\x12\x0c\n\x04unit\x18\x01 \x01(\t\x12\x13\n\x0bincarnation\x18\x02 \x01(\x04\x12\r\n\x05\x66loor\x18\x03 \x01(\r\x12\x0e\n\x06\x63ursor\x18\x04 \x01(\x04\";\n\tSubscribe\x12.\n\x06\x66ilter\x18\x01 \x01(\x0b\x32\x1e.yoke.administrative.v1.Filter\"\xe5\x07\n\x08Response\x12\x38\n\rplugin_enable\x18\x01 \x01(\x0b\x32\x1f.yoke.administrative.v1.ChangedH\x00\x12\x39\n\x0eplugin_disable\x18\x02 \x01(\x0b\x32\x1f.yoke.administrative.v1.ChangedH\x00\x12\x37\n\x0cplugin_grant\x18\x03 \x01(\x0b\x32\x1f.yoke.administrative.v1.ChangedH\x00\x12:\n\x0fplugin_withdraw\x18\x04 \x01(\x0b\x32\x1f.yoke.administrative.v1.ChangedH\x00\x12\x35\n\nunit_start\x18\x05 \x01(\x0b\x32\x1f.yoke.administrative.v1.ChangedH\x00\x12\x34\n\tunit_stop\x18\x06 \x01(\x0b\x32\x1f.yoke.administrative.v1.ChangedH\x00\x12\x37\n\x0cunit_restart\x18\x07 \x01(\x0b\x32\x1f.yoke.administrative.v1.ChangedH\x00\x12<\n\x11unit_stream_start\x18\x08 \x01(\x0b\x32\x1f.yoke.administrative.v1.ChangedH\x00\x12;\n\x10unit_stream_stop\x18\t \x01(\x0b\x32\x1f.yoke.administrative.v1.ChangedH\x00\x12=\n\x12unit_retention_set\x18\n \x01(\x0b\x32\x1f.yoke.administrative.v1.ChangedH\x00\x12?\n\x14unit_retention_clear\x18\x0b \x01(\x0b\x32\x1f.yoke.administrative.v1.ChangedH\x00\x12\x31\n\x08unit_ask\x18\x0c \x01(\x0b\x32\x1d.yoke.administrative.v1.AskedH\x00\x12/\n\x04read\x18\r \x01(\x0b\x32\x1f.yoke.administrative.v1.RecordsH\x00\x12\x34\n\tlog_query\x18\x0e \x01(\x0b\x32\x1f.yoke.administrative.v1.LogPageH\x00\x12\x36\n\nlog_follow\x18\x0f \x01(\x0b\x32 .yoke.administrative.v1.FollowedH\x00\x12\x37\n\tsubscribe\x18\x10 \x01(\x0b\x32\".yoke.administrative.v1.SubscribedH\x00\x12\x39\n\x0cunit_command\x18\x11 \x01(\x0b\x32!.yoke.administrative.v1.CommandedH\x00\x42\x08\n\x06\x61nswer\"\x9e\x02\n\x07\x43hanged\x12\x36\n\npreviously\x18\x01 \x01(\x0b\x32\".yoke.administrative.v1.Previously\x12<\n\teffective\x18\x02 \x01(\x0e\x32).yoke.administrative.v1.Changed.Effective\x12\x39\n\x0c\x63onsequences\x18\x03 \x03(\x0b\x32#.yoke.administrative.v1.Consequence\"b\n\tEffective\x12\x19\n\x15\x45\x46\x46\x45\x43TIVE_UNSPECIFIED\x10\x00\x12\x19\n\x15\x45\x46\x46\x45\x43TIVE_IMMEDIATELY\x10\x01\x12\x1f\n\x1b\x45\x46\x46\x45\x43TIVE_AT_NEXT_ADMISSION\x10\x02\"\x84\x01\n\nPreviously\x12\x11\n\x07\x65nabled\x18\x01 \x01(\x08H\x00\x12\x11\n\x07granted\x18\x02 \x01(\x08H\x00\x12\x0f\n\x05state\x18\x03 \x01(\tH\x00\x12\x36\n\tretention\x18\x04 \x01(\x0b\x32!.yoke.administrative.v1.RetentionH\x00\x42\x07\n\x05value\"s\n\tRetention\x12&\n\x03\x61ge\x18\x01 \x01(\x0b\x32\x19.google.protobuf.Duration\x12\x12\n\x05\x62ytes\x18\x02 \x01(\x04H\x00\x88\x01\x01\x12\x14\n\x07\x65ntries\x18\x03 \x01(\x04H\x01\x88\x01\x01\x42\x08\n\x06_bytesB\n\n\x08_entries\">\n\x0b\x43onsequence\x12\x0c\n\x04unit\x18\x01 \x01(\t\x12\x13\n\x0bincarnation\x18\x02 \x01(\x04\x12\x0c\n\x04what\x18\x03 \x01(\t\"\x17\n\x05\x41sked\x12\x0e\n\x06\x61nswer\x18\x01 \x01(\x0c\"\xb5\x01\n\tCommanded\x12:\n\x07outcome\x18\x01 \x01(\x0e\x32).yoke.administrative.v1.Commanded.Outcome\x12\x0c\n\x04line\x18\x02 \x01(\t\"^\n\x07Outcome\x12\x17\n\x13OUTCOME_UNSPECIFIED\x10\x00\x12\x14\n\x10OUTCOME_ACCEPTED\x10\x01\x12\x10\n\x0cOUTCOME_DONE\x10\x02\x12\x12\n\x0eOUTCOME_FAILED\x10\x03\"[\n\x07LogPage\x12\x31\n\x07\x65ntries\x18\x01 \x03(\x0b\x32 .yoke.administrative.v1.LogEntry\x12\x0c\n\x04next\x18\x02 \x01(\x04\x12\x0f\n\x07resumed\x18\x03 \x01(\x08\"\xfb\x01\n\x08LogEntry\x12\x0b\n\x03seq\x18\x01 \x01(\x04\x12&\n\x02\x61t\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0c\n\x04unit\x18\x03 \x01(\t\x12\x13\n\x0bincarnation\x18\x04 \x01(\x04\x12\x0e\n\x06source\x18\x05 \x01(\t\x12\x10\n\x08severity\x18\x06 \x01(\r\x12\x0c\n\x04type\x18\x07 \x01(\t\x12\x14\n\x0csubject_kind\x18\x08 \x01(\t\x12\x12\n\nsubject_id\x18\t \x01(\t\x12\r\n\x05\x61\x63tor\x18\n \x01(\t\x12\r\n\x05\x63\x61use\x18\x0b \x01(\x04\x12\x0f\n\x07message\x18\x0c \x01(\t\x12\x0e\n\x06\x64\x65tail\x18\r \x01(\x0c\"]\n\x08\x46ollowed\x12\x31\n\x05\x65ntry\x18\x01 \x01(\x0b\x32 .yoke.administrative.v1.LogEntryH\x00\x12\x13\n\tbehind_at\x18\x02 \x01(\x04H\x00\x42\t\n\x07\x63\x61rries\"\xb3\x01\n\nSubscribed\x12\x34\n\x08snapshot\x18\x01 \x01(\x0b\x32 .yoke.administrative.v1.SnapshotH\x00\x12.\n\x05\x65vent\x18\x02 \x01(\x0b\x32\x1d.yoke.administrative.v1.EventH\x00\x12\x34\n\x08overflow\x18\x03 \x01(\x0b\x32 .yoke.administrative.v1.SnapshotH\x00\x42\t\n\x07\x63\x61rriesBLZJgithub.com/yoke-project/yoke/proto/yoke/administrative/v1;administrativev1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -37,47 +37,53 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'ZJgithub.com/yoke-project/yoke/proto/yoke/administrative/v1;administrativev1'
   _globals['_REQUEST']._serialized_start=208
-  _globals['_REQUEST']._serialized_end=1195
-  _globals['_PLUGINPOLICY']._serialized_start=1197
-  _globals['_PLUGINPOLICY']._serialized_end=1227
-  _globals['_PLUGINGRANT']._serialized_start=1229
-  _globals['_PLUGINGRANT']._serialized_end=1278
-  _globals['_UNITACT']._serialized_start=1280
-  _globals['_UNITACT']._serialized_end=1303
-  _globals['_UNITSTREAM']._serialized_start=1305
-  _globals['_UNITSTREAM']._serialized_end=1347
-  _globals['_UNITRETENTION']._serialized_start=1350
-  _globals['_UNITRETENTION']._serialized_end=1483
-  _globals['_UNITASK']._serialized_start=1485
-  _globals['_UNITASK']._serialized_end=1540
-  _globals['_READ']._serialized_start=1542
-  _globals['_READ']._serialized_end=1580
-  _globals['_LOGQUERY']._serialized_start=1583
-  _globals['_LOGQUERY']._serialized_end=1744
-  _globals['_LOGFOLLOW']._serialized_start=1746
-  _globals['_LOGFOLLOW']._serialized_end=1823
-  _globals['_SUBSCRIBE']._serialized_start=1825
-  _globals['_SUBSCRIBE']._serialized_end=1884
-  _globals['_RESPONSE']._serialized_start=1887
-  _globals['_RESPONSE']._serialized_end=2825
-  _globals['_CHANGED']._serialized_start=2828
-  _globals['_CHANGED']._serialized_end=3114
-  _globals['_CHANGED_EFFECTIVE']._serialized_start=3016
-  _globals['_CHANGED_EFFECTIVE']._serialized_end=3114
-  _globals['_PREVIOUSLY']._serialized_start=3117
-  _globals['_PREVIOUSLY']._serialized_end=3249
-  _globals['_RETENTION']._serialized_start=3251
-  _globals['_RETENTION']._serialized_end=3366
-  _globals['_CONSEQUENCE']._serialized_start=3368
-  _globals['_CONSEQUENCE']._serialized_end=3430
-  _globals['_ASKED']._serialized_start=3432
-  _globals['_ASKED']._serialized_end=3455
-  _globals['_LOGPAGE']._serialized_start=3457
-  _globals['_LOGPAGE']._serialized_end=3548
-  _globals['_LOGENTRY']._serialized_start=3551
-  _globals['_LOGENTRY']._serialized_end=3802
-  _globals['_FOLLOWED']._serialized_start=3804
-  _globals['_FOLLOWED']._serialized_end=3897
-  _globals['_SUBSCRIBED']._serialized_start=3900
-  _globals['_SUBSCRIBED']._serialized_end=4079
+  _globals['_REQUEST']._serialized_end=1256
+  _globals['_PLUGINPOLICY']._serialized_start=1258
+  _globals['_PLUGINPOLICY']._serialized_end=1288
+  _globals['_PLUGINGRANT']._serialized_start=1290
+  _globals['_PLUGINGRANT']._serialized_end=1339
+  _globals['_UNITACT']._serialized_start=1341
+  _globals['_UNITACT']._serialized_end=1364
+  _globals['_UNITSTREAM']._serialized_start=1366
+  _globals['_UNITSTREAM']._serialized_end=1408
+  _globals['_UNITRETENTION']._serialized_start=1411
+  _globals['_UNITRETENTION']._serialized_end=1544
+  _globals['_UNITASK']._serialized_start=1546
+  _globals['_UNITASK']._serialized_end=1601
+  _globals['_UNITCOMMAND']._serialized_start=1603
+  _globals['_UNITCOMMAND']._serialized_end=1661
+  _globals['_READ']._serialized_start=1663
+  _globals['_READ']._serialized_end=1701
+  _globals['_LOGQUERY']._serialized_start=1704
+  _globals['_LOGQUERY']._serialized_end=1865
+  _globals['_LOGFOLLOW']._serialized_start=1867
+  _globals['_LOGFOLLOW']._serialized_end=1944
+  _globals['_SUBSCRIBE']._serialized_start=1946
+  _globals['_SUBSCRIBE']._serialized_end=2005
+  _globals['_RESPONSE']._serialized_start=2008
+  _globals['_RESPONSE']._serialized_end=3005
+  _globals['_CHANGED']._serialized_start=3008
+  _globals['_CHANGED']._serialized_end=3294
+  _globals['_CHANGED_EFFECTIVE']._serialized_start=3196
+  _globals['_CHANGED_EFFECTIVE']._serialized_end=3294
+  _globals['_PREVIOUSLY']._serialized_start=3297
+  _globals['_PREVIOUSLY']._serialized_end=3429
+  _globals['_RETENTION']._serialized_start=3431
+  _globals['_RETENTION']._serialized_end=3546
+  _globals['_CONSEQUENCE']._serialized_start=3548
+  _globals['_CONSEQUENCE']._serialized_end=3610
+  _globals['_ASKED']._serialized_start=3612
+  _globals['_ASKED']._serialized_end=3635
+  _globals['_COMMANDED']._serialized_start=3638
+  _globals['_COMMANDED']._serialized_end=3819
+  _globals['_COMMANDED_OUTCOME']._serialized_start=3725
+  _globals['_COMMANDED_OUTCOME']._serialized_end=3819
+  _globals['_LOGPAGE']._serialized_start=3821
+  _globals['_LOGPAGE']._serialized_end=3912
+  _globals['_LOGENTRY']._serialized_start=3915
+  _globals['_LOGENTRY']._serialized_end=4166
+  _globals['_FOLLOWED']._serialized_start=4168
+  _globals['_FOLLOWED']._serialized_end=4261
+  _globals['_SUBSCRIBED']._serialized_start=4264
+  _globals['_SUBSCRIBED']._serialized_end=4443
 # @@protoc_insertion_point(module_scope)

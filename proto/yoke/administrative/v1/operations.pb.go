@@ -72,7 +72,59 @@ func (x Changed_Effective) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use Changed_Effective.Descriptor instead.
 func (Changed_Effective) EnumDescriptor() ([]byte, []int) {
-	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{12, 0}
+	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{13, 0}
+}
+
+type Commanded_Outcome int32
+
+const (
+	Commanded_OUTCOME_UNSPECIFIED Commanded_Outcome = 0
+	Commanded_OUTCOME_ACCEPTED    Commanded_Outcome = 1
+	Commanded_OUTCOME_DONE        Commanded_Outcome = 2
+	Commanded_OUTCOME_FAILED      Commanded_Outcome = 3
+)
+
+// Enum value maps for Commanded_Outcome.
+var (
+	Commanded_Outcome_name = map[int32]string{
+		0: "OUTCOME_UNSPECIFIED",
+		1: "OUTCOME_ACCEPTED",
+		2: "OUTCOME_DONE",
+		3: "OUTCOME_FAILED",
+	}
+	Commanded_Outcome_value = map[string]int32{
+		"OUTCOME_UNSPECIFIED": 0,
+		"OUTCOME_ACCEPTED":    1,
+		"OUTCOME_DONE":        2,
+		"OUTCOME_FAILED":      3,
+	}
+)
+
+func (x Commanded_Outcome) Enum() *Commanded_Outcome {
+	p := new(Commanded_Outcome)
+	*p = x
+	return p
+}
+
+func (x Commanded_Outcome) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Commanded_Outcome) Descriptor() protoreflect.EnumDescriptor {
+	return file_yoke_administrative_v1_operations_proto_enumTypes[1].Descriptor()
+}
+
+func (Commanded_Outcome) Type() protoreflect.EnumType {
+	return &file_yoke_administrative_v1_operations_proto_enumTypes[1]
+}
+
+func (x Commanded_Outcome) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Commanded_Outcome.Descriptor instead.
+func (Commanded_Outcome) EnumDescriptor() ([]byte, []int) {
+	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{18, 0}
 }
 
 type Request struct {
@@ -97,6 +149,7 @@ type Request struct {
 	//	*Request_LogQuery
 	//	*Request_LogFollow
 	//	*Request_Subscribe
+	//	*Request_UnitCommand
 	Operation     isRequest_Operation `protobuf_oneof:"operation"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -290,6 +343,15 @@ func (x *Request) GetSubscribe() *Subscribe {
 	return nil
 }
 
+func (x *Request) GetUnitCommand() *UnitCommand {
+	if x != nil {
+		if x, ok := x.Operation.(*Request_UnitCommand); ok {
+			return x.UnitCommand
+		}
+	}
+	return nil
+}
+
 type isRequest_Operation interface {
 	isRequest_Operation()
 }
@@ -361,6 +423,11 @@ type Request_Subscribe struct {
 	Subscribe *Subscribe `protobuf:"bytes,17,opt,name=subscribe,proto3,oneof"`
 }
 
+type Request_UnitCommand struct {
+	// An instruction for a unit, on the same footing as a question and last only by when it was added.
+	UnitCommand *UnitCommand `protobuf:"bytes,18,opt,name=unit_command,json=unitCommand,proto3,oneof"`
+}
+
 func (*Request_PluginEnable) isRequest_Operation() {}
 
 func (*Request_PluginDisable) isRequest_Operation() {}
@@ -392,6 +459,8 @@ func (*Request_LogQuery) isRequest_Operation() {}
 func (*Request_LogFollow) isRequest_Operation() {}
 
 func (*Request_Subscribe) isRequest_Operation() {}
+
+func (*Request_UnitCommand) isRequest_Operation() {}
 
 type PluginPolicy struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -715,6 +784,67 @@ func (x *UnitAsk) GetQuestion() []byte {
 	return nil
 }
 
+// A command for a unit, opaque to the Core and bounded at 1 MiB.
+type UnitCommand struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Unit          string                 `protobuf:"bytes,1,opt,name=unit,proto3" json:"unit,omitempty"`
+	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	Payload       []byte                 `protobuf:"bytes,3,opt,name=payload,proto3" json:"payload,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnitCommand) Reset() {
+	*x = UnitCommand{}
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnitCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnitCommand) ProtoMessage() {}
+
+func (x *UnitCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnitCommand.ProtoReflect.Descriptor instead.
+func (*UnitCommand) Descriptor() ([]byte, []int) {
+	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *UnitCommand) GetUnit() string {
+	if x != nil {
+		return x.Unit
+	}
+	return ""
+}
+
+func (x *UnitCommand) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *UnitCommand) GetPayload() []byte {
+	if x != nil {
+		return x.Payload
+	}
+	return nil
+}
+
 // A subject kind, and an identity where one is named: with none, every subject of that kind.
 type Read struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -726,7 +856,7 @@ type Read struct {
 
 func (x *Read) Reset() {
 	*x = Read{}
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[7]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -738,7 +868,7 @@ func (x *Read) String() string {
 func (*Read) ProtoMessage() {}
 
 func (x *Read) ProtoReflect() protoreflect.Message {
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[7]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -751,7 +881,7 @@ func (x *Read) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Read.ProtoReflect.Descriptor instead.
 func (*Read) Descriptor() ([]byte, []int) {
-	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{7}
+	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *Read) GetKind() string {
@@ -783,7 +913,7 @@ type LogQuery struct {
 
 func (x *LogQuery) Reset() {
 	*x = LogQuery{}
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[8]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -795,7 +925,7 @@ func (x *LogQuery) String() string {
 func (*LogQuery) ProtoMessage() {}
 
 func (x *LogQuery) ProtoReflect() protoreflect.Message {
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[8]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -808,7 +938,7 @@ func (x *LogQuery) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogQuery.ProtoReflect.Descriptor instead.
 func (*LogQuery) Descriptor() ([]byte, []int) {
-	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{8}
+	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *LogQuery) GetUnit() string {
@@ -866,7 +996,7 @@ type LogFollow struct {
 
 func (x *LogFollow) Reset() {
 	*x = LogFollow{}
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[9]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -878,7 +1008,7 @@ func (x *LogFollow) String() string {
 func (*LogFollow) ProtoMessage() {}
 
 func (x *LogFollow) ProtoReflect() protoreflect.Message {
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[9]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -891,7 +1021,7 @@ func (x *LogFollow) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogFollow.ProtoReflect.Descriptor instead.
 func (*LogFollow) Descriptor() ([]byte, []int) {
-	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{9}
+	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *LogFollow) GetUnit() string {
@@ -931,7 +1061,7 @@ type Subscribe struct {
 
 func (x *Subscribe) Reset() {
 	*x = Subscribe{}
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[10]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -943,7 +1073,7 @@ func (x *Subscribe) String() string {
 func (*Subscribe) ProtoMessage() {}
 
 func (x *Subscribe) ProtoReflect() protoreflect.Message {
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[10]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -956,7 +1086,7 @@ func (x *Subscribe) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Subscribe.ProtoReflect.Descriptor instead.
 func (*Subscribe) Descriptor() ([]byte, []int) {
-	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{10}
+	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *Subscribe) GetFilter() *Filter {
@@ -986,6 +1116,7 @@ type Response struct {
 	//	*Response_LogQuery
 	//	*Response_LogFollow
 	//	*Response_Subscribe
+	//	*Response_UnitCommand
 	Answer        isResponse_Answer `protobuf_oneof:"answer"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -993,7 +1124,7 @@ type Response struct {
 
 func (x *Response) Reset() {
 	*x = Response{}
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[11]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1005,7 +1136,7 @@ func (x *Response) String() string {
 func (*Response) ProtoMessage() {}
 
 func (x *Response) ProtoReflect() protoreflect.Message {
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[11]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1018,7 +1149,7 @@ func (x *Response) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Response.ProtoReflect.Descriptor instead.
 func (*Response) Descriptor() ([]byte, []int) {
-	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{11}
+	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *Response) GetAnswer() isResponse_Answer {
@@ -1172,6 +1303,15 @@ func (x *Response) GetSubscribe() *Subscribed {
 	return nil
 }
 
+func (x *Response) GetUnitCommand() *Commanded {
+	if x != nil {
+		if x, ok := x.Answer.(*Response_UnitCommand); ok {
+			return x.UnitCommand
+		}
+	}
+	return nil
+}
+
 type isResponse_Answer interface {
 	isResponse_Answer()
 }
@@ -1240,6 +1380,10 @@ type Response_Subscribe struct {
 	Subscribe *Subscribed `protobuf:"bytes,16,opt,name=subscribe,proto3,oneof"`
 }
 
+type Response_UnitCommand struct {
+	UnitCommand *Commanded `protobuf:"bytes,17,opt,name=unit_command,json=unitCommand,proto3,oneof"`
+}
+
 func (*Response_PluginEnable) isResponse_Answer() {}
 
 func (*Response_PluginDisable) isResponse_Answer() {}
@@ -1272,6 +1416,8 @@ func (*Response_LogFollow) isResponse_Answer() {}
 
 func (*Response_Subscribe) isResponse_Answer() {}
 
+func (*Response_UnitCommand) isResponse_Answer() {}
+
 // What every change answers, which is what lets a caller converge without reading first.
 type Changed struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -1286,7 +1432,7 @@ type Changed struct {
 
 func (x *Changed) Reset() {
 	*x = Changed{}
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[12]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1298,7 +1444,7 @@ func (x *Changed) String() string {
 func (*Changed) ProtoMessage() {}
 
 func (x *Changed) ProtoReflect() protoreflect.Message {
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[12]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1311,7 +1457,7 @@ func (x *Changed) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Changed.ProtoReflect.Descriptor instead.
 func (*Changed) Descriptor() ([]byte, []int) {
-	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{12}
+	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *Changed) GetPreviously() *Previously {
@@ -1350,7 +1496,7 @@ type Previously struct {
 
 func (x *Previously) Reset() {
 	*x = Previously{}
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[13]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1362,7 +1508,7 @@ func (x *Previously) String() string {
 func (*Previously) ProtoMessage() {}
 
 func (x *Previously) ProtoReflect() protoreflect.Message {
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[13]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1375,7 +1521,7 @@ func (x *Previously) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Previously.ProtoReflect.Descriptor instead.
 func (*Previously) Descriptor() ([]byte, []int) {
-	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{13}
+	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *Previously) GetValue() isPreviously_Value {
@@ -1461,7 +1607,7 @@ type Retention struct {
 
 func (x *Retention) Reset() {
 	*x = Retention{}
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[14]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1473,7 +1619,7 @@ func (x *Retention) String() string {
 func (*Retention) ProtoMessage() {}
 
 func (x *Retention) ProtoReflect() protoreflect.Message {
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[14]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1486,7 +1632,7 @@ func (x *Retention) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Retention.ProtoReflect.Descriptor instead.
 func (*Retention) Descriptor() ([]byte, []int) {
-	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{14}
+	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *Retention) GetAge() *durationpb.Duration {
@@ -1522,7 +1668,7 @@ type Consequence struct {
 
 func (x *Consequence) Reset() {
 	*x = Consequence{}
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[15]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1534,7 +1680,7 @@ func (x *Consequence) String() string {
 func (*Consequence) ProtoMessage() {}
 
 func (x *Consequence) ProtoReflect() protoreflect.Message {
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[15]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1547,7 +1693,7 @@ func (x *Consequence) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Consequence.ProtoReflect.Descriptor instead.
 func (*Consequence) Descriptor() ([]byte, []int) {
-	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{15}
+	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *Consequence) GetUnit() string {
@@ -1581,7 +1727,7 @@ type Asked struct {
 
 func (x *Asked) Reset() {
 	*x = Asked{}
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[16]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1593,7 +1739,7 @@ func (x *Asked) String() string {
 func (*Asked) ProtoMessage() {}
 
 func (x *Asked) ProtoReflect() protoreflect.Message {
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[16]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1606,7 +1752,7 @@ func (x *Asked) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Asked.ProtoReflect.Descriptor instead.
 func (*Asked) Descriptor() ([]byte, []int) {
-	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{16}
+	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *Asked) GetAnswer() []byte {
@@ -1614,6 +1760,59 @@ func (x *Asked) GetAnswer() []byte {
 		return x.Answer
 	}
 	return nil
+}
+
+// What became of a command: the unit's first acknowledgement, and no payload.
+type Commanded struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Outcome       Commanded_Outcome      `protobuf:"varint,1,opt,name=outcome,proto3,enum=yoke.administrative.v1.Commanded_Outcome" json:"outcome,omitempty"`
+	Line          string                 `protobuf:"bytes,2,opt,name=line,proto3" json:"line,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Commanded) Reset() {
+	*x = Commanded{}
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Commanded) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Commanded) ProtoMessage() {}
+
+func (x *Commanded) ProtoReflect() protoreflect.Message {
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Commanded.ProtoReflect.Descriptor instead.
+func (*Commanded) Descriptor() ([]byte, []int) {
+	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *Commanded) GetOutcome() Commanded_Outcome {
+	if x != nil {
+		return x.Outcome
+	}
+	return Commanded_OUTCOME_UNSPECIFIED
+}
+
+func (x *Commanded) GetLine() string {
+	if x != nil {
+		return x.Line
+	}
+	return ""
 }
 
 // A page of the log store, in the order it keeps, and the cursor to continue from.
@@ -1629,7 +1828,7 @@ type LogPage struct {
 
 func (x *LogPage) Reset() {
 	*x = LogPage{}
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[17]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1641,7 +1840,7 @@ func (x *LogPage) String() string {
 func (*LogPage) ProtoMessage() {}
 
 func (x *LogPage) ProtoReflect() protoreflect.Message {
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[17]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1654,7 +1853,7 @@ func (x *LogPage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogPage.ProtoReflect.Descriptor instead.
 func (*LogPage) Descriptor() ([]byte, []int) {
-	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{17}
+	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *LogPage) GetEntries() []*LogEntry {
@@ -1700,7 +1899,7 @@ type LogEntry struct {
 
 func (x *LogEntry) Reset() {
 	*x = LogEntry{}
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[18]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1712,7 +1911,7 @@ func (x *LogEntry) String() string {
 func (*LogEntry) ProtoMessage() {}
 
 func (x *LogEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[18]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1725,7 +1924,7 @@ func (x *LogEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogEntry.ProtoReflect.Descriptor instead.
 func (*LogEntry) Descriptor() ([]byte, []int) {
-	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{18}
+	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *LogEntry) GetSeq() uint64 {
@@ -1833,7 +2032,7 @@ type Followed struct {
 
 func (x *Followed) Reset() {
 	*x = Followed{}
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[19]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1845,7 +2044,7 @@ func (x *Followed) String() string {
 func (*Followed) ProtoMessage() {}
 
 func (x *Followed) ProtoReflect() protoreflect.Message {
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[19]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1858,7 +2057,7 @@ func (x *Followed) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Followed.ProtoReflect.Descriptor instead.
 func (*Followed) Descriptor() ([]byte, []int) {
-	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{19}
+	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *Followed) GetCarries() isFollowed_Carries {
@@ -1918,7 +2117,7 @@ type Subscribed struct {
 
 func (x *Subscribed) Reset() {
 	*x = Subscribed{}
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[20]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1930,7 +2129,7 @@ func (x *Subscribed) String() string {
 func (*Subscribed) ProtoMessage() {}
 
 func (x *Subscribed) ProtoReflect() protoreflect.Message {
-	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[20]
+	mi := &file_yoke_administrative_v1_operations_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1943,7 +2142,7 @@ func (x *Subscribed) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Subscribed.ProtoReflect.Descriptor instead.
 func (*Subscribed) Descriptor() ([]byte, []int) {
-	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{20}
+	return file_yoke_administrative_v1_operations_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *Subscribed) GetCarries() isSubscribed_Carries {
@@ -2006,7 +2205,8 @@ var File_yoke_administrative_v1_operations_proto protoreflect.FileDescriptor
 
 const file_yoke_administrative_v1_operations_proto_rawDesc = "" +
 	"\n" +
-	"'yoke/administrative/v1/operations.proto\x12\x16yoke.administrative.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a#yoke/administrative/v1/events.proto\x1a$yoke/administrative/v1/records.proto\"\xb6\t\n" +
+	"'yoke/administrative/v1/operations.proto\x12\x16yoke.administrative.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a#yoke/administrative/v1/events.proto\x1a$yoke/administrative/v1/records.proto\"\x80\n" +
+	"\n" +
 	"\aRequest\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\rR\aversion\x12K\n" +
 	"\rplugin_enable\x18\x02 \x01(\v2$.yoke.administrative.v1.PluginPolicyH\x00R\fpluginEnable\x12M\n" +
@@ -2027,7 +2227,8 @@ const file_yoke_administrative_v1_operations_proto_rawDesc = "" +
 	"\tlog_query\x18\x0f \x01(\v2 .yoke.administrative.v1.LogQueryH\x00R\blogQuery\x12B\n" +
 	"\n" +
 	"log_follow\x18\x10 \x01(\v2!.yoke.administrative.v1.LogFollowH\x00R\tlogFollow\x12A\n" +
-	"\tsubscribe\x18\x11 \x01(\v2!.yoke.administrative.v1.SubscribeH\x00R\tsubscribeB\v\n" +
+	"\tsubscribe\x18\x11 \x01(\v2!.yoke.administrative.v1.SubscribeH\x00R\tsubscribe\x12H\n" +
+	"\funit_command\x18\x12 \x01(\v2#.yoke.administrative.v1.UnitCommandH\x00R\vunitCommandB\v\n" +
 	"\toperation\"&\n" +
 	"\fPluginPolicy\x12\x16\n" +
 	"\x06plugin\x18\x01 \x01(\tR\x06plugin\"E\n" +
@@ -2053,7 +2254,11 @@ const file_yoke_administrative_v1_operations_proto_rawDesc = "" +
 	"\aUnitAsk\x12\x12\n" +
 	"\x04unit\x18\x01 \x01(\tR\x04unit\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x1a\n" +
-	"\bquestion\x18\x03 \x01(\fR\bquestion\"6\n" +
+	"\bquestion\x18\x03 \x01(\fR\bquestion\"O\n" +
+	"\vUnitCommand\x12\x12\n" +
+	"\x04unit\x18\x01 \x01(\tR\x04unit\x12\x12\n" +
+	"\x04type\x18\x02 \x01(\tR\x04type\x12\x18\n" +
+	"\apayload\x18\x03 \x01(\fR\apayload\"6\n" +
 	"\x04Read\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x1a\n" +
 	"\bidentity\x18\x02 \x01(\tR\bidentity\"\xd0\x01\n" +
@@ -2070,7 +2275,7 @@ const file_yoke_administrative_v1_operations_proto_rawDesc = "" +
 	"\x05floor\x18\x03 \x01(\rR\x05floor\x12\x16\n" +
 	"\x06cursor\x18\x04 \x01(\x04R\x06cursor\"C\n" +
 	"\tSubscribe\x126\n" +
-	"\x06filter\x18\x01 \x01(\v2\x1e.yoke.administrative.v1.FilterR\x06filter\"\xfc\b\n" +
+	"\x06filter\x18\x01 \x01(\v2\x1e.yoke.administrative.v1.FilterR\x06filter\"\xc4\t\n" +
 	"\bResponse\x12F\n" +
 	"\rplugin_enable\x18\x01 \x01(\v2\x1f.yoke.administrative.v1.ChangedH\x00R\fpluginEnable\x12H\n" +
 	"\x0eplugin_disable\x18\x02 \x01(\v2\x1f.yoke.administrative.v1.ChangedH\x00R\rpluginDisable\x12D\n" +
@@ -2090,7 +2295,8 @@ const file_yoke_administrative_v1_operations_proto_rawDesc = "" +
 	"\tlog_query\x18\x0e \x01(\v2\x1f.yoke.administrative.v1.LogPageH\x00R\blogQuery\x12A\n" +
 	"\n" +
 	"log_follow\x18\x0f \x01(\v2 .yoke.administrative.v1.FollowedH\x00R\tlogFollow\x12B\n" +
-	"\tsubscribe\x18\x10 \x01(\v2\".yoke.administrative.v1.SubscribedH\x00R\tsubscribeB\b\n" +
+	"\tsubscribe\x18\x10 \x01(\v2\".yoke.administrative.v1.SubscribedH\x00R\tsubscribe\x12F\n" +
+	"\funit_command\x18\x11 \x01(\v2!.yoke.administrative.v1.CommandedH\x00R\vunitCommandB\b\n" +
 	"\x06answer\"\xc3\x02\n" +
 	"\aChanged\x12B\n" +
 	"\n" +
@@ -2121,7 +2327,15 @@ const file_yoke_administrative_v1_operations_proto_rawDesc = "" +
 	"\vincarnation\x18\x02 \x01(\x04R\vincarnation\x12\x12\n" +
 	"\x04what\x18\x03 \x01(\tR\x04what\"\x1f\n" +
 	"\x05Asked\x12\x16\n" +
-	"\x06answer\x18\x01 \x01(\fR\x06answer\"s\n" +
+	"\x06answer\x18\x01 \x01(\fR\x06answer\"\xc4\x01\n" +
+	"\tCommanded\x12C\n" +
+	"\aoutcome\x18\x01 \x01(\x0e2).yoke.administrative.v1.Commanded.OutcomeR\aoutcome\x12\x12\n" +
+	"\x04line\x18\x02 \x01(\tR\x04line\"^\n" +
+	"\aOutcome\x12\x17\n" +
+	"\x13OUTCOME_UNSPECIFIED\x10\x00\x12\x14\n" +
+	"\x10OUTCOME_ACCEPTED\x10\x01\x12\x10\n" +
+	"\fOUTCOME_DONE\x10\x02\x12\x12\n" +
+	"\x0eOUTCOME_FAILED\x10\x03\"s\n" +
 	"\aLogPage\x12:\n" +
 	"\aentries\x18\x01 \x03(\v2 .yoke.administrative.v1.LogEntryR\aentries\x12\x12\n" +
 	"\x04next\x18\x02 \x01(\x04R\x04next\x12\x18\n" +
@@ -2165,91 +2379,97 @@ func file_yoke_administrative_v1_operations_proto_rawDescGZIP() []byte {
 	return file_yoke_administrative_v1_operations_proto_rawDescData
 }
 
-var file_yoke_administrative_v1_operations_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_yoke_administrative_v1_operations_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_yoke_administrative_v1_operations_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_yoke_administrative_v1_operations_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_yoke_administrative_v1_operations_proto_goTypes = []any{
 	(Changed_Effective)(0),        // 0: yoke.administrative.v1.Changed.Effective
-	(*Request)(nil),               // 1: yoke.administrative.v1.Request
-	(*PluginPolicy)(nil),          // 2: yoke.administrative.v1.PluginPolicy
-	(*PluginGrant)(nil),           // 3: yoke.administrative.v1.PluginGrant
-	(*UnitAct)(nil),               // 4: yoke.administrative.v1.UnitAct
-	(*UnitStream)(nil),            // 5: yoke.administrative.v1.UnitStream
-	(*UnitRetention)(nil),         // 6: yoke.administrative.v1.UnitRetention
-	(*UnitAsk)(nil),               // 7: yoke.administrative.v1.UnitAsk
-	(*Read)(nil),                  // 8: yoke.administrative.v1.Read
-	(*LogQuery)(nil),              // 9: yoke.administrative.v1.LogQuery
-	(*LogFollow)(nil),             // 10: yoke.administrative.v1.LogFollow
-	(*Subscribe)(nil),             // 11: yoke.administrative.v1.Subscribe
-	(*Response)(nil),              // 12: yoke.administrative.v1.Response
-	(*Changed)(nil),               // 13: yoke.administrative.v1.Changed
-	(*Previously)(nil),            // 14: yoke.administrative.v1.Previously
-	(*Retention)(nil),             // 15: yoke.administrative.v1.Retention
-	(*Consequence)(nil),           // 16: yoke.administrative.v1.Consequence
-	(*Asked)(nil),                 // 17: yoke.administrative.v1.Asked
-	(*LogPage)(nil),               // 18: yoke.administrative.v1.LogPage
-	(*LogEntry)(nil),              // 19: yoke.administrative.v1.LogEntry
-	(*Followed)(nil),              // 20: yoke.administrative.v1.Followed
-	(*Subscribed)(nil),            // 21: yoke.administrative.v1.Subscribed
-	(*durationpb.Duration)(nil),   // 22: google.protobuf.Duration
-	(*timestamppb.Timestamp)(nil), // 23: google.protobuf.Timestamp
-	(*Filter)(nil),                // 24: yoke.administrative.v1.Filter
-	(*Records)(nil),               // 25: yoke.administrative.v1.Records
-	(*Snapshot)(nil),              // 26: yoke.administrative.v1.Snapshot
-	(*Event)(nil),                 // 27: yoke.administrative.v1.Event
+	(Commanded_Outcome)(0),        // 1: yoke.administrative.v1.Commanded.Outcome
+	(*Request)(nil),               // 2: yoke.administrative.v1.Request
+	(*PluginPolicy)(nil),          // 3: yoke.administrative.v1.PluginPolicy
+	(*PluginGrant)(nil),           // 4: yoke.administrative.v1.PluginGrant
+	(*UnitAct)(nil),               // 5: yoke.administrative.v1.UnitAct
+	(*UnitStream)(nil),            // 6: yoke.administrative.v1.UnitStream
+	(*UnitRetention)(nil),         // 7: yoke.administrative.v1.UnitRetention
+	(*UnitAsk)(nil),               // 8: yoke.administrative.v1.UnitAsk
+	(*UnitCommand)(nil),           // 9: yoke.administrative.v1.UnitCommand
+	(*Read)(nil),                  // 10: yoke.administrative.v1.Read
+	(*LogQuery)(nil),              // 11: yoke.administrative.v1.LogQuery
+	(*LogFollow)(nil),             // 12: yoke.administrative.v1.LogFollow
+	(*Subscribe)(nil),             // 13: yoke.administrative.v1.Subscribe
+	(*Response)(nil),              // 14: yoke.administrative.v1.Response
+	(*Changed)(nil),               // 15: yoke.administrative.v1.Changed
+	(*Previously)(nil),            // 16: yoke.administrative.v1.Previously
+	(*Retention)(nil),             // 17: yoke.administrative.v1.Retention
+	(*Consequence)(nil),           // 18: yoke.administrative.v1.Consequence
+	(*Asked)(nil),                 // 19: yoke.administrative.v1.Asked
+	(*Commanded)(nil),             // 20: yoke.administrative.v1.Commanded
+	(*LogPage)(nil),               // 21: yoke.administrative.v1.LogPage
+	(*LogEntry)(nil),              // 22: yoke.administrative.v1.LogEntry
+	(*Followed)(nil),              // 23: yoke.administrative.v1.Followed
+	(*Subscribed)(nil),            // 24: yoke.administrative.v1.Subscribed
+	(*durationpb.Duration)(nil),   // 25: google.protobuf.Duration
+	(*timestamppb.Timestamp)(nil), // 26: google.protobuf.Timestamp
+	(*Filter)(nil),                // 27: yoke.administrative.v1.Filter
+	(*Records)(nil),               // 28: yoke.administrative.v1.Records
+	(*Snapshot)(nil),              // 29: yoke.administrative.v1.Snapshot
+	(*Event)(nil),                 // 30: yoke.administrative.v1.Event
 }
 var file_yoke_administrative_v1_operations_proto_depIdxs = []int32{
-	2,  // 0: yoke.administrative.v1.Request.plugin_enable:type_name -> yoke.administrative.v1.PluginPolicy
-	2,  // 1: yoke.administrative.v1.Request.plugin_disable:type_name -> yoke.administrative.v1.PluginPolicy
-	3,  // 2: yoke.administrative.v1.Request.plugin_grant:type_name -> yoke.administrative.v1.PluginGrant
-	3,  // 3: yoke.administrative.v1.Request.plugin_withdraw:type_name -> yoke.administrative.v1.PluginGrant
-	4,  // 4: yoke.administrative.v1.Request.unit_start:type_name -> yoke.administrative.v1.UnitAct
-	4,  // 5: yoke.administrative.v1.Request.unit_stop:type_name -> yoke.administrative.v1.UnitAct
-	4,  // 6: yoke.administrative.v1.Request.unit_restart:type_name -> yoke.administrative.v1.UnitAct
-	5,  // 7: yoke.administrative.v1.Request.unit_stream_start:type_name -> yoke.administrative.v1.UnitStream
-	5,  // 8: yoke.administrative.v1.Request.unit_stream_stop:type_name -> yoke.administrative.v1.UnitStream
-	6,  // 9: yoke.administrative.v1.Request.unit_retention_set:type_name -> yoke.administrative.v1.UnitRetention
-	4,  // 10: yoke.administrative.v1.Request.unit_retention_clear:type_name -> yoke.administrative.v1.UnitAct
-	7,  // 11: yoke.administrative.v1.Request.unit_ask:type_name -> yoke.administrative.v1.UnitAsk
-	8,  // 12: yoke.administrative.v1.Request.read:type_name -> yoke.administrative.v1.Read
-	9,  // 13: yoke.administrative.v1.Request.log_query:type_name -> yoke.administrative.v1.LogQuery
-	10, // 14: yoke.administrative.v1.Request.log_follow:type_name -> yoke.administrative.v1.LogFollow
-	11, // 15: yoke.administrative.v1.Request.subscribe:type_name -> yoke.administrative.v1.Subscribe
-	22, // 16: yoke.administrative.v1.UnitRetention.age:type_name -> google.protobuf.Duration
-	23, // 17: yoke.administrative.v1.LogQuery.from:type_name -> google.protobuf.Timestamp
-	23, // 18: yoke.administrative.v1.LogQuery.until:type_name -> google.protobuf.Timestamp
-	24, // 19: yoke.administrative.v1.Subscribe.filter:type_name -> yoke.administrative.v1.Filter
-	13, // 20: yoke.administrative.v1.Response.plugin_enable:type_name -> yoke.administrative.v1.Changed
-	13, // 21: yoke.administrative.v1.Response.plugin_disable:type_name -> yoke.administrative.v1.Changed
-	13, // 22: yoke.administrative.v1.Response.plugin_grant:type_name -> yoke.administrative.v1.Changed
-	13, // 23: yoke.administrative.v1.Response.plugin_withdraw:type_name -> yoke.administrative.v1.Changed
-	13, // 24: yoke.administrative.v1.Response.unit_start:type_name -> yoke.administrative.v1.Changed
-	13, // 25: yoke.administrative.v1.Response.unit_stop:type_name -> yoke.administrative.v1.Changed
-	13, // 26: yoke.administrative.v1.Response.unit_restart:type_name -> yoke.administrative.v1.Changed
-	13, // 27: yoke.administrative.v1.Response.unit_stream_start:type_name -> yoke.administrative.v1.Changed
-	13, // 28: yoke.administrative.v1.Response.unit_stream_stop:type_name -> yoke.administrative.v1.Changed
-	13, // 29: yoke.administrative.v1.Response.unit_retention_set:type_name -> yoke.administrative.v1.Changed
-	13, // 30: yoke.administrative.v1.Response.unit_retention_clear:type_name -> yoke.administrative.v1.Changed
-	17, // 31: yoke.administrative.v1.Response.unit_ask:type_name -> yoke.administrative.v1.Asked
-	25, // 32: yoke.administrative.v1.Response.read:type_name -> yoke.administrative.v1.Records
-	18, // 33: yoke.administrative.v1.Response.log_query:type_name -> yoke.administrative.v1.LogPage
-	20, // 34: yoke.administrative.v1.Response.log_follow:type_name -> yoke.administrative.v1.Followed
-	21, // 35: yoke.administrative.v1.Response.subscribe:type_name -> yoke.administrative.v1.Subscribed
-	14, // 36: yoke.administrative.v1.Changed.previously:type_name -> yoke.administrative.v1.Previously
-	0,  // 37: yoke.administrative.v1.Changed.effective:type_name -> yoke.administrative.v1.Changed.Effective
-	16, // 38: yoke.administrative.v1.Changed.consequences:type_name -> yoke.administrative.v1.Consequence
-	15, // 39: yoke.administrative.v1.Previously.retention:type_name -> yoke.administrative.v1.Retention
-	22, // 40: yoke.administrative.v1.Retention.age:type_name -> google.protobuf.Duration
-	19, // 41: yoke.administrative.v1.LogPage.entries:type_name -> yoke.administrative.v1.LogEntry
-	23, // 42: yoke.administrative.v1.LogEntry.at:type_name -> google.protobuf.Timestamp
-	19, // 43: yoke.administrative.v1.Followed.entry:type_name -> yoke.administrative.v1.LogEntry
-	26, // 44: yoke.administrative.v1.Subscribed.snapshot:type_name -> yoke.administrative.v1.Snapshot
-	27, // 45: yoke.administrative.v1.Subscribed.event:type_name -> yoke.administrative.v1.Event
-	26, // 46: yoke.administrative.v1.Subscribed.overflow:type_name -> yoke.administrative.v1.Snapshot
-	47, // [47:47] is the sub-list for method output_type
-	47, // [47:47] is the sub-list for method input_type
-	47, // [47:47] is the sub-list for extension type_name
-	47, // [47:47] is the sub-list for extension extendee
-	0,  // [0:47] is the sub-list for field type_name
+	3,  // 0: yoke.administrative.v1.Request.plugin_enable:type_name -> yoke.administrative.v1.PluginPolicy
+	3,  // 1: yoke.administrative.v1.Request.plugin_disable:type_name -> yoke.administrative.v1.PluginPolicy
+	4,  // 2: yoke.administrative.v1.Request.plugin_grant:type_name -> yoke.administrative.v1.PluginGrant
+	4,  // 3: yoke.administrative.v1.Request.plugin_withdraw:type_name -> yoke.administrative.v1.PluginGrant
+	5,  // 4: yoke.administrative.v1.Request.unit_start:type_name -> yoke.administrative.v1.UnitAct
+	5,  // 5: yoke.administrative.v1.Request.unit_stop:type_name -> yoke.administrative.v1.UnitAct
+	5,  // 6: yoke.administrative.v1.Request.unit_restart:type_name -> yoke.administrative.v1.UnitAct
+	6,  // 7: yoke.administrative.v1.Request.unit_stream_start:type_name -> yoke.administrative.v1.UnitStream
+	6,  // 8: yoke.administrative.v1.Request.unit_stream_stop:type_name -> yoke.administrative.v1.UnitStream
+	7,  // 9: yoke.administrative.v1.Request.unit_retention_set:type_name -> yoke.administrative.v1.UnitRetention
+	5,  // 10: yoke.administrative.v1.Request.unit_retention_clear:type_name -> yoke.administrative.v1.UnitAct
+	8,  // 11: yoke.administrative.v1.Request.unit_ask:type_name -> yoke.administrative.v1.UnitAsk
+	10, // 12: yoke.administrative.v1.Request.read:type_name -> yoke.administrative.v1.Read
+	11, // 13: yoke.administrative.v1.Request.log_query:type_name -> yoke.administrative.v1.LogQuery
+	12, // 14: yoke.administrative.v1.Request.log_follow:type_name -> yoke.administrative.v1.LogFollow
+	13, // 15: yoke.administrative.v1.Request.subscribe:type_name -> yoke.administrative.v1.Subscribe
+	9,  // 16: yoke.administrative.v1.Request.unit_command:type_name -> yoke.administrative.v1.UnitCommand
+	25, // 17: yoke.administrative.v1.UnitRetention.age:type_name -> google.protobuf.Duration
+	26, // 18: yoke.administrative.v1.LogQuery.from:type_name -> google.protobuf.Timestamp
+	26, // 19: yoke.administrative.v1.LogQuery.until:type_name -> google.protobuf.Timestamp
+	27, // 20: yoke.administrative.v1.Subscribe.filter:type_name -> yoke.administrative.v1.Filter
+	15, // 21: yoke.administrative.v1.Response.plugin_enable:type_name -> yoke.administrative.v1.Changed
+	15, // 22: yoke.administrative.v1.Response.plugin_disable:type_name -> yoke.administrative.v1.Changed
+	15, // 23: yoke.administrative.v1.Response.plugin_grant:type_name -> yoke.administrative.v1.Changed
+	15, // 24: yoke.administrative.v1.Response.plugin_withdraw:type_name -> yoke.administrative.v1.Changed
+	15, // 25: yoke.administrative.v1.Response.unit_start:type_name -> yoke.administrative.v1.Changed
+	15, // 26: yoke.administrative.v1.Response.unit_stop:type_name -> yoke.administrative.v1.Changed
+	15, // 27: yoke.administrative.v1.Response.unit_restart:type_name -> yoke.administrative.v1.Changed
+	15, // 28: yoke.administrative.v1.Response.unit_stream_start:type_name -> yoke.administrative.v1.Changed
+	15, // 29: yoke.administrative.v1.Response.unit_stream_stop:type_name -> yoke.administrative.v1.Changed
+	15, // 30: yoke.administrative.v1.Response.unit_retention_set:type_name -> yoke.administrative.v1.Changed
+	15, // 31: yoke.administrative.v1.Response.unit_retention_clear:type_name -> yoke.administrative.v1.Changed
+	19, // 32: yoke.administrative.v1.Response.unit_ask:type_name -> yoke.administrative.v1.Asked
+	28, // 33: yoke.administrative.v1.Response.read:type_name -> yoke.administrative.v1.Records
+	21, // 34: yoke.administrative.v1.Response.log_query:type_name -> yoke.administrative.v1.LogPage
+	23, // 35: yoke.administrative.v1.Response.log_follow:type_name -> yoke.administrative.v1.Followed
+	24, // 36: yoke.administrative.v1.Response.subscribe:type_name -> yoke.administrative.v1.Subscribed
+	20, // 37: yoke.administrative.v1.Response.unit_command:type_name -> yoke.administrative.v1.Commanded
+	16, // 38: yoke.administrative.v1.Changed.previously:type_name -> yoke.administrative.v1.Previously
+	0,  // 39: yoke.administrative.v1.Changed.effective:type_name -> yoke.administrative.v1.Changed.Effective
+	18, // 40: yoke.administrative.v1.Changed.consequences:type_name -> yoke.administrative.v1.Consequence
+	17, // 41: yoke.administrative.v1.Previously.retention:type_name -> yoke.administrative.v1.Retention
+	25, // 42: yoke.administrative.v1.Retention.age:type_name -> google.protobuf.Duration
+	1,  // 43: yoke.administrative.v1.Commanded.outcome:type_name -> yoke.administrative.v1.Commanded.Outcome
+	22, // 44: yoke.administrative.v1.LogPage.entries:type_name -> yoke.administrative.v1.LogEntry
+	26, // 45: yoke.administrative.v1.LogEntry.at:type_name -> google.protobuf.Timestamp
+	22, // 46: yoke.administrative.v1.Followed.entry:type_name -> yoke.administrative.v1.LogEntry
+	29, // 47: yoke.administrative.v1.Subscribed.snapshot:type_name -> yoke.administrative.v1.Snapshot
+	30, // 48: yoke.administrative.v1.Subscribed.event:type_name -> yoke.administrative.v1.Event
+	29, // 49: yoke.administrative.v1.Subscribed.overflow:type_name -> yoke.administrative.v1.Snapshot
+	50, // [50:50] is the sub-list for method output_type
+	50, // [50:50] is the sub-list for method input_type
+	50, // [50:50] is the sub-list for extension type_name
+	50, // [50:50] is the sub-list for extension extendee
+	0,  // [0:50] is the sub-list for field type_name
 }
 
 func init() { file_yoke_administrative_v1_operations_proto_init() }
@@ -2276,9 +2496,10 @@ func file_yoke_administrative_v1_operations_proto_init() {
 		(*Request_LogQuery)(nil),
 		(*Request_LogFollow)(nil),
 		(*Request_Subscribe)(nil),
+		(*Request_UnitCommand)(nil),
 	}
 	file_yoke_administrative_v1_operations_proto_msgTypes[5].OneofWrappers = []any{}
-	file_yoke_administrative_v1_operations_proto_msgTypes[11].OneofWrappers = []any{
+	file_yoke_administrative_v1_operations_proto_msgTypes[12].OneofWrappers = []any{
 		(*Response_PluginEnable)(nil),
 		(*Response_PluginDisable)(nil),
 		(*Response_PluginGrant)(nil),
@@ -2295,19 +2516,20 @@ func file_yoke_administrative_v1_operations_proto_init() {
 		(*Response_LogQuery)(nil),
 		(*Response_LogFollow)(nil),
 		(*Response_Subscribe)(nil),
+		(*Response_UnitCommand)(nil),
 	}
-	file_yoke_administrative_v1_operations_proto_msgTypes[13].OneofWrappers = []any{
+	file_yoke_administrative_v1_operations_proto_msgTypes[14].OneofWrappers = []any{
 		(*Previously_Enabled)(nil),
 		(*Previously_Granted)(nil),
 		(*Previously_State)(nil),
 		(*Previously_Retention)(nil),
 	}
-	file_yoke_administrative_v1_operations_proto_msgTypes[14].OneofWrappers = []any{}
-	file_yoke_administrative_v1_operations_proto_msgTypes[19].OneofWrappers = []any{
+	file_yoke_administrative_v1_operations_proto_msgTypes[15].OneofWrappers = []any{}
+	file_yoke_administrative_v1_operations_proto_msgTypes[21].OneofWrappers = []any{
 		(*Followed_Entry)(nil),
 		(*Followed_BehindAt)(nil),
 	}
-	file_yoke_administrative_v1_operations_proto_msgTypes[20].OneofWrappers = []any{
+	file_yoke_administrative_v1_operations_proto_msgTypes[22].OneofWrappers = []any{
 		(*Subscribed_Snapshot)(nil),
 		(*Subscribed_Event)(nil),
 		(*Subscribed_Overflow)(nil),
@@ -2317,8 +2539,8 @@ func file_yoke_administrative_v1_operations_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_yoke_administrative_v1_operations_proto_rawDesc), len(file_yoke_administrative_v1_operations_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   21,
+			NumEnums:      2,
+			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

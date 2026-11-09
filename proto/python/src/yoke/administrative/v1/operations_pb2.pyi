@@ -14,7 +14,7 @@ from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class Request(_message.Message):
-    __slots__ = ("version", "plugin_enable", "plugin_disable", "plugin_grant", "plugin_withdraw", "unit_start", "unit_stop", "unit_restart", "unit_stream_start", "unit_stream_stop", "unit_retention_set", "unit_retention_clear", "unit_ask", "read", "log_query", "log_follow", "subscribe")
+    __slots__ = ("version", "plugin_enable", "plugin_disable", "plugin_grant", "plugin_withdraw", "unit_start", "unit_stop", "unit_restart", "unit_stream_start", "unit_stream_stop", "unit_retention_set", "unit_retention_clear", "unit_ask", "read", "log_query", "log_follow", "subscribe", "unit_command")
     VERSION_FIELD_NUMBER: _ClassVar[int]
     PLUGIN_ENABLE_FIELD_NUMBER: _ClassVar[int]
     PLUGIN_DISABLE_FIELD_NUMBER: _ClassVar[int]
@@ -32,6 +32,7 @@ class Request(_message.Message):
     LOG_QUERY_FIELD_NUMBER: _ClassVar[int]
     LOG_FOLLOW_FIELD_NUMBER: _ClassVar[int]
     SUBSCRIBE_FIELD_NUMBER: _ClassVar[int]
+    UNIT_COMMAND_FIELD_NUMBER: _ClassVar[int]
     version: int
     plugin_enable: PluginPolicy
     plugin_disable: PluginPolicy
@@ -49,7 +50,8 @@ class Request(_message.Message):
     log_query: LogQuery
     log_follow: LogFollow
     subscribe: Subscribe
-    def __init__(self, version: _Optional[int] = ..., plugin_enable: _Optional[_Union[PluginPolicy, _Mapping]] = ..., plugin_disable: _Optional[_Union[PluginPolicy, _Mapping]] = ..., plugin_grant: _Optional[_Union[PluginGrant, _Mapping]] = ..., plugin_withdraw: _Optional[_Union[PluginGrant, _Mapping]] = ..., unit_start: _Optional[_Union[UnitAct, _Mapping]] = ..., unit_stop: _Optional[_Union[UnitAct, _Mapping]] = ..., unit_restart: _Optional[_Union[UnitAct, _Mapping]] = ..., unit_stream_start: _Optional[_Union[UnitStream, _Mapping]] = ..., unit_stream_stop: _Optional[_Union[UnitStream, _Mapping]] = ..., unit_retention_set: _Optional[_Union[UnitRetention, _Mapping]] = ..., unit_retention_clear: _Optional[_Union[UnitAct, _Mapping]] = ..., unit_ask: _Optional[_Union[UnitAsk, _Mapping]] = ..., read: _Optional[_Union[Read, _Mapping]] = ..., log_query: _Optional[_Union[LogQuery, _Mapping]] = ..., log_follow: _Optional[_Union[LogFollow, _Mapping]] = ..., subscribe: _Optional[_Union[Subscribe, _Mapping]] = ...) -> None: ...
+    unit_command: UnitCommand
+    def __init__(self, version: _Optional[int] = ..., plugin_enable: _Optional[_Union[PluginPolicy, _Mapping]] = ..., plugin_disable: _Optional[_Union[PluginPolicy, _Mapping]] = ..., plugin_grant: _Optional[_Union[PluginGrant, _Mapping]] = ..., plugin_withdraw: _Optional[_Union[PluginGrant, _Mapping]] = ..., unit_start: _Optional[_Union[UnitAct, _Mapping]] = ..., unit_stop: _Optional[_Union[UnitAct, _Mapping]] = ..., unit_restart: _Optional[_Union[UnitAct, _Mapping]] = ..., unit_stream_start: _Optional[_Union[UnitStream, _Mapping]] = ..., unit_stream_stop: _Optional[_Union[UnitStream, _Mapping]] = ..., unit_retention_set: _Optional[_Union[UnitRetention, _Mapping]] = ..., unit_retention_clear: _Optional[_Union[UnitAct, _Mapping]] = ..., unit_ask: _Optional[_Union[UnitAsk, _Mapping]] = ..., read: _Optional[_Union[Read, _Mapping]] = ..., log_query: _Optional[_Union[LogQuery, _Mapping]] = ..., log_follow: _Optional[_Union[LogFollow, _Mapping]] = ..., subscribe: _Optional[_Union[Subscribe, _Mapping]] = ..., unit_command: _Optional[_Union[UnitCommand, _Mapping]] = ...) -> None: ...
 
 class PluginPolicy(_message.Message):
     __slots__ = ("plugin",)
@@ -101,6 +103,16 @@ class UnitAsk(_message.Message):
     question: bytes
     def __init__(self, unit: _Optional[str] = ..., type: _Optional[str] = ..., question: _Optional[bytes] = ...) -> None: ...
 
+class UnitCommand(_message.Message):
+    __slots__ = ("unit", "type", "payload")
+    UNIT_FIELD_NUMBER: _ClassVar[int]
+    TYPE_FIELD_NUMBER: _ClassVar[int]
+    PAYLOAD_FIELD_NUMBER: _ClassVar[int]
+    unit: str
+    type: str
+    payload: bytes
+    def __init__(self, unit: _Optional[str] = ..., type: _Optional[str] = ..., payload: _Optional[bytes] = ...) -> None: ...
+
 class Read(_message.Message):
     __slots__ = ("kind", "identity")
     KIND_FIELD_NUMBER: _ClassVar[int]
@@ -143,7 +155,7 @@ class Subscribe(_message.Message):
     def __init__(self, filter: _Optional[_Union[_events_pb2.Filter, _Mapping]] = ...) -> None: ...
 
 class Response(_message.Message):
-    __slots__ = ("plugin_enable", "plugin_disable", "plugin_grant", "plugin_withdraw", "unit_start", "unit_stop", "unit_restart", "unit_stream_start", "unit_stream_stop", "unit_retention_set", "unit_retention_clear", "unit_ask", "read", "log_query", "log_follow", "subscribe")
+    __slots__ = ("plugin_enable", "plugin_disable", "plugin_grant", "plugin_withdraw", "unit_start", "unit_stop", "unit_restart", "unit_stream_start", "unit_stream_stop", "unit_retention_set", "unit_retention_clear", "unit_ask", "read", "log_query", "log_follow", "subscribe", "unit_command")
     PLUGIN_ENABLE_FIELD_NUMBER: _ClassVar[int]
     PLUGIN_DISABLE_FIELD_NUMBER: _ClassVar[int]
     PLUGIN_GRANT_FIELD_NUMBER: _ClassVar[int]
@@ -160,6 +172,7 @@ class Response(_message.Message):
     LOG_QUERY_FIELD_NUMBER: _ClassVar[int]
     LOG_FOLLOW_FIELD_NUMBER: _ClassVar[int]
     SUBSCRIBE_FIELD_NUMBER: _ClassVar[int]
+    UNIT_COMMAND_FIELD_NUMBER: _ClassVar[int]
     plugin_enable: Changed
     plugin_disable: Changed
     plugin_grant: Changed
@@ -176,7 +189,8 @@ class Response(_message.Message):
     log_query: LogPage
     log_follow: Followed
     subscribe: Subscribed
-    def __init__(self, plugin_enable: _Optional[_Union[Changed, _Mapping]] = ..., plugin_disable: _Optional[_Union[Changed, _Mapping]] = ..., plugin_grant: _Optional[_Union[Changed, _Mapping]] = ..., plugin_withdraw: _Optional[_Union[Changed, _Mapping]] = ..., unit_start: _Optional[_Union[Changed, _Mapping]] = ..., unit_stop: _Optional[_Union[Changed, _Mapping]] = ..., unit_restart: _Optional[_Union[Changed, _Mapping]] = ..., unit_stream_start: _Optional[_Union[Changed, _Mapping]] = ..., unit_stream_stop: _Optional[_Union[Changed, _Mapping]] = ..., unit_retention_set: _Optional[_Union[Changed, _Mapping]] = ..., unit_retention_clear: _Optional[_Union[Changed, _Mapping]] = ..., unit_ask: _Optional[_Union[Asked, _Mapping]] = ..., read: _Optional[_Union[_records_pb2.Records, _Mapping]] = ..., log_query: _Optional[_Union[LogPage, _Mapping]] = ..., log_follow: _Optional[_Union[Followed, _Mapping]] = ..., subscribe: _Optional[_Union[Subscribed, _Mapping]] = ...) -> None: ...
+    unit_command: Commanded
+    def __init__(self, plugin_enable: _Optional[_Union[Changed, _Mapping]] = ..., plugin_disable: _Optional[_Union[Changed, _Mapping]] = ..., plugin_grant: _Optional[_Union[Changed, _Mapping]] = ..., plugin_withdraw: _Optional[_Union[Changed, _Mapping]] = ..., unit_start: _Optional[_Union[Changed, _Mapping]] = ..., unit_stop: _Optional[_Union[Changed, _Mapping]] = ..., unit_restart: _Optional[_Union[Changed, _Mapping]] = ..., unit_stream_start: _Optional[_Union[Changed, _Mapping]] = ..., unit_stream_stop: _Optional[_Union[Changed, _Mapping]] = ..., unit_retention_set: _Optional[_Union[Changed, _Mapping]] = ..., unit_retention_clear: _Optional[_Union[Changed, _Mapping]] = ..., unit_ask: _Optional[_Union[Asked, _Mapping]] = ..., read: _Optional[_Union[_records_pb2.Records, _Mapping]] = ..., log_query: _Optional[_Union[LogPage, _Mapping]] = ..., log_follow: _Optional[_Union[Followed, _Mapping]] = ..., subscribe: _Optional[_Union[Subscribed, _Mapping]] = ..., unit_command: _Optional[_Union[Commanded, _Mapping]] = ...) -> None: ...
 
 class Changed(_message.Message):
     __slots__ = ("previously", "effective", "consequences")
@@ -233,6 +247,24 @@ class Asked(_message.Message):
     ANSWER_FIELD_NUMBER: _ClassVar[int]
     answer: bytes
     def __init__(self, answer: _Optional[bytes] = ...) -> None: ...
+
+class Commanded(_message.Message):
+    __slots__ = ("outcome", "line")
+    class Outcome(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        OUTCOME_UNSPECIFIED: _ClassVar[Commanded.Outcome]
+        OUTCOME_ACCEPTED: _ClassVar[Commanded.Outcome]
+        OUTCOME_DONE: _ClassVar[Commanded.Outcome]
+        OUTCOME_FAILED: _ClassVar[Commanded.Outcome]
+    OUTCOME_UNSPECIFIED: Commanded.Outcome
+    OUTCOME_ACCEPTED: Commanded.Outcome
+    OUTCOME_DONE: Commanded.Outcome
+    OUTCOME_FAILED: Commanded.Outcome
+    OUTCOME_FIELD_NUMBER: _ClassVar[int]
+    LINE_FIELD_NUMBER: _ClassVar[int]
+    outcome: Commanded.Outcome
+    line: str
+    def __init__(self, outcome: _Optional[_Union[Commanded.Outcome, str]] = ..., line: _Optional[str] = ...) -> None: ...
 
 class LogPage(_message.Message):
     __slots__ = ("entries", "next", "resumed")
