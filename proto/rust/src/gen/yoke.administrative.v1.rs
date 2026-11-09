@@ -447,7 +447,7 @@ pub struct Request {
     pub version: u32,
     #[prost(
         oneof = "request::Operation",
-        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17"
+        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18"
     )]
     pub operation: ::core::option::Option<request::Operation>,
 }
@@ -490,6 +490,9 @@ pub mod request {
         LogFollow(super::LogFollow),
         #[prost(message, tag = "17")]
         Subscribe(super::Subscribe),
+        /// An instruction for a unit, on the same footing as a question and last only by when it was added.
+        #[prost(message, tag = "18")]
+        UnitCommand(super::UnitCommand),
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
@@ -538,6 +541,16 @@ pub struct UnitAsk {
     #[prost(bytes = "vec", tag = "3")]
     pub question: ::prost::alloc::vec::Vec<u8>,
 }
+/// A command for a unit, opaque to the Core and bounded at 1 MiB.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct UnitCommand {
+    #[prost(string, tag = "1")]
+    pub unit: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub r#type: ::prost::alloc::string::String,
+    #[prost(bytes = "vec", tag = "3")]
+    pub payload: ::prost::alloc::vec::Vec<u8>,
+}
 /// A subject kind, and an identity where one is named: with none, every subject of that kind.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Read {
@@ -583,7 +596,7 @@ pub struct Subscribe {
 pub struct Response {
     #[prost(
         oneof = "response::Answer",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17"
     )]
     pub answer: ::core::option::Option<response::Answer>,
 }
@@ -623,6 +636,8 @@ pub mod response {
         LogFollow(super::Followed),
         #[prost(message, tag = "16")]
         Subscribe(super::Subscribed),
+        #[prost(message, tag = "17")]
+        UnitCommand(super::Commanded),
     }
 }
 /// What every change answers, which is what lets a caller converge without reading first.
@@ -723,6 +738,59 @@ pub struct Consequence {
 pub struct Asked {
     #[prost(bytes = "vec", tag = "1")]
     pub answer: ::prost::alloc::vec::Vec<u8>,
+}
+/// What became of a command: the unit's first acknowledgement, and no payload.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct Commanded {
+    #[prost(enumeration = "commanded::Outcome", tag = "1")]
+    pub outcome: i32,
+    #[prost(string, tag = "2")]
+    pub line: ::prost::alloc::string::String,
+}
+/// Nested message and enum types in `Commanded`.
+pub mod commanded {
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
+    #[repr(i32)]
+    pub enum Outcome {
+        Unspecified = 0,
+        Accepted = 1,
+        Done = 2,
+        Failed = 3,
+    }
+    impl Outcome {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "OUTCOME_UNSPECIFIED",
+                Self::Accepted => "OUTCOME_ACCEPTED",
+                Self::Done => "OUTCOME_DONE",
+                Self::Failed => "OUTCOME_FAILED",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "OUTCOME_UNSPECIFIED" => Some(Self::Unspecified),
+                "OUTCOME_ACCEPTED" => Some(Self::Accepted),
+                "OUTCOME_DONE" => Some(Self::Done),
+                "OUTCOME_FAILED" => Some(Self::Failed),
+                _ => None,
+            }
+        }
+    }
 }
 /// A page of the log store, in the order it keeps, and the cursor to continue from.
 #[derive(Clone, PartialEq, ::prost::Message)]

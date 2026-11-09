@@ -18,7 +18,7 @@
 | **Action** | enumerate its services and their methods |
 | **Expected** | `Operator` with `Call`, unary, and `Watch`, a stream of answers to one request; `Shell` with `Connect`, a stream of frames each way; `Call` and `Watch` take the one `Request` and answer the one `Response`, and no third service exists |
 
-## yoke:administrative-contract.02 — the union holds the sixteen operations, and every request states the version
+## yoke:administrative-contract.02 — the union holds the seventeen operations, and every request states the version
 
 | Field | Value |
 | --- | --- |
@@ -29,7 +29,7 @@
 | **Label** | blocking |
 | **Precondition** | the definitions of `Request` and `Response`, and the contract's version |
 | **Action** | enumerate the members of each union, and read the version |
-| **Expected** | `Request` carries a version integer and one member per operation — the four on a plugin, the seven on a unit, `read`, `log.query`, `log.follow` and `subscribe` — and `Response` one answer per operation, in the same order; the contract states 1, at the path `v1` |
+| **Expected** | `Request` carries a version integer and one member per operation — the four on a plugin, the seven on a unit, `read`, `log.query`, `log.follow`, `subscribe` and `unit.command` — and `Response` one answer per operation, in the same order; the contract states 1, at the path `v1` |
 
 ## yoke:administrative-contract.03 — every change answers what it replaced, when it takes effect, and what it did to each unit
 
