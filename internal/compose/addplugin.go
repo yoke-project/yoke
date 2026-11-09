@@ -106,6 +106,9 @@ func take(dir, path string, t *taking, o TakeOptions) (string, error) {
 		return "", refusef("the unit %s is declared: name the Plugin's unit with --as", unit)
 	}
 	for _, at := range []string{program, manifest} {
+		if at == program && travelsAsImage(p) {
+			continue
+		}
 		if exists(filepath.Join(dir, filepath.FromSlash(at))) {
 			return "", refusef("%s is already in the project, and no Plugin's record accounts for it", at)
 		}
@@ -128,7 +131,14 @@ func take(dir, path string, t *taking, o TakeOptions) (string, error) {
 			os.Remove(filepath.Join(dir, filepath.FromSlash(at)))
 		}
 	}
-	if err := os.MkdirAll(filepath.Join(dir, Components, "plugins"), 0o755); err != nil {
+	var image, imageSum string
+	if travelsAsImage(p) {
+		if imageSum, err = imageDigest(built); err != nil {
+			return "", err
+		}
+		program, image = imagePlace(p, imageSum)
+	}
+	if err := os.MkdirAll(filepath.Dir(filepath.Join(dir, filepath.FromSlash(program))), 0o755); err != nil {
 		return "", err
 	}
 	if err := copyExecutable(built, filepath.Join(dir, filepath.FromSlash(program))); err != nil {
@@ -144,13 +154,21 @@ func take(dir, path string, t *taking, o TakeOptions) (string, error) {
 		return "", err
 	}
 	placed = append(placed, manifest)
-	if err := AddUnit(ProjectDocument(dir), unit, UnitOptions{Kind: "plugin", Plugin: p.ID, Exec: program}); err != nil {
+	options := UnitOptions{Kind: "plugin", Plugin: p.ID, Exec: program}
+	if image != "" {
+		options.Exec, options.Image = "", image
+	}
+	if err := AddUnit(ProjectDocument(dir), unit, options); err != nil {
 		undo()
 		return "", err
 	}
 	data, _ := os.ReadFile(filepath.Join(dir, filepath.FromSlash(program)))
+	digest := fmt.Sprintf("sha256:%x", sha256.Sum256(data))
+	if image != "" {
+		digest = imageSum
+	}
 	entry := pluginEntry{ID: p.ID, Unit: unit, Source: t.source, Tag: t.tag, Arch: arch,
-		Digest: fmt.Sprintf("sha256:%x", sha256.Sum256(data)), Taken: pluginClock().UTC().Format(time.RFC3339)}
+		Digest: digest, Taken: pluginClock().UTC().Format(time.RFC3339)}
 	if t.tracked {
 		entry.Commit = t.commit
 		clean := t.clean

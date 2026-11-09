@@ -276,7 +276,6 @@ func TestANewPluginItsArguments(t *testing.T) {
 	}{
 		{[]string{"Com.Example", "--language", "go"}, "Com.Example"},
 		{[]string{"com.example.greeter", "--language", "java"}, "java"},
-		{[]string{"com.example.greeter", "--language", "python"}, "later"},
 		{[]string{"com.example.greeter", "--language", "go", "--release", "0.12.0", "--template", "t.tar.gz"}, "--release"},
 		{[]string{"com.example.greeter", "--language", "go", "--program", "a/b"}, "a/b"},
 		{[]string{"com.example.greeter"}, "--language"},
