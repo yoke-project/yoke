@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"maps"
@@ -10,6 +11,9 @@ import (
 	"strings"
 
 	"github.com/yoke-project/yoke/internal/compose"
+	"github.com/yoke-project/yoke/internal/core/engine"
+	"github.com/yoke-project/yoke/internal/gate"
+	"github.com/yoke-project/yoke/internal/install"
 	"github.com/yoke-project/yoke/internal/instancerecord"
 	"github.com/yoke-project/yoke/internal/instances"
 	"github.com/yoke-project/yoke/internal/version"
@@ -33,7 +37,11 @@ func (c *call) instances() (instances.Options, error) {
 	}
 	runtime := c.getenv("XDG_RUNTIME_DIR")
 	o := instances.Options{InstallRoot: cfg.InstallRoot, Instances: instancerecord.Root(c.getenv),
-		Runtime: filepath.Join(runtime, "yoke"), Arch: compose.HostArch(), RuntimeDir: &runtime}
+		Runtime: filepath.Join(runtime, "yoke"), Arch: compose.HostArch(), RuntimeDir: &runtime,
+		Carried: func(dir string, d *gate.Deployment) error {
+			return install.ObtainCarried(install.Options{Out: c.out,
+				Engine: func(ctx context.Context) (*engine.Engine, error) { return engine.Reach(ctx, cfg.Engine) }}, dir, d)
+		}}
 	// The Core this host will execute, where it is there to be read; a range is checked against it.
 	core := cfg.Core
 	if !filepath.IsAbs(core) {

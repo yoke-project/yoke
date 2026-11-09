@@ -131,7 +131,7 @@ func Install(o Options) (Result, error) {
 			h.ID, h.Version, h.Arch, h.Core, h.Model, m.ID, m.Version, m.Arch, m.Core, m.Model)
 	}
 	// 9 · images, by digest: loaded where the package carries them, pulled where it does not.
-	if err := obtain(o, bundle, d, m); err != nil {
+	if err := obtain(o, bundle, d, m.ID, m.Version, true); err != nil {
 		return res, err
 	}
 	// 10 · every component the descriptor names, against the digest it states; executables made so. Then the
@@ -154,15 +154,22 @@ func Install(o Options) (Result, error) {
 	return res, err
 }
 
+// ObtainCarried loads, for a run from a working directory, the images the directory carries as archives.
+// Nothing is pulled: an image the directory does not carry is the administrator's, as on any run.
+func ObtainCarried(o Options, dir string, d *gate.Deployment) error {
+	return obtain(o, dir, d, d.Head.ID, d.Head.Version, false)
+}
+
 // obtain holds every image the descriptor names under its pinned reference, tagged in the reserved
-// namespace once for each unit that runs it. The engine is reached only where a unit names an image, and
-// once; an image two units name is obtained once.
-func obtain(o Options, bundle string, d *gate.Deployment, m pkgfile.Meta) error {
+// namespace once for each unit that runs it, an image with no archive left out unless pull says to fetch
+// it. The engine is reached only where there is an image to obtain, and once; an image two units name is
+// obtained once.
+func obtain(o Options, bundle string, d *gate.Deployment, id, version string, pull bool) error {
 	var refs []string
 	runs := map[string][]string{}
 	for _, name := range d.Order {
 		ref := d.Units[name].Image
-		if ref == "" {
+		if ref == "" || (!pull && carried(bundle, ref) == "") {
 			continue
 		}
 		if !slices.Contains(refs, ref) {
@@ -221,7 +228,7 @@ func obtain(o Options, bundle string, d *gate.Deployment, m pkgfile.Meta) error 
 			fmt.Fprintf(out, "%s: pulled\n", ref)
 		}
 		for _, unit := range runs[ref] {
-			if err := e.Tag(ctx, ref, m.ID, unit, m.Version); err != nil {
+			if err := e.Tag(ctx, ref, id, unit, version); err != nil {
 				return err
 			}
 		}

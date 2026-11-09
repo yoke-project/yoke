@@ -37,6 +37,8 @@ type Options struct {
 	Arch       string
 	Core       *version.Version
 	RuntimeDir *string
+	// Carried loads the images a working directory carries, on a run from it. Unset loads none.
+	Carried func(dir string, d *gate.Deployment) error
 }
 
 func (o Options) me() string {
@@ -247,6 +249,11 @@ func Ephemeral(o Options, run Run) (string, error) {
 			Instance: &gate.Instance{}})
 		if report.Refused() || dep == nil {
 			return "", refused("the descriptor in "+dir, report.Findings)
+		}
+		if o.Carried != nil {
+			if err := o.Carried(dir, dep); err != nil {
+				return "", err
+			}
 		}
 		d, r.ID, r.Version, r.Source, r.Verification = dep, dep.Head.ID, dep.Head.Version, dir, instancerecord.Waived
 	} else {
