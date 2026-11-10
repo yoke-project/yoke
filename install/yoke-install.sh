@@ -3,7 +3,7 @@
 # for this account or for the whole host, upgrades an earlier installation, or removes one. It is published with each release as yoke-install.sh, and read
 # by `sh`:
 #
-#   curl --proto '=https' --tlsv1.2 -sSf https://github.com/yoke-project/yoke/releases/latest/download/yoke-install.sh | sh
+#   curl --proto '=https' --tlsv1.2 -sSfL https://github.com/yoke-project/yoke/releases/latest/download/yoke-install.sh | sh
 #
 # Arguments follow `sh -s --`. It writes nothing outside the directories it names, and stops at the first
 # thing it cannot do, saying what and why. See https://docs.yoke-project.dev/setting-up/linux-host/
