@@ -81,11 +81,11 @@ func (s *shelf) upload(tag string, files []string) error {
 func handOver(t *testing.T, root string, s *shelf) (int, []map[string]any, string) {
 	t.Helper()
 	// The proxy serves each module's tree as it is tagged.
-	serve := func(m, v string) (string, error) {
+	serve := func(m, v string) (release.Served, error) {
 		if m == "example.com/yk/proto" {
-			return treeHash(t, root, m, v, "proto/"+v, "proto"), nil
+			return served(treeHash(t, root, m, v, "proto/"+v, "proto")), nil
 		}
-		return treeHash(t, root, m, v, v, ""), nil
+		return served(treeHash(t, root, m, v, v, "")), nil
 	}
 	var out, errs bytes.Buffer
 	code := release.Run(release.Config{Root: root, Out: &out, Err: &errs,
@@ -329,7 +329,7 @@ func TestAnArtifactCarriesFilesOfTheTreeAtTheirOwnPaths(t *testing.T) {
 	s := &shelf{}
 	var out, errs bytes.Buffer
 	code := release.Run(release.Config{Root: root, Out: &out, Err: &errs,
-		Proxy:     func(m, v string) (string, error) { return treeHash(t, root, m, v, v, ""), nil },
+		Proxy:     func(m, v string) (release.Served, error) { return served(treeHash(t, root, m, v, v, "")), nil },
 		Today:     func() time.Time { return time.Date(2026, 9, 26, 0, 0, 0, 0, time.UTC) },
 		Artifacts: []release.Artifact{{Name: "yk", Packages: []string{"./cmd/a"}, Files: []string{"packaging/unit"}}},
 		Releases:  "https://forge.example/yk/releases/tag/", Upload: s.upload})
@@ -396,7 +396,7 @@ func TestAProgramsTagHandsOverItsModulesBuiltOfflineFirst(t *testing.T) {
 	s := &shelf{}
 	var out, errs bytes.Buffer
 	code := release.Run(release.Config{Root: root, Out: &out, Err: &errs,
-		Proxy:     func(m, v string) (string, error) { return treeHash(t, root, m, v, v, ""), nil },
+		Proxy:     func(m, v string) (release.Served, error) { return served(treeHash(t, root, m, v, v, "")), nil },
 		Today:     func() time.Time { return time.Date(2026, 10, 17, 0, 0, 0, 0, time.UTC) },
 		Artifacts: []release.Artifact{{Name: "yk-tools", Packages: []string{"./cmd/a"}}},
 		Source:    "yk", Modules: true, Releases: "https://forge.example/yk/releases/tag/", Upload: s.upload})
@@ -436,11 +436,11 @@ func TestAProgramsTagHandsOverTheScriptThatObtainsIt(t *testing.T) {
 	s := &shelf{}
 	var out, errs bytes.Buffer
 	code := release.Run(release.Config{Root: root, Out: &out, Err: &errs,
-		Proxy: func(m, v string) (string, error) {
+		Proxy: func(m, v string) (release.Served, error) {
 			if m == "example.com/yk/proto" {
-				return treeHash(t, root, m, v, "proto/"+v, "proto"), nil
+				return served(treeHash(t, root, m, v, "proto/"+v, "proto")), nil
 			}
-			return treeHash(t, root, m, v, v, ""), nil
+			return served(treeHash(t, root, m, v, v, "")), nil
 		},
 		Today:     func() time.Time { return time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC) },
 		Artifacts: []release.Artifact{{Name: "yk-tools", Packages: []string{"./cmd/a", "./cmd/b"}}},

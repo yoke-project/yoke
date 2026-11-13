@@ -2,6 +2,8 @@ package release_test
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -78,15 +80,27 @@ func treeHash(t *testing.T, root, path, version, revision, subdir string) string
 	return sum
 }
 
-// proxy serves what served says, and records what it was asked.
+// proxy serves what served says, and records what it was asked. The zip it serves is zips' where that
+// names one, and otherwise the one served gives.
 type proxy struct {
 	asked  []string
 	served map[string]string
+	zips   map[string]string
 }
 
-func (p *proxy) serve(module, version string) (string, error) {
+func (p *proxy) serve(module, version string) (release.Served, error) {
 	p.asked = append(p.asked, module+"@"+version)
-	return p.served[module+"@"+version], nil
+	s := served(p.served[module+"@"+version])
+	if z, ok := p.zips[module+"@"+version]; ok {
+		s.Zip = z
+	}
+	return s, nil
+}
+
+// served is a proxy's answer for a module whose h1: is sum: a zip whose sha256 is derived from it.
+func served(sum string) release.Served {
+	z := sha256.Sum256([]byte(sum))
+	return release.Served{Sum: sum, Zip: hex.EncodeToString(z[:])}
 }
 
 func run(t *testing.T, root string, p *proxy) (int, []map[string]any, string, string) {
@@ -118,7 +132,7 @@ func TestAProgramsTagPublishesTheModule(t *testing.T) {
 		t.Fatalf("exit %d, asked %v: %s", code, p.asked, errs)
 	}
 	want := `{"line":"publication","published":"example.com/yk","version":"v0.1.0","commit":"` + commit +
-		`","digests":["` + h1 + `"],"where":"https://proxy.golang.org","authenticated":"https://sum.golang.org",` +
+		`","digests":["` + h1 + `","sha256:` + served(h1).Zip + `"],"where":"https://proxy.golang.org","authenticated":"https://sum.golang.org",` +
 		`"licence":"Apache-2.0","notices":[],"day":"2026-09-26"}` + "\n"
 	if out != want || len(lines) != 1 {
 		t.Errorf("the verb emitted\n%s\nwant\n%s", out, want)
@@ -137,7 +151,7 @@ func TestADefinitionsTagPublishesTheDefinitionsModule(t *testing.T) {
 	got := map[string]string{}
 	for _, l := range lines {
 		digests, _ := l["digests"].([]any)
-		if len(digests) != 1 {
+		if len(digests) != 2 {
 			t.Fatalf("a line carries %v", l["digests"])
 		}
 		got[l["published"].(string)+"@"+l["version"].(string)] = digests[0].(string)
@@ -208,5 +222,37 @@ func TestARunInvokedByOneTagPublishesWhatThatTagNames(t *testing.T) {
 	}
 	if code, got, errs := invoked("v9.9.9"); code == 0 || len(got) != 0 || !strings.Contains(errs, "v9.9.9") {
 		t.Errorf("invoked by a tag not on the commit: %d %v %s", code, got, errs)
+	}
+}
+
+// std: yoke:the-release-verb.07
+func TestAModuleLineCarriesTheZipTheProxyServed(t *testing.T) {
+	root, _ := repository(t, "v0.1.0", "proto/v0.2.0")
+	programs, definitions := treeHash(t, root, "example.com/yk", "v0.1.0", "v0.1.0", ""), treeHash(t, root, "example.com/yk/proto", "v0.2.0", "proto/v0.2.0", "proto")
+	zips := map[string]string{"example.com/yk@v0.1.0": strings.Repeat("a", 64), "example.com/yk/proto@v0.2.0": strings.Repeat("b", 64)}
+	p := &proxy{served: map[string]string{"example.com/yk@v0.1.0": programs, "example.com/yk/proto@v0.2.0": definitions}, zips: zips}
+	code, lines, _, errs := run(t, root, p)
+	if code != 0 || len(lines) != 2 {
+		t.Fatalf("exit %d, %d lines: %s", code, len(lines), errs)
+	}
+	h1 := map[string]string{"example.com/yk@v0.1.0": programs, "example.com/yk/proto@v0.2.0": definitions}
+	for _, l := range lines {
+		at := l["published"].(string) + "@" + l["version"].(string)
+		digests, _ := l["digests"].([]any)
+		if len(digests) != 2 || digests[0] != h1[at] || digests[1] != "sha256:"+zips[at] {
+			t.Errorf("%s's line carries %v, want [%s sha256:%s]", at, l["digests"], h1[at], zips[at])
+		}
+	}
+
+	p = &proxy{served: map[string]string{"example.com/yk@v0.1.0": programs, "example.com/yk/proto@v0.2.0": definitions},
+		zips: map[string]string{"example.com/yk@v0.1.0": ""}}
+	code, lines, _, errs = run(t, root, p)
+	for _, l := range lines {
+		if l["published"] == "example.com/yk" {
+			t.Errorf("a line was emitted for a module the proxy served no zip of: %v", l)
+		}
+	}
+	if code == 0 || !strings.Contains(errs, "no zip") {
+		t.Errorf("exit %d, said %q; want a refusal naming the missing zip", code, errs)
 	}
 }

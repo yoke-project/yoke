@@ -16,7 +16,7 @@
 | **Label** | blocking |
 | **Precondition** | a repository whose root module is `example.com/yk`, with a commit tagged `v0.1.0`, and a module proxy that serves the tagged tree |
 | **Action** | run the verb at that commit, on 2026-09-26 |
-| **Expected** | the proxy was asked for `example.com/yk@v0.1.0`; standard output is exactly one line, a JSON object naming `example.com/yk` at `v0.1.0`, the commit, the module's `h1:` digest, the proxy as where and the checksum database as the mechanism, `Apache-2.0` with no notices, and `2026-09-26` |
+| **Expected** | the proxy was asked for `example.com/yk@v0.1.0`; standard output is exactly one line, a JSON object naming `example.com/yk` at `v0.1.0`, the commit, the module's `h1:` digest and the `sha256:` of the zip the proxy served, the proxy as where and the checksum database as the mechanism, `Apache-2.0` with no notices, and `2026-09-26` |
 
 ## yoke:the-release-verb.02 — a definitions tag publishes the definitions module, at the version the tag carries
 
@@ -82,3 +82,16 @@
 | **Precondition** | a commit tagged both `v0.1.0` and `proto/v0.2.0` |
 | **Action** | run the verb told it was invoked by `proto/v0.2.0`; then by `v0.1.0`; then by `v9.9.9`, which does not name the commit |
 | **Expected** | the first publishes the definitions module alone; the second the programs module alone; the third publishes nothing, exits non-zero and names the tag |
+
+## yoke:the-release-verb.07 — a module's line carries the zip the proxy served, beside its h1:
+
+| Field | Value |
+| --- | --- |
+| **Cites** | prj_structure/85 §The release record · prj_structure/85 §The acts |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a commit tagged both `v0.1.0` and `proto/v0.2.0`, and a module proxy that serves each tagged tree as a zip of a known sha256; then the same proxy serving the programs module with no zip |
+| **Action** | run the verb at that commit; then again against the second proxy |
+| **Expected** | each module's line carries two digests, its `h1:` first and `sha256:` of the zip that proxy served second; the second run publishes no line for the programs module, exits non-zero and says the proxy served no zip |
