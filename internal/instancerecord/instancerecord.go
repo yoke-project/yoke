@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strings"
 	"time"
 
 	"go.yaml.in/yaml/v3"
@@ -293,4 +294,51 @@ func PointingAt(root, id, version string) ([]string, error) {
 		}
 	}
 	return slices.Clip(names), nil
+}
+
+// removing is called as an instance's files are deleted; the tests look at the root then.
+var removing = func() {}
+
+// Away is where an instance being removed is moved to, beside the root and outside it, so that no listing
+// of the root ever sees it.
+const Away = "removing"
+
+// Remove takes an instance away whole. Its directory is first moved out of the root in one rename, so that
+// its record and its state disappear together and no reader sees the directory without its record —
+// which a reader takes for a removal finished — and is then deleted where nobody reads. An instance that
+// is not there answers fs.ErrNotExist.
+func Remove(root, name string) error {
+	if name == "" || name == "." || name == ".." || strings.ContainsRune(name, '/') {
+		return fmt.Errorf("%q names no instance", name)
+	}
+	if _, err := os.Lstat(filepath.Join(root, name)); err != nil {
+		return err
+	}
+	away := filepath.Join(filepath.Dir(root), Away)
+	var gone string
+	var err error
+	// A removal beside this one may take the emptied directory away between the two calls: tried again.
+	for range 3 {
+		if err = os.MkdirAll(away, 0o700); err != nil {
+			return err
+		}
+		if gone, err = os.MkdirTemp(away, ""); !errors.Is(err, fs.ErrNotExist) {
+			break
+		}
+	}
+	if err != nil {
+		return err
+	}
+	if err := os.Rename(filepath.Join(root, name), filepath.Join(gone, "instance")); err != nil {
+		os.Remove(gone)
+		os.Remove(away)
+		return err
+	}
+	removing()
+	if err := os.RemoveAll(gone); err != nil {
+		return err
+	}
+	// Left only while a removal is under way; one that fails here holds another's.
+	os.Remove(away)
+	return nil
 }

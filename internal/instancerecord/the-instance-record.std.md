@@ -82,3 +82,16 @@
 | **Precondition** | three instances, two pinned to `com.yoke.station` `2.1.0` and one to `2.0.0` |
 | **Action** | list the instances, and ask which point at `2.1.0` |
 | **Expected** | the three are listed by name; the two pinned to `2.1.0` are named, and nothing else in the directory lists them |
+
+## yoke:the-instance-record.07 — an instance is removed whole: its record never goes before its directory
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/10-manager/06 §Removing · specs/17.21 |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an instance whose directory holds its record and a state directory of many files, and another beside it |
+| **Action** | remove the first, looking at the root at the moment its files are being deleted; then remove it again |
+| **Expected** | at that moment neither its record nor its directory is under the root, and the other instance is listed alone; afterwards nothing of it is left, under the root or beside it, nor the directory it went through; the second removal answers that it does not exist. A removal that deleted the directory's entries one by one left, on a filesystem listing the record first, a moment with the directory there and the record gone — which a reader takes for an orderly stop finished, `yoke#425` |

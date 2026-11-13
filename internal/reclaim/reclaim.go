@@ -271,7 +271,7 @@ func records(o Options, id string, r *Report) error {
 		if rec == nil || !rec.Ephemeral || rec.Outcome != instancerecord.Failed || (id != "" && rec.ID != id) {
 			continue
 		}
-		if err := os.RemoveAll(filepath.Join(o.Instances, l.Name)); err != nil {
+		if err := instancerecord.Remove(o.Instances, l.Name); err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
 		r.Removed = append(r.Removed, "record "+l.Name)
