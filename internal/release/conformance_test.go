@@ -111,11 +111,11 @@ func TestAProgramsTagHandsTheReportOverBesideItsFiles(t *testing.T) {
 	plan, _ := json.Marshal([]release.Measure{go6})
 	os.WriteFile(filepath.Join(dir, "measured.json"), plan, 0o644)
 	s := &shelf{}
-	serve := func(m, v string) (string, error) {
+	serve := func(m, v string) (release.Served, error) {
 		if m == "example.com/yk/proto" {
-			return treeHash(t, root, m, v, "proto/"+v, "proto"), nil
+			return served(treeHash(t, root, m, v, "proto/"+v, "proto")), nil
 		}
-		return treeHash(t, root, m, v, v, ""), nil
+		return served(treeHash(t, root, m, v, v, "")), nil
 	}
 	var out, errs bytes.Buffer
 	code := release.Run(release.Config{Root: root, Out: &out, Err: &errs, Proxy: serve,

@@ -39,8 +39,8 @@ type Config struct {
 	// commit is published.
 	Invoked string
 	// Proxy asks the module proxy to serve a module at a version, which is what publishes it, and
-	// returns the digest the proxy serves.
-	Proxy func(module, version string) (string, error)
+	// returns what the proxy served.
+	Proxy func(module, version string) (Served, error)
 	Today func() time.Time
 	Out   io.Writer // the lines, and nothing else
 	Err   io.Writer
@@ -93,6 +93,13 @@ type Artifact struct {
 	Name     string
 	Packages []string
 	Files    []string
+}
+
+// Served is what the module proxy served for a module at a version: the h1: digest Go's checksum
+// database records, and the sha256 of the zip itself, which is the file a recipe fetches.
+type Served struct {
+	Sum string // h1:
+	Zip string // hex sha256 of the zip
 }
 
 // Line is one publication, in the manifest's fixed shape and order.
@@ -198,11 +205,15 @@ func Run(cfg Config) int {
 		if err != nil {
 			return fail("the proxy did not serve %s@%s: %v", path, m.version, err)
 		}
-		if served != digest {
-			return fail("the proxy serves %s@%s as %s, which differs from the tree's %s", path, m.version, served, digest)
+		if served.Sum != digest {
+			return fail("the proxy serves %s@%s as %s, which differs from the tree's %s", path, m.version, served.Sum, digest)
+		}
+		// The zip's own digest is the one a recipe checks, the h1: being a hash of its contents.
+		if served.Zip == "" {
+			return fail("the proxy served no zip of %s@%s, whose digest the line carries", path, m.version)
 		}
 		lines = append(lines, Line{Line: "publication", Published: path, Version: m.version, Commit: commit,
-			Digests: []string{digest}, Where: goProxy, Authenticated: goSumDB, Licence: licence,
+			Digests: []string{digest, "sha256:" + served.Zip}, Where: goProxy, Authenticated: goSumDB, Licence: licence,
 			Notices: notices, Day: cfg.Today().UTC().Format(time.DateOnly)})
 	}
 
@@ -302,10 +313,10 @@ func treeDigest(root string, m module.Version, revision, subdir string) (string,
 
 // FromProxy asks the public module proxy for a module at a version, with a module cache of its own and
 // nothing exempted from the checksum database, and returns the digest it served.
-func FromProxy(path, version string) (string, error) {
+func FromProxy(path, version string) (Served, error) {
 	cache, err := os.MkdirTemp("", "yoke-release-cache-")
 	if err != nil {
-		return "", err
+		return Served{}, err
 	}
 	defer func() {
 		filepath.WalkDir(cache, func(p string, d os.DirEntry, _ error) error { os.Chmod(p, 0o700); return nil })
@@ -316,14 +327,19 @@ func FromProxy(path, version string) (string, error) {
 	command.Env = append(environmentWithout("GOPRIVATE", "GONOPROXY", "GONOSUMDB", "GONOSUMCHECK", "GOINSECURE", "GOFLAGS"),
 		"GOPROXY="+goProxy, "GOSUMDB=sum.golang.org", "GOMODCACHE="+cache, "GOWORK=off")
 	out, err := command.Output()
-	var answer struct{ Sum, Error string }
+	var answer struct{ Sum, Zip, Error string }
 	if json.Unmarshal(out, &answer) != nil && err != nil {
-		return "", err
+		return Served{}, err
 	}
 	if answer.Error != "" {
-		return "", fmt.Errorf("%s", answer.Error)
+		return Served{}, fmt.Errorf("%s", answer.Error)
 	}
-	return answer.Sum, nil
+	zipped, err := os.ReadFile(answer.Zip)
+	if err != nil {
+		return Served{}, fmt.Errorf("the zip the proxy served cannot be read: %v", err)
+	}
+	sum := sha256.Sum256(zipped)
+	return Served{Sum: answer.Sum, Zip: hex.EncodeToString(sum[:])}, nil
 }
 
 func environmentWithout(names ...string) []string {
