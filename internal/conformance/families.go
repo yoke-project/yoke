@@ -11,6 +11,7 @@ import (
 	"go.yaml.in/yaml/v3"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 
 	administrativev1 "github.com/yoke-project/yoke/proto/yoke/administrative/v1"
 )
@@ -38,6 +39,18 @@ func FamilyCases() []Case {
 			Issues:       "a question of the type its Manifest declares, asked of the unit on the administrative surface with some bytes; then `answer` with other bytes",
 			Requires:     "an observation `question` of that type carrying the bytes asked; the administrative answer is the bytes answered",
 			Run:          questionAnswered},
+		{Contract: "plugin", ID: "yoke:plugin.17", Title: "a unit fails the Core's question, and the asker is refused with its code and its message",
+			Cites:        []string{"specs/50.61", "specs/50.68", "specs/50.69", "arch/50-plugin-surface/05 §An error answering the Core's message closes the exchange", "arch/60-administrative-surface/07 §This surface's codes"},
+			Precondition: "the harness of case 8, granted everything",
+			Issues:       "a question of the type its Manifest declares, asked of the unit on the administrative surface; then `fail` of that question, with a code and a message",
+			Requires:     "an observation `question` of that type; the asker refused with `unit.failed`, carrying the code and the message the unit gave, well before the wait for an answer runs out",
+			Run:          questionFailed},
+		{Contract: "plugin", ID: "yoke:plugin.18", Title: "a unit fails the Core's command, and the commander is refused with its code and its message",
+			Cites:        []string{"specs/50.61", "specs/50.68", "specs/50.69", "arch/50-plugin-surface/05 §An error answering the Core's message closes the exchange", "arch/60-administrative-surface/07 §This surface's codes"},
+			Precondition: "the harness of case 8, granted everything",
+			Issues:       "a command of the type its Manifest declares, sent to the unit on the administrative surface; then `fail` of that command, with a code and a message",
+			Requires:     "an observation `command` of that type; the commander refused with `unit.failed`, carrying the code and the message the unit gave, well before the wait for an acknowledgement runs out",
+			Run:          commandFailed},
 		{Contract: "plugin", ID: "yoke:plugin.10", Title: "an occurrence is carried at the author's severity",
 			Cites:        []string{"specs/50.64", "specs/50.104", "specs/90.34", "arch/50-plugin-surface/05 §The event family is where a unit declares a severity"},
 			Precondition: "the harness of case 8, granted everything, and a subscription to `unit.occurrence.reported` on the administrative surface",
@@ -290,6 +303,81 @@ func questionAnswered(r *Run) Outcome {
 		return Fail("`answer`", "the administrative answer", "none within 30 s")
 	}
 	return Pass()
+}
+
+// failedWith is whether a call was refused as the unit's failure, carrying its code and its message.
+func failedWith(err error, code, message string) bool {
+	st, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+	for _, d := range st.Details() {
+		if r, ok := d.(*administrativev1.Refusal); ok {
+			return r.GetCode() == "unit.failed" && r.GetItem() == code && r.GetMessage() == message
+		}
+	}
+	return false
+}
+
+// failed asks or commands the unit on the administrative surface, waits for the observation of what
+// reached it, has the harness fail it, and requires the caller refused with what the unit said.
+func (r *Run) failed(kind string, call func(context.Context, administrativev1.OperatorClient, string, string) error) Outcome {
+	h, err := r.Unit()
+	if err != nil {
+		return Fail("a "+kind, "the harness of case 8", err.Error())
+	}
+	op, err := r.Operator()
+	if err != nil {
+		return Fail("a "+kind, "the operator projection", err.Error())
+	}
+	d := r.declared()
+	types := map[string][]string{"question": d.Queries, "command": d.Commands}[kind]
+	if len(types) == 0 {
+		return Fail("a "+kind, "a Manifest declaring one", r.described)
+	}
+	got := make(chan error, 1)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		got <- call(ctx, op, h.Hello().Unit, types[0])
+	}()
+	o, before, ok := observed(h, kind, 10*time.Second)
+	if !ok || o.Fields["type"] != types[0] {
+		return Fail("a "+kind+" of "+types[0], "an observation `"+kind+"` of that type", fmt.Sprintf("%v %v", o, before))
+	}
+	const code, message = "conformance.declined", "the suite asked this to fail"
+	if res := h.Do("fail", map[string]any{"about": o.Fields["id"], "code": code, "message": message}); res.Unrecognised {
+		return Absent("fail")
+	} else if res.Refusal != "" {
+		return Fail("`fail`", "the failure sent", res.Refusal)
+	}
+	select {
+	case err := <-got:
+		if !failedWith(err, code, message) {
+			return Fail("`fail`", "the caller refused with `unit.failed`, the unit's code and its message", fmt.Sprint(err))
+		}
+	case <-time.After(20 * time.Second):
+		return Fail("`fail`", "the caller refused", "none within 20 s")
+	}
+	return Pass()
+}
+
+// std: yoke:plugin.17
+func questionFailed(r *Run) Outcome {
+	return r.failed("question", func(ctx context.Context, op administrativev1.OperatorClient, unit, typ string) error {
+		_, err := op.Call(ctx, request(&administrativev1.Request{Operation: &administrativev1.Request_UnitAsk{UnitAsk: &administrativev1.UnitAsk{
+			Unit: unit, Type: typ, Question: []byte("fail this")}}}))
+		return err
+	})
+}
+
+// std: yoke:plugin.18
+func commandFailed(r *Run) Outcome {
+	return r.failed("command", func(ctx context.Context, op administrativev1.OperatorClient, unit, typ string) error {
+		_, err := op.Call(ctx, request(&administrativev1.Request{Operation: &administrativev1.Request_UnitCommand{UnitCommand: &administrativev1.UnitCommand{
+			Unit: unit, Type: typ}}}))
+		return err
+	})
 }
 
 // subscribed subscribes on the operator projection to one type, and returns the stream once its snapshot
