@@ -576,7 +576,7 @@ func (g *guardian) ended(w *watch, err error) {
 		g.log.Info("the Core has stopped", "instance", w.name)
 		if w.ephemeral {
 			// An ephemeral record disappears on an orderly stop.
-			if err := os.RemoveAll(filepath.Join(g.o.Instances, w.name)); err != nil {
+			if err := instancerecord.Remove(g.o.Instances, w.name); err != nil && !errors.Is(err, fs.ErrNotExist) {
 				g.log.Error("an ephemeral record cannot be removed", "instance", w.name, "error", err)
 			}
 		}

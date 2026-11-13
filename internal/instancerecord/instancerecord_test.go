@@ -168,3 +168,45 @@ func TestTheSetIsADirectoryListing(t *testing.T) {
 		}
 	}
 }
+
+// std: yoke:the-instance-record.07
+func TestAnInstanceIsRemovedWhole(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "instances")
+	if err := Create(root, declared("bench-a", "2.1.0")); err != nil {
+		t.Fatal(err)
+	}
+	Create(root, declared("bench-b", "2.1.0"))
+	os.MkdirAll(StateDir(root, "bench-a"), 0o700)
+	for i := 0; i < 200; i++ {
+		os.WriteFile(filepath.Join(StateDir(root, "bench-a"), fmt.Sprintf("f%03d", i)), []byte("x"), 0o600)
+	}
+	seen := false
+	removing = func() {
+		seen = true
+		if _, err := os.Stat(filepath.Join(root, "bench-a")); !os.IsNotExist(err) {
+			t.Errorf("while its files are deleted, the instance's directory is under the root: %v", err)
+		}
+		if listed, _ := List(root); len(listed) != 1 || listed[0].Name != "bench-b" {
+			t.Errorf("while its files are deleted, the root lists %v", listed)
+		}
+	}
+	defer func() { removing = func() {} }()
+	if err := Remove(root, "bench-a"); err != nil {
+		t.Fatal(err)
+	}
+	if !seen {
+		t.Error("the removal was not looked at while its files were deleted")
+	}
+	filepath.Walk(filepath.Dir(root), func(p string, i os.FileInfo, _ error) error {
+		if strings.Contains(p, "bench-a") || strings.HasPrefix(filepath.Base(p), "f0") {
+			t.Errorf("left after the removal: %s", p)
+		}
+		return nil
+	})
+	if _, err := os.Stat(filepath.Join(filepath.Dir(root), Away)); !os.IsNotExist(err) {
+		t.Errorf("the directory a removal goes through is left: %v", err)
+	}
+	if err := Remove(root, "bench-a"); !os.IsNotExist(err) {
+		t.Errorf("removing it again answered %v", err)
+	}
+}

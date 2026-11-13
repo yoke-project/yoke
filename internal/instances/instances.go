@@ -523,7 +523,7 @@ func Remove(o Options, name string) error {
 	if err := o.stopped(name, "removed"); err != nil {
 		return err
 	}
-	return os.RemoveAll(filepath.Join(o.Instances, name))
+	return instancerecord.Remove(o.Instances, name)
 }
 
 // Secrets are the secrets an instance's version declares, each with the units that need it: from the
