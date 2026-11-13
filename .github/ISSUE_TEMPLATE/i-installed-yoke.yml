@@ -1,0 +1,35 @@
+name: I installed Yoke
+description: You installed Yoke, on a host or a board. Say so in three answers; nothing else is asked.
+title: "I installed Yoke"
+labels: ["installed"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you. Three answers tell the project that Yoke was installed somewhere it did not watch, which it counts. Something that went wrong is better as an issue of its own.
+  - type: dropdown
+    id: form
+    attributes:
+      label: Which form
+      description: The application form runs under an account of its own; the service form runs as a system service.
+      options:
+        - The application form
+        - The service form
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Which host or board
+      description: The distribution and its version, or the board and the image built for it.
+      placeholder: Debian 13 on amd64; a Raspberry Pi 5 with the layer's image
+    validations:
+      required: true
+  - type: input
+    id: release
+    attributes:
+      label: Which release
+      description: What `yoke-core --version` prints, or the release you installed.
+      placeholder: 0.14.0
+    validations:
+      required: true
