@@ -123,6 +123,32 @@
 | **Action** | a question of the type its Manifest declares, asked of the unit on the administrative surface with some bytes; then `answer` with other bytes |
 | **Expected** | an observation `question` of that type carrying the bytes asked; the administrative answer is the bytes answered |
 
+## yoke:plugin.17 — a unit fails the Core's question, and the asker is refused with its code and its message
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/50.61 · specs/50.68 · specs/50.69 · arch/50-plugin-surface/05 §An error answering the Core's message closes the exchange · arch/60-administrative-surface/07 §This surface's codes |
+| **Level** | L2 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the harness of case 8, granted everything |
+| **Action** | a question of the type its Manifest declares, asked of the unit on the administrative surface; then `fail` of that question, with a code and a message |
+| **Expected** | an observation `question` of that type; the asker refused with `unit.failed`, carrying the code and the message the unit gave, well before the wait for an answer runs out |
+
+## yoke:plugin.18 — a unit fails the Core's command, and the commander is refused with its code and its message
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/50.61 · specs/50.68 · specs/50.69 · arch/50-plugin-surface/05 §An error answering the Core's message closes the exchange · arch/60-administrative-surface/07 §This surface's codes |
+| **Level** | L2 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the harness of case 8, granted everything |
+| **Action** | a command of the type its Manifest declares, sent to the unit on the administrative surface; then `fail` of that command, with a code and a message |
+| **Expected** | an observation `command` of that type; the commander refused with `unit.failed`, carrying the code and the message the unit gave, well before the wait for an acknowledgement runs out |
+
 ## yoke:plugin.10 — an occurrence is carried at the author's severity
 
 | Field | Value |
