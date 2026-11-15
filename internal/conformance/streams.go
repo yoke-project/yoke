@@ -35,7 +35,7 @@ func StreamCases() []Case {
 			Cites:        []string{"specs/50.86", "specs/90.33", "arch/50-plugin-surface/07 §A stream flows because it was told to", "arch/50-plugin-surface/07 §What the two tolerances select", "arch/50-plugin-surface/07 §The shared ring"},
 			Precondition: "the harness of case 8, granted everything; its Manifest declaring a stream that tolerates nothing and one that tolerates loss; the suite attached to the channel `suite` the run composes",
 			Issues:       "for each of the two streams, `stream.subscribe` and then `stream.start`, on the interface surface",
-			Requires:     "for each, a delivery on a per-subscriber socket and an acknowledgement; and an observation `activated` naming the stream, with the transport `ordered` for the one that tolerates nothing, and for the one that tolerates loss `framed` — or `shared_object` where the library offered the shared ring at registration",
+			Requires:     "for each, a delivery on a per-subscriber socket and an acknowledgement; and an observation `activated` naming the stream, with the transport `ordered` — or `ordered_stream` where the library offered the stream socket — for the one that tolerates nothing, and for the one that tolerates loss `framed`, `framed_stream`, or `shared_object` where the library offered the shared ring",
 			Run:          activatedOnItsTransport},
 		{Contract: "plugin", ID: "yoke:plugin.14", Title: "what is emitted on the ordered transport arrives in order, numbered from 1, unchanged",
 			Cites:        []string{"specs/50.86", "specs/50.90", "arch/50-plugin-surface/07 §What every transport keeps", "arch/90-sdks/03 §A real Core, and no fixture"},
@@ -241,7 +241,7 @@ func activatedOnItsTransport(r *Run) Outcome {
 	unit := h.Hello().Unit
 	// A stream that tolerates loss is activated on the shared ring for a library that offered it at
 	// registration, and on the framed socket for any other.
-	for stream, transports := range map[string][]string{strict: {"ordered"}, lossy: {"framed", "shared_object"}} {
+	for stream, transports := range map[string][]string{strict: {"ordered", "ordered_stream"}, lossy: {"framed", "framed_stream", "shared_object"}} {
 		subject := &interfacev1.UnitStream{Unit: unit, Stream: stream}
 		resp, code, err := a.Call(&interfacev1.Request{Operation: &interfacev1.Request_StreamSubscribe{StreamSubscribe: subject}})
 		socket := resp.GetStreamSubscribe().GetSocket()
