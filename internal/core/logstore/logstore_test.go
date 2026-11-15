@@ -293,6 +293,7 @@ func TestEveryDeclaredTypeIsKeptAsAnEntry(t *testing.T) {
 		"channel.resumed":            event.ChannelResumed("panel"),
 		"channel.detached":           event.ChannelDetached("panel", "davide", "closed"),
 		"channel.subscription.stale": event.SubscriptionStale("panel", time.Unix(1000, 0)),
+		"channel.delivery.failed":    event.DeliveryFailed("panel", "acquire", "station.spectra", "00000001", "broken pipe"),
 		"document.resolved":          event.DocumentResolved("/etc/yoke/bench.yaml", "bench", "sha256:00"),
 		"document.rejected":          event.DocumentRejected("/etc/yoke/bad.yaml", "yaml.syntax", "line 3"),
 		"connection.opened":          event.ConnectionOpened("c-1", "shell", event.Actor{Class: event.ByOperator, Person: "ada"}),
