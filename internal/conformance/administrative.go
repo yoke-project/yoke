@@ -11,8 +11,9 @@ import (
 const Fixture = "com.yoke.conformance.fixture"
 
 // fixtureManifest declares the fixture with one capability, so that a grant has something to name.
-const fixtureManifest = "manifest: 1\nid: " + Fixture + "\nprotocol: 1\nstreams: [ { id: fixture.data } ]\n" +
-	"capabilities: [ { name: stream.data.publish, governs: { stream: fixture.data } } ]\n"
+const fixtureManifest = "manifest: 1\nid: " + Fixture + "\nprotocol: 1\n" +
+	"streams: [ { id: fixture.data }, { id: fixture.frames, tolerates_loss: true, max_frame: 4194304 } ]\n" +
+	"capabilities: [ { name: stream.data.publish, governs: { stream: fixture.data } }, { name: stream.frames.publish, governs: { stream: fixture.frames } } ]\n"
 
 // AdministrativeCases are the administrative contract's cases, in the order a run performs them.
 func AdministrativeCases() []Case {

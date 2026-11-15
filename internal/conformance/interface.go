@@ -1,9 +1,12 @@
 package conformance
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"time"
+
+	administrativev1 "github.com/yoke-project/yoke/proto/yoke/administrative/v1"
 )
 
 // The two channels an interface run's Core binds: the harness attaches to Panel, and the suite holds
@@ -68,7 +71,150 @@ func InterfaceCases() []Case {
 			Issues:       "`subscribe` to the subject kind `channel`",
 			Requires:     "a snapshot holding `panel`'s record, and not `bench`'s",
 			Run:          subscribedToChannels},
+		{ID: "yoke:interface.08", Title: "a library that reads the stream socket is delivered on one, and a frame above 1 MiB arrives whole", Contract: "interface",
+			Cites:        []string{"specs/70.6", "arch/70-interface-surface/07 §The three delivery paths"},
+			Precondition: "the harness attached to `panel`; the run's producer granted its stream, which flows on the shared ring with frames of 1572864 bytes",
+			Issues:       "`stream-subscribe` of the producer's stream, naming `stream_socket` among what the library reads",
+			Requires:     "the delivery arriving on `stream_socket`; and a frame observed on it whose payload is 1572864 bytes, byte i being `a` + i mod 26",
+			Run:          deliveredOnAStreamSocket},
+		{ID: "yoke:interface.09", Title: "a library that reads the shared object reads the ring itself, and the next activation's ring after a stop", Contract: "interface",
+			Cites:        []string{"specs/70.6", "arch/70-interface-surface/07 §The three delivery paths", "arch/70-interface-surface/07 §What ends a delivery"},
+			Precondition: "the producer's stream flowing, as case 8 left it",
+			Issues:       "`stream-subscribe` of it naming `shared_object`; then `stream-stop` and `stream-start` of it",
+			Requires:     "the delivery arriving on `shared`; a frame read from the ring, whole; and after the stop and the start, a frame of sequence 1 on the same delivery, read from the next activation's ring",
+			Run:          readTheRingItself},
 	}
+}
+
+// producing grants the run's producer its stream, once, and starts the stream: what the cases on streams
+// read from.
+func (r *Run) producing(h *Harness) error {
+	if r.produced {
+		return nil
+	}
+	op, err := r.Operator()
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	if _, err := op.Call(ctx, request(&administrativev1.Request{Operation: &administrativev1.Request_PluginGrant{PluginGrant: &administrativev1.PluginGrant{Plugin: Fixture, Capability: "stream.frames.publish"}}})); err != nil {
+		return fmt.Errorf("the grant: %w", err)
+	}
+	if _, err := op.Call(ctx, request(&administrativev1.Request{Operation: &administrativev1.Request_UnitRestart{UnitRestart: &administrativev1.UnitAct{Unit: Producer}}})); err != nil {
+		return fmt.Errorf("the restart: %w", err)
+	}
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		res := h.Do("stream-start", map[string]any{"unit": Producer, "stream": ProducedStream})
+		if res.Refusal == "" && !res.Unrecognised {
+			r.produced = true
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("the stream would not start: %q", res.Refusal)
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+}
+
+// wholeFrame is whether a frame observed carries the producer's payload, whole.
+func wholeFrame(o Observation) bool {
+	p, _ := o.Fields["payload"].(string)
+	if len(p) != ProducedSize {
+		return false
+	}
+	for i := 0; i < len(p); i++ {
+		if p[i] != byte('a'+i%26) {
+			return false
+		}
+	}
+	return true
+}
+
+// frameOn waits for a frame observed on one delivery, ignoring the others'.
+func frameOn(h *Harness, delivery string, within time.Duration) (Observation, bool) {
+	deadline := time.Now().Add(within)
+	for time.Now().Before(deadline) {
+		o, _, ok := observed(h, "frame", time.Until(deadline))
+		if !ok {
+			return Observation{}, false
+		}
+		if fmt.Sprint(o.Fields["delivery"]) == delivery {
+			return o, true
+		}
+	}
+	return Observation{}, false
+}
+
+// subscribedReading subscribes the harness to the producer's stream naming what its library reads.
+func subscribedReading(r *Run, reads string) (*Harness, string, string, *Outcome) {
+	h, _, absent := attached(r, "`stream-subscribe`")
+	if absent != nil {
+		return nil, "", "", absent
+	}
+	if err := r.producing(h); err != nil {
+		o := Fail("the producer's stream", "flowing", err.Error())
+		return nil, "", "", &o
+	}
+	res := h.Do("stream-subscribe", map[string]any{"unit": Producer, "stream": ProducedStream, "reads": []string{reads}})
+	if res.Unrecognised {
+		o := Absent("stream-subscribe")
+		return nil, "", "", &o
+	}
+	if res.Refusal != "" {
+		o := Fail("`stream-subscribe` naming "+reads, "a delivery", res.Refusal)
+		return nil, "", "", &o
+	}
+	return h, fmt.Sprint(res.Value["delivery"]), fmt.Sprint(res.Value["arrives"]), nil
+}
+
+// std: yoke:interface.08
+func deliveredOnAStreamSocket(r *Run) Outcome {
+	h, delivery, arrives, absent := subscribedReading(r, "stream_socket")
+	if absent != nil {
+		return *absent
+	}
+	if arrives != "stream_socket" {
+		return Fail("`stream-subscribe` naming `stream_socket`", "the delivery arriving on `stream_socket`", arrives)
+	}
+	if o, ok := frameOn(h, delivery, 15*time.Second); !ok || !wholeFrame(o) {
+		p, _ := o.Fields["payload"].(string)
+		return Fail("the delivery on a stream socket", "a frame of 1572864 bytes, whole", fmt.Sprintf("arrived=%v, %d bytes", ok, len(p)))
+	}
+	return Pass()
+}
+
+// std: yoke:interface.09
+func readTheRingItself(r *Run) Outcome {
+	h, delivery, arrives, absent := subscribedReading(r, "shared_object")
+	if absent != nil {
+		return *absent
+	}
+	if arrives != "shared" {
+		return Fail("`stream-subscribe` naming `shared_object`", "the delivery arriving on `shared`", arrives)
+	}
+	if o, ok := frameOn(h, delivery, 15*time.Second); !ok || !wholeFrame(o) {
+		return Fail("the delivery on the ring", "a frame read from the ring, whole", fmt.Sprintf("arrived=%v", ok))
+	}
+	subject := map[string]any{"unit": Producer, "stream": ProducedStream}
+	if res := h.Do("stream-stop", subject); res.Refusal != "" || res.Unrecognised {
+		return Fail("`stream-stop` of the producer's stream", "an acknowledgement", fmt.Sprintf("%q", res.Refusal))
+	}
+	if res := h.Do("stream-start", subject); res.Refusal != "" || res.Unrecognised {
+		return Fail("`stream-start` of the producer's stream", "an acknowledgement", fmt.Sprintf("%q", res.Refusal))
+	}
+	deadline := time.Now().Add(15 * time.Second)
+	for time.Now().Before(deadline) {
+		o, ok := frameOn(h, delivery, time.Until(deadline))
+		if !ok {
+			break
+		}
+		if fmt.Sprint(o.Fields["sequence"]) == "1" && wholeFrame(o) {
+			return Pass()
+		}
+	}
+	return Fail("`stream-stop` and `stream-start`", "a frame of sequence 1 from the next activation's ring, on the same delivery", "none")
 }
 
 // client is the harness a case drives, or the outcome of its absence.

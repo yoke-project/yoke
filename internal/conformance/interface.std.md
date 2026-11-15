@@ -96,3 +96,29 @@
 | **Precondition** | the harness attached to `panel` |
 | **Action** | `subscribe` to the subject kind `channel` |
 | **Expected** | a snapshot holding `panel`'s record, and not `bench`'s |
+
+## yoke:interface.08 — a library that reads the stream socket is delivered on one, and a frame above 1 MiB arrives whole
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/70.6 · arch/70-interface-surface/07 §The three delivery paths |
+| **Level** | L2 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the harness attached to `panel`; the run's producer granted its stream, which flows on the shared ring with frames of 1572864 bytes |
+| **Action** | `stream-subscribe` of the producer's stream, naming `stream_socket` among what the library reads |
+| **Expected** | the delivery arriving on `stream_socket`; and a frame observed on it whose payload is 1572864 bytes, byte i being `a` + i mod 26 |
+
+## yoke:interface.09 — a library that reads the shared object reads the ring itself, and the next activation's ring after a stop
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/70.6 · arch/70-interface-surface/07 §The three delivery paths · arch/70-interface-surface/07 §What ends a delivery |
+| **Level** | L2 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the producer's stream flowing, as case 8 left it |
+| **Action** | `stream-subscribe` of it naming `shared_object`; then `stream-stop` and `stream-start` of it |
+| **Expected** | the delivery arriving on `shared`; a frame read from the ring, whole; and after the stop and the start, a frame of sequence 1 on the same delivery, read from the next activation's ring |
