@@ -147,3 +147,29 @@
 | **Precondition** | a Core running one Plugin unit whose stream tolerates loss and whose library names the shared object at registration |
 | **Action** | grant the stream, start it, let the unit publish three frames into the ring it is handed, and stop it |
 | **Expected** | the stream is opened on the shared ring; the stop is as asked, with three frames read; the ring's socket is gone |
+
+## yoke:a-streams-transport.12 — a library that offers the stream socket has its stream carried on one, each message after its length
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/50-plugin-surface/07 §What the two tolerances select · arch/50-plugin-surface/08 §Where the data goes |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a unit whose library offered the ordered and the framed transports on a stream socket |
+| **Action** | a stream that tolerates nothing and one that tolerates loss are opened, and on each the unit writes, after its length as a `u32` little-endian, a message whose payload is 600 KiB — beyond what a host's default send buffer lets a packet carry — and then two small ones |
+| **Expected** | each is opened as the ordered or framed transport on a stream socket, the activation names it so, and every message is read whole, in order, with its sequence and clock; a length beyond the bound ends the transport rather than being read |
+
+## yoke:a-streams-transport.13 — a library that offers no stream socket keeps the packet sockets
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/50-plugin-surface/07 §What the two tolerances select |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a unit whose library offered nothing, as a published library of 0.14 offers nothing but the ring |
+| **Action** | a stream that tolerates nothing and one that tolerates loss are opened |
+| **Expected** | the first is the packet socket, the second the datagram socket, as before: a Core of this release still serves a library that does not know the stream socket |

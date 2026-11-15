@@ -69,7 +69,7 @@ func deliveringWith(t *testing.T, queue int, channels ...gate.Channel) *deliveri
 // flow opens the stream's transport as an activation would, and returns what writes to it as its unit.
 func (d *delivering) flow(t *testing.T) func(sequence uint64, payload []byte) {
 	t.Helper()
-	_, address, err := d.transports.Open("acquire", 3, "station.spectra", streams.Tolerances{}, false)
+	_, address, err := d.transports.Open("acquire", 3, "station.spectra", streams.Tolerances{}, streams.Offers{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func (d *delivering) flow(t *testing.T) func(sequence uint64, payload []byte) {
 // large frames sets it.
 func (d *delivering) flowSized(t *testing.T, size int) func(sequence uint64, payload []byte) {
 	t.Helper()
-	_, address, err := d.transports.Open("acquire", 3, "station.spectra", streams.Tolerances{}, false)
+	_, address, err := d.transports.Open("acquire", 3, "station.spectra", streams.Tolerances{}, streams.Offers{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -387,5 +387,43 @@ func TestADeliveryTheCoreCannotWriteToIsReleasedAndSaid(t *testing.T) {
 	ref := a.answerTo(t, "u", &interfacev1.Request{Version: 1, Operation: &interfacev1.Request_StreamUnsubscribe{StreamUnsubscribe: &interfacev1.StreamRelease{Delivery: got.GetDelivery()}}}).GetRefusal()
 	if ref == nil {
 		t.Error("the failed delivery could still be unsubscribed")
+	}
+}
+
+// std: yoke:streams-delivered.10
+func TestAClientThatReadsAStreamSocketIsDeliveredOnOne(t *testing.T) {
+	d := deliveringOn(t, gate.Channel{Name: "panel", Transport: "local", Clients: "multiple"})
+	a, _ := attachTo(t, d.bound.Address("panel"))
+	a.next(t)
+	reads := subscribeTo("station.spectra")
+	reads.GetStreamSubscribe().Reads = []interfacev1.UnitStream_Reads{interfacev1.UnitStream_READS_STREAM_SOCKET}
+	streamed := a.answerTo(t, "s1", reads).GetAnswer().GetStreamSubscribe()
+	packeted := a.answerTo(t, "s2", subscribeTo("station.spectra")).GetAnswer().GetStreamSubscribe()
+	if streamed.GetStreamSocket() == "" || packeted.GetSocket() == "" {
+		t.Fatalf("answered %v and %v", streamed.GetArrives(), packeted.GetArrives())
+	}
+	conn, err := net.Dial("unix", streamed.GetStreamSocket())
+	if err != nil {
+		t.Fatalf("the stream socket does not answer: %v", err)
+	}
+	defer conn.Close()
+	time.Sleep(50 * time.Millisecond)
+	write := d.flowSized(t, 2<<20)
+	write(1, bytes.Repeat([]byte{9}, 1<<20))
+	write(2, []byte("x"))
+	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	for i, want := range []int{1 << 20, 1} {
+		var length [4]byte
+		if _, err := io.ReadFull(conn, length[:]); err != nil {
+			t.Fatalf("frame %d: no length: %v", i+1, err)
+		}
+		n := int(binary.LittleEndian.Uint32(length[:]))
+		body := make([]byte, n)
+		if _, err := io.ReadFull(conn, body); err != nil {
+			t.Fatalf("frame %d: %v", i+1, err)
+		}
+		if n != 16+want || binary.LittleEndian.Uint64(body[0:8]) != uint64(i+1) {
+			t.Errorf("frame %d: %d bytes, sequence %d", i+1, n, binary.LittleEndian.Uint64(body[0:8]))
+		}
 	}
 }

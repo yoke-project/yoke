@@ -121,3 +121,16 @@
 | **Precondition** | a delivery of a flowing stream on a local-socket channel, whose client connects and then closes its socket |
 | **Action** | the stream's transport reads frames |
 | **Expected** | `channel.delivery.failed` is published naming the channel, the unit, the stream, the delivery and the reason; and unsubscribing the delivery afterwards is refused, since the attachment no longer holds it |
+
+## yoke:streams-delivered.10 — a client that reads a stream socket is delivered on one, each frame after its length
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/70-interface-surface/07 §The three delivery paths |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a flowing stream on a local-socket channel; one client naming `READS_STREAM_SOCKET` at `stream.subscribe`, another naming nothing |
+| **Action** | the stream's transport reads a frame of 1 MiB and a small one; neither client raises its socket's buffers |
+| **Expected** | the first is answered with a stream socket and reads both frames whole, each after its length as a `u32` little-endian; the second is answered with the packet socket, as a library of 0.14 is |

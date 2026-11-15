@@ -961,17 +961,21 @@ func (s held) Granted(unitID string) (streams, commands, queries []string) {
 	return s.st.Session.Granted(unitID)
 }
 
-// OffersShared says the library of the unit's Session offered the shared object at its registration.
-func (s held) OffersShared(unitID string) bool {
+// Offers says what the library of the unit's Session offered at its registration, beyond the ordered and
+// the framed transports every library speaks.
+func (s held) Offers(unitID string) streams.Offers {
 	if s.st.Session == nil || s.st.Admission == nil {
-		return false
+		return streams.Offers{}
 	}
 	id, ok := s.st.Session.Of(unitID)
 	if !ok {
-		return false
+		return streams.Offers{}
 	}
 	admitted, ok := s.st.Admission.Lookup(id)
-	return ok && admitted.Shared
+	if !ok {
+		return streams.Offers{}
+	}
+	return streams.OffersOf(admitted.Offered)
 }
 
 func (s held) Open(unitID string) bool {

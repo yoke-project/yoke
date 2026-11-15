@@ -22,6 +22,7 @@ import (
 	"github.com/yoke-project/yoke/internal/core/logstore"
 	"github.com/yoke-project/yoke/internal/core/registry"
 	"github.com/yoke-project/yoke/internal/core/session"
+	"github.com/yoke-project/yoke/internal/core/streams"
 	"github.com/yoke-project/yoke/internal/core/supervisor"
 	"github.com/yoke-project/yoke/internal/core/unit"
 	"github.com/yoke-project/yoke/internal/gate"
@@ -160,7 +161,7 @@ type instruction struct {
 	present bool
 }
 
-func (f *fakeSessions) OffersShared(string) bool { return false }
+func (f *fakeSessions) Offers(string) streams.Offers { return streams.Offers{} }
 
 func (f *fakeSessions) Open(id string) bool {
 	f.mu.Lock()
