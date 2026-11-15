@@ -81,7 +81,7 @@
 | **Label** | blocking |
 | **Precondition** | the definitions of the answer to `stream.subscribe` and of a stream delivery |
 | **Action** | read their fields and the answer's union |
-| **Expected** | the answer names the delivery and says where its data arrives — a socket path, the delivery on this connection, or a browser path — and whether the stream is flowing; a stream delivery carries the delivery, the sequence, the sender's clock at emission and the payload |
+| **Expected** | the answer names the delivery and says where its data arrives — a socket path, the delivery on this connection, a browser path, a stream socket, or the lifeline of the shared ring — and whether the stream is flowing; `stream.subscribe` names the deliveries the library can read, the stream socket and the shared object; a stream delivery carries the delivery, the sequence, the sender's clock at emission and the payload |
 
 ## yoke:interface-contract.07 — every code this surface refuses with is stated, and none other
 

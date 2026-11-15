@@ -26,6 +26,60 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// What a library can read a delivery from, beyond the per-subscriber packet socket every library
+// reads. Named at stream.subscribe, and nowhere else; the Core answers with one of them, or with the
+// packet socket, never with one the library did not name.
+type UnitStream_Reads int32
+
+const (
+	UnitStream_READS_UNSPECIFIED UnitStream_Reads = 0
+	// A stream socket, each frame preceded by its length as a u32, little-endian.
+	UnitStream_READS_STREAM_SOCKET UnitStream_Reads = 1
+	// The stream's shared ring itself, handed as a descriptor opened for reading alone.
+	UnitStream_READS_SHARED_OBJECT UnitStream_Reads = 2
+)
+
+// Enum value maps for UnitStream_Reads.
+var (
+	UnitStream_Reads_name = map[int32]string{
+		0: "READS_UNSPECIFIED",
+		1: "READS_STREAM_SOCKET",
+		2: "READS_SHARED_OBJECT",
+	}
+	UnitStream_Reads_value = map[string]int32{
+		"READS_UNSPECIFIED":   0,
+		"READS_STREAM_SOCKET": 1,
+		"READS_SHARED_OBJECT": 2,
+	}
+)
+
+func (x UnitStream_Reads) Enum() *UnitStream_Reads {
+	p := new(UnitStream_Reads)
+	*p = x
+	return p
+}
+
+func (x UnitStream_Reads) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (UnitStream_Reads) Descriptor() protoreflect.EnumDescriptor {
+	return file_yoke_interface_v1_operations_proto_enumTypes[0].Descriptor()
+}
+
+func (UnitStream_Reads) Type() protoreflect.EnumType {
+	return &file_yoke_interface_v1_operations_proto_enumTypes[0]
+}
+
+func (x UnitStream_Reads) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use UnitStream_Reads.Descriptor instead.
+func (UnitStream_Reads) EnumDescriptor() ([]byte, []int) {
+	return file_yoke_interface_v1_operations_proto_rawDescGZIP(), []int{7, 0}
+}
+
 type Acknowledged_Outcome int32
 
 const (
@@ -62,11 +116,11 @@ func (x Acknowledged_Outcome) String() string {
 }
 
 func (Acknowledged_Outcome) Descriptor() protoreflect.EnumDescriptor {
-	return file_yoke_interface_v1_operations_proto_enumTypes[0].Descriptor()
+	return file_yoke_interface_v1_operations_proto_enumTypes[1].Descriptor()
 }
 
 func (Acknowledged_Outcome) Type() protoreflect.EnumType {
-	return &file_yoke_interface_v1_operations_proto_enumTypes[0]
+	return &file_yoke_interface_v1_operations_proto_enumTypes[1]
 }
 
 func (x Acknowledged_Outcome) Number() protoreflect.EnumNumber {
@@ -672,9 +726,11 @@ func (x *Question) GetPayload() []byte {
 }
 
 type UnitStream struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Unit          string                 `protobuf:"bytes,1,opt,name=unit,proto3" json:"unit,omitempty"`
-	Stream        string                 `protobuf:"bytes,2,opt,name=stream,proto3" json:"stream,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Unit   string                 `protobuf:"bytes,1,opt,name=unit,proto3" json:"unit,omitempty"`
+	Stream string                 `protobuf:"bytes,2,opt,name=stream,proto3" json:"stream,omitempty"`
+	// At stream.subscribe: the deliveries this library can read. Ignored by every other operation.
+	Reads         []UnitStream_Reads `protobuf:"varint,3,rep,packed,name=reads,proto3,enum=yoke.interface.v1.UnitStream_Reads" json:"reads,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -721,6 +777,13 @@ func (x *UnitStream) GetStream() string {
 		return x.Stream
 	}
 	return ""
+}
+
+func (x *UnitStream) GetReads() []UnitStream_Reads {
+	if x != nil {
+		return x.Reads
+	}
+	return nil
 }
 
 type StreamRelease struct {
@@ -1336,6 +1399,8 @@ type Delivering struct {
 	//	*Delivering_Socket
 	//	*Delivering_Connection
 	//	*Delivering_Path
+	//	*Delivering_StreamSocket
+	//	*Delivering_Shared
 	Arrives       isDelivering_Arrives `protobuf_oneof:"arrives"`
 	Flowing       bool                 `protobuf:"varint,5,opt,name=flowing,proto3" json:"flowing,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1413,6 +1478,24 @@ func (x *Delivering) GetPath() string {
 	return ""
 }
 
+func (x *Delivering) GetStreamSocket() string {
+	if x != nil {
+		if x, ok := x.Arrives.(*Delivering_StreamSocket); ok {
+			return x.StreamSocket
+		}
+	}
+	return ""
+}
+
+func (x *Delivering) GetShared() string {
+	if x != nil {
+		if x, ok := x.Arrives.(*Delivering_Shared); ok {
+			return x.Shared
+		}
+	}
+	return ""
+}
+
 func (x *Delivering) GetFlowing() bool {
 	if x != nil {
 		return x.Flowing
@@ -1439,11 +1522,28 @@ type Delivering_Path struct {
 	Path string `protobuf:"bytes,4,opt,name=path,proto3,oneof"`
 }
 
+type Delivering_StreamSocket struct {
+	// A per-subscriber stream socket, each frame preceded by its length, for a library that reads one.
+	StreamSocket string `protobuf:"bytes,6,opt,name=stream_socket,json=streamSocket,proto3,oneof"`
+}
+
+type Delivering_Shared struct {
+	// A per-subscriber stream socket that is the delivery's lifeline: at each activation a message of
+	// one byte carrying a descriptor of that activation's ring, opened for reading alone; at each stop
+	// a message of length zero. Its closing ends the delivery. For a library that reads the shared
+	// object, and a stream carried on the ring.
+	Shared string `protobuf:"bytes,7,opt,name=shared,proto3,oneof"`
+}
+
 func (*Delivering_Socket) isDelivering_Arrives() {}
 
 func (*Delivering_Connection) isDelivering_Arrives() {}
 
 func (*Delivering_Path) isDelivering_Arrives() {}
+
+func (*Delivering_StreamSocket) isDelivering_Arrives() {}
+
+func (*Delivering_Shared) isDelivering_Arrives() {}
 
 type Released struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1630,11 +1730,16 @@ const file_yoke_interface_v1_operations_proto_rawDesc = "" +
 	"\bQuestion\x12\x12\n" +
 	"\x04unit\x18\x01 \x01(\tR\x04unit\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x18\n" +
-	"\apayload\x18\x03 \x01(\fR\apayload\"8\n" +
+	"\apayload\x18\x03 \x01(\fR\apayload\"\xc5\x01\n" +
 	"\n" +
 	"UnitStream\x12\x12\n" +
 	"\x04unit\x18\x01 \x01(\tR\x04unit\x12\x16\n" +
-	"\x06stream\x18\x02 \x01(\tR\x06stream\"+\n" +
+	"\x06stream\x18\x02 \x01(\tR\x06stream\x129\n" +
+	"\x05reads\x18\x03 \x03(\x0e2#.yoke.interface.v1.UnitStream.ReadsR\x05reads\"P\n" +
+	"\x05Reads\x12\x15\n" +
+	"\x11READS_UNSPECIFIED\x10\x00\x12\x17\n" +
+	"\x13READS_STREAM_SOCKET\x10\x01\x12\x17\n" +
+	"\x13READS_SHARED_OBJECT\x10\x02\"+\n" +
 	"\rStreamRelease\x12\x1a\n" +
 	"\bdelivery\x18\x01 \x01(\tR\bdelivery\"\t\n" +
 	"\aReclaim\"\xd7\x05\n" +
@@ -1673,7 +1778,7 @@ const file_yoke_interface_v1_operations_proto_rawDesc = "" +
 	"\fOUTCOME_DONE\x10\x02\x12\x12\n" +
 	"\x0eOUTCOME_FAILED\x10\x03\"$\n" +
 	"\bAnswered\x12\x18\n" +
-	"\apayload\x18\x01 \x01(\fR\apayload\"\x9f\x01\n" +
+	"\apayload\x18\x01 \x01(\fR\apayload\"\xe0\x01\n" +
 	"\n" +
 	"Delivering\x12\x1a\n" +
 	"\bdelivery\x18\x01 \x01(\tR\bdelivery\x12\x18\n" +
@@ -1681,7 +1786,9 @@ const file_yoke_interface_v1_operations_proto_rawDesc = "" +
 	"\n" +
 	"connection\x18\x03 \x01(\bH\x00R\n" +
 	"connection\x12\x14\n" +
-	"\x04path\x18\x04 \x01(\tH\x00R\x04path\x12\x18\n" +
+	"\x04path\x18\x04 \x01(\tH\x00R\x04path\x12%\n" +
+	"\rstream_socket\x18\x06 \x01(\tH\x00R\fstreamSocket\x12\x18\n" +
+	"\x06shared\x18\a \x01(\tH\x00R\x06shared\x12\x18\n" +
 	"\aflowing\x18\x05 \x01(\bR\aflowingB\t\n" +
 	"\aarrives\"\n" +
 	"\n" +
@@ -1702,73 +1809,75 @@ func file_yoke_interface_v1_operations_proto_rawDescGZIP() []byte {
 	return file_yoke_interface_v1_operations_proto_rawDescData
 }
 
-var file_yoke_interface_v1_operations_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_yoke_interface_v1_operations_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_yoke_interface_v1_operations_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_yoke_interface_v1_operations_proto_goTypes = []any{
-	(Acknowledged_Outcome)(0),     // 0: yoke.interface.v1.Acknowledged.Outcome
-	(*Request)(nil),               // 1: yoke.interface.v1.Request
-	(*Authenticate)(nil),          // 2: yoke.interface.v1.Authenticate
-	(*Read)(nil),                  // 3: yoke.interface.v1.Read
-	(*Subscribe)(nil),             // 4: yoke.interface.v1.Subscribe
-	(*Confirm)(nil),               // 5: yoke.interface.v1.Confirm
-	(*Command)(nil),               // 6: yoke.interface.v1.Command
-	(*Question)(nil),              // 7: yoke.interface.v1.Question
-	(*UnitStream)(nil),            // 8: yoke.interface.v1.UnitStream
-	(*StreamRelease)(nil),         // 9: yoke.interface.v1.StreamRelease
-	(*Reclaim)(nil),               // 10: yoke.interface.v1.Reclaim
-	(*Response)(nil),              // 11: yoke.interface.v1.Response
-	(*Authenticated)(nil),         // 12: yoke.interface.v1.Authenticated
-	(*Subscribed)(nil),            // 13: yoke.interface.v1.Subscribed
-	(*Confirmed)(nil),             // 14: yoke.interface.v1.Confirmed
-	(*Acknowledged)(nil),          // 15: yoke.interface.v1.Acknowledged
-	(*Answered)(nil),              // 16: yoke.interface.v1.Answered
-	(*Delivering)(nil),            // 17: yoke.interface.v1.Delivering
-	(*Released)(nil),              // 18: yoke.interface.v1.Released
-	(*Reclaimed)(nil),             // 19: yoke.interface.v1.Reclaimed
-	(*Authenticate_Password)(nil), // 20: yoke.interface.v1.Authenticate.Password
-	(*Filter)(nil),                // 21: yoke.interface.v1.Filter
-	(*Records)(nil),               // 22: yoke.interface.v1.Records
-	(*timestamppb.Timestamp)(nil), // 23: google.protobuf.Timestamp
-	(*Snapshot)(nil),              // 24: yoke.interface.v1.Snapshot
-	(*Event)(nil),                 // 25: yoke.interface.v1.Event
-	(*ChannelRecord)(nil),         // 26: yoke.interface.v1.ChannelRecord
+	(UnitStream_Reads)(0),         // 0: yoke.interface.v1.UnitStream.Reads
+	(Acknowledged_Outcome)(0),     // 1: yoke.interface.v1.Acknowledged.Outcome
+	(*Request)(nil),               // 2: yoke.interface.v1.Request
+	(*Authenticate)(nil),          // 3: yoke.interface.v1.Authenticate
+	(*Read)(nil),                  // 4: yoke.interface.v1.Read
+	(*Subscribe)(nil),             // 5: yoke.interface.v1.Subscribe
+	(*Confirm)(nil),               // 6: yoke.interface.v1.Confirm
+	(*Command)(nil),               // 7: yoke.interface.v1.Command
+	(*Question)(nil),              // 8: yoke.interface.v1.Question
+	(*UnitStream)(nil),            // 9: yoke.interface.v1.UnitStream
+	(*StreamRelease)(nil),         // 10: yoke.interface.v1.StreamRelease
+	(*Reclaim)(nil),               // 11: yoke.interface.v1.Reclaim
+	(*Response)(nil),              // 12: yoke.interface.v1.Response
+	(*Authenticated)(nil),         // 13: yoke.interface.v1.Authenticated
+	(*Subscribed)(nil),            // 14: yoke.interface.v1.Subscribed
+	(*Confirmed)(nil),             // 15: yoke.interface.v1.Confirmed
+	(*Acknowledged)(nil),          // 16: yoke.interface.v1.Acknowledged
+	(*Answered)(nil),              // 17: yoke.interface.v1.Answered
+	(*Delivering)(nil),            // 18: yoke.interface.v1.Delivering
+	(*Released)(nil),              // 19: yoke.interface.v1.Released
+	(*Reclaimed)(nil),             // 20: yoke.interface.v1.Reclaimed
+	(*Authenticate_Password)(nil), // 21: yoke.interface.v1.Authenticate.Password
+	(*Filter)(nil),                // 22: yoke.interface.v1.Filter
+	(*Records)(nil),               // 23: yoke.interface.v1.Records
+	(*timestamppb.Timestamp)(nil), // 24: google.protobuf.Timestamp
+	(*Snapshot)(nil),              // 25: yoke.interface.v1.Snapshot
+	(*Event)(nil),                 // 26: yoke.interface.v1.Event
+	(*ChannelRecord)(nil),         // 27: yoke.interface.v1.ChannelRecord
 }
 var file_yoke_interface_v1_operations_proto_depIdxs = []int32{
-	2,  // 0: yoke.interface.v1.Request.authenticate:type_name -> yoke.interface.v1.Authenticate
-	3,  // 1: yoke.interface.v1.Request.read:type_name -> yoke.interface.v1.Read
-	4,  // 2: yoke.interface.v1.Request.subscribe:type_name -> yoke.interface.v1.Subscribe
-	5,  // 3: yoke.interface.v1.Request.confirm:type_name -> yoke.interface.v1.Confirm
-	6,  // 4: yoke.interface.v1.Request.command:type_name -> yoke.interface.v1.Command
-	7,  // 5: yoke.interface.v1.Request.query:type_name -> yoke.interface.v1.Question
-	8,  // 6: yoke.interface.v1.Request.stream_start:type_name -> yoke.interface.v1.UnitStream
-	8,  // 7: yoke.interface.v1.Request.stream_stop:type_name -> yoke.interface.v1.UnitStream
-	8,  // 8: yoke.interface.v1.Request.stream_subscribe:type_name -> yoke.interface.v1.UnitStream
-	9,  // 9: yoke.interface.v1.Request.stream_unsubscribe:type_name -> yoke.interface.v1.StreamRelease
-	10, // 10: yoke.interface.v1.Request.reclaim:type_name -> yoke.interface.v1.Reclaim
-	20, // 11: yoke.interface.v1.Authenticate.password:type_name -> yoke.interface.v1.Authenticate.Password
-	21, // 12: yoke.interface.v1.Subscribe.filter:type_name -> yoke.interface.v1.Filter
-	12, // 13: yoke.interface.v1.Response.authenticate:type_name -> yoke.interface.v1.Authenticated
-	22, // 14: yoke.interface.v1.Response.read:type_name -> yoke.interface.v1.Records
-	13, // 15: yoke.interface.v1.Response.subscribe:type_name -> yoke.interface.v1.Subscribed
-	14, // 16: yoke.interface.v1.Response.confirm:type_name -> yoke.interface.v1.Confirmed
-	15, // 17: yoke.interface.v1.Response.command:type_name -> yoke.interface.v1.Acknowledged
-	16, // 18: yoke.interface.v1.Response.query:type_name -> yoke.interface.v1.Answered
-	15, // 19: yoke.interface.v1.Response.stream_start:type_name -> yoke.interface.v1.Acknowledged
-	15, // 20: yoke.interface.v1.Response.stream_stop:type_name -> yoke.interface.v1.Acknowledged
-	17, // 21: yoke.interface.v1.Response.stream_subscribe:type_name -> yoke.interface.v1.Delivering
-	18, // 22: yoke.interface.v1.Response.stream_unsubscribe:type_name -> yoke.interface.v1.Released
-	19, // 23: yoke.interface.v1.Response.reclaim:type_name -> yoke.interface.v1.Reclaimed
-	23, // 24: yoke.interface.v1.Authenticated.expires:type_name -> google.protobuf.Timestamp
-	24, // 25: yoke.interface.v1.Subscribed.snapshot:type_name -> yoke.interface.v1.Snapshot
-	25, // 26: yoke.interface.v1.Subscribed.event:type_name -> yoke.interface.v1.Event
-	24, // 27: yoke.interface.v1.Subscribed.overflow:type_name -> yoke.interface.v1.Snapshot
-	0,  // 28: yoke.interface.v1.Acknowledged.outcome:type_name -> yoke.interface.v1.Acknowledged.Outcome
-	26, // 29: yoke.interface.v1.Reclaimed.channel:type_name -> yoke.interface.v1.ChannelRecord
-	30, // [30:30] is the sub-list for method output_type
-	30, // [30:30] is the sub-list for method input_type
-	30, // [30:30] is the sub-list for extension type_name
-	30, // [30:30] is the sub-list for extension extendee
-	0,  // [0:30] is the sub-list for field type_name
+	3,  // 0: yoke.interface.v1.Request.authenticate:type_name -> yoke.interface.v1.Authenticate
+	4,  // 1: yoke.interface.v1.Request.read:type_name -> yoke.interface.v1.Read
+	5,  // 2: yoke.interface.v1.Request.subscribe:type_name -> yoke.interface.v1.Subscribe
+	6,  // 3: yoke.interface.v1.Request.confirm:type_name -> yoke.interface.v1.Confirm
+	7,  // 4: yoke.interface.v1.Request.command:type_name -> yoke.interface.v1.Command
+	8,  // 5: yoke.interface.v1.Request.query:type_name -> yoke.interface.v1.Question
+	9,  // 6: yoke.interface.v1.Request.stream_start:type_name -> yoke.interface.v1.UnitStream
+	9,  // 7: yoke.interface.v1.Request.stream_stop:type_name -> yoke.interface.v1.UnitStream
+	9,  // 8: yoke.interface.v1.Request.stream_subscribe:type_name -> yoke.interface.v1.UnitStream
+	10, // 9: yoke.interface.v1.Request.stream_unsubscribe:type_name -> yoke.interface.v1.StreamRelease
+	11, // 10: yoke.interface.v1.Request.reclaim:type_name -> yoke.interface.v1.Reclaim
+	21, // 11: yoke.interface.v1.Authenticate.password:type_name -> yoke.interface.v1.Authenticate.Password
+	22, // 12: yoke.interface.v1.Subscribe.filter:type_name -> yoke.interface.v1.Filter
+	0,  // 13: yoke.interface.v1.UnitStream.reads:type_name -> yoke.interface.v1.UnitStream.Reads
+	13, // 14: yoke.interface.v1.Response.authenticate:type_name -> yoke.interface.v1.Authenticated
+	23, // 15: yoke.interface.v1.Response.read:type_name -> yoke.interface.v1.Records
+	14, // 16: yoke.interface.v1.Response.subscribe:type_name -> yoke.interface.v1.Subscribed
+	15, // 17: yoke.interface.v1.Response.confirm:type_name -> yoke.interface.v1.Confirmed
+	16, // 18: yoke.interface.v1.Response.command:type_name -> yoke.interface.v1.Acknowledged
+	17, // 19: yoke.interface.v1.Response.query:type_name -> yoke.interface.v1.Answered
+	16, // 20: yoke.interface.v1.Response.stream_start:type_name -> yoke.interface.v1.Acknowledged
+	16, // 21: yoke.interface.v1.Response.stream_stop:type_name -> yoke.interface.v1.Acknowledged
+	18, // 22: yoke.interface.v1.Response.stream_subscribe:type_name -> yoke.interface.v1.Delivering
+	19, // 23: yoke.interface.v1.Response.stream_unsubscribe:type_name -> yoke.interface.v1.Released
+	20, // 24: yoke.interface.v1.Response.reclaim:type_name -> yoke.interface.v1.Reclaimed
+	24, // 25: yoke.interface.v1.Authenticated.expires:type_name -> google.protobuf.Timestamp
+	25, // 26: yoke.interface.v1.Subscribed.snapshot:type_name -> yoke.interface.v1.Snapshot
+	26, // 27: yoke.interface.v1.Subscribed.event:type_name -> yoke.interface.v1.Event
+	25, // 28: yoke.interface.v1.Subscribed.overflow:type_name -> yoke.interface.v1.Snapshot
+	1,  // 29: yoke.interface.v1.Acknowledged.outcome:type_name -> yoke.interface.v1.Acknowledged.Outcome
+	27, // 30: yoke.interface.v1.Reclaimed.channel:type_name -> yoke.interface.v1.ChannelRecord
+	31, // [31:31] is the sub-list for method output_type
+	31, // [31:31] is the sub-list for method input_type
+	31, // [31:31] is the sub-list for extension type_name
+	31, // [31:31] is the sub-list for extension extendee
+	0,  // [0:31] is the sub-list for field type_name
 }
 
 func init() { file_yoke_interface_v1_operations_proto_init() }
@@ -1817,13 +1926,15 @@ func file_yoke_interface_v1_operations_proto_init() {
 		(*Delivering_Socket)(nil),
 		(*Delivering_Connection)(nil),
 		(*Delivering_Path)(nil),
+		(*Delivering_StreamSocket)(nil),
+		(*Delivering_Shared)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_yoke_interface_v1_operations_proto_rawDesc), len(file_yoke_interface_v1_operations_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      2,
 			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   0,

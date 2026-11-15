@@ -45,6 +45,12 @@ message Control {
       TRANSPORT_ORDERED = 1;
       TRANSPORT_FRAMED = 2;
       TRANSPORT_SHARED_OBJECT = 3;
+      // The ordered transport on a stream socket, each envelope preceded by its length as a u32,
+      // little-endian. Used only for a library that offered it at registration.
+      TRANSPORT_ORDERED_STREAM = 4;
+      // The framed transport on a stream socket, each frame preceded by its length as a u32,
+      // little-endian, a frame written whole or not at all. Used only for a library that offered it.
+      TRANSPORT_FRAMED_STREAM = 5;
     }
     string stream = 1;
     Transport transport = 2;

@@ -318,7 +318,7 @@ func TestEachPayloadCarriesWhatItsFamilyAnswers(t *testing.T) {
 	same(t, "a command", fields(message(t, files, "Control.Command")), []string{"type", "payload"})
 	same(t, "an activation", fields(message(t, files, "Control.Activate")), []string{"stream", "transport", "address"})
 	same(t, "the transports", values(enum(t, files, "Control.Activate.Transport")),
-		[]string{"TRANSPORT_ORDERED", "TRANSPORT_FRAMED", "TRANSPORT_SHARED_OBJECT"})
+		[]string{"TRANSPORT_ORDERED", "TRANSPORT_FRAMED", "TRANSPORT_SHARED_OBJECT", "TRANSPORT_ORDERED_STREAM", "TRANSPORT_FRAMED_STREAM"})
 	same(t, "a stop", fields(message(t, files, "Control.Stop")), []string{"stream"})
 
 	same(t, "an acknowledgement", fields(message(t, files, "Ack")), []string{"outcome", "line"})
