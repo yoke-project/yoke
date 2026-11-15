@@ -9,6 +9,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"os"
@@ -39,7 +40,35 @@ const (
 	Framed Transport = "framed"
 	// Shared is the shared ring, for a stream that tolerates loss where the unit's library offers it.
 	Shared Transport = "shared"
+	// OrderedStream is the ordered transport on a stream socket, each envelope after its length, where
+	// the unit's library offers it.
+	OrderedStream Transport = "ordered-stream"
+	// FramedStream is the framed transport on a stream socket, each frame after its length, where the
+	// unit's library offers it.
+	FramedStream Transport = "framed-stream"
 )
+
+// Offers are the transports a unit's library offered at its registration beyond the ordered and the
+// framed, which every library speaks. The Core uses one only for a library that offered it.
+type Offers struct {
+	Shared, OrderedStream, FramedStream bool
+}
+
+// OffersOf reads what a registration offered.
+func OffersOf(offered []pluginv1.Control_Activate_Transport) Offers {
+	var o Offers
+	for _, t := range offered {
+		switch t {
+		case pluginv1.Control_Activate_TRANSPORT_SHARED_OBJECT:
+			o.Shared = true
+		case pluginv1.Control_Activate_TRANSPORT_ORDERED_STREAM:
+			o.OrderedStream = true
+		case pluginv1.Control_Activate_TRANSPORT_FRAMED_STREAM:
+			o.FramedStream = true
+		}
+	}
+	return o
+}
 
 // Activation is the transport as an activation names it to the unit.
 func (t Transport) Activation() pluginv1.Control_Activate_Transport {
@@ -48,6 +77,10 @@ func (t Transport) Activation() pluginv1.Control_Activate_Transport {
 		return pluginv1.Control_Activate_TRANSPORT_FRAMED
 	case Shared:
 		return pluginv1.Control_Activate_TRANSPORT_SHARED_OBJECT
+	case OrderedStream:
+		return pluginv1.Control_Activate_TRANSPORT_ORDERED_STREAM
+	case FramedStream:
+		return pluginv1.Control_Activate_TRANSPORT_FRAMED_STREAM
 	}
 	return pluginv1.Control_Activate_TRANSPORT_ORDERED
 }
@@ -133,7 +166,7 @@ func (s *Service) Path(unitID, stream string) string {
 
 // Open creates a stream's transport and listens on it, returning what it is and where. A stream already
 // open is refused: activation is once per flow.
-func (s *Service) Open(unitID string, incarnation uint64, stream string, t Tolerances, shared bool) (Transport, string, error) {
+func (s *Service) Open(unitID string, incarnation uint64, stream string, t Tolerances, offers Offers) (Transport, string, error) {
 	k := key{unitID, stream}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -146,8 +179,18 @@ func (s *Service) Open(unitID string, incarnation uint64, stream string, t Toler
 	}
 	os.Remove(address)
 	f := &flow{key: k, incarnation: incarnation, tolerates: t, address: address}
-	if t.Loss && shared {
+	if t.Loss && offers.Shared {
 		if err := s.openShared(f); err != nil {
+			return "", "", err
+		}
+	} else if (t.Loss || t.Reorder) && offers.FramedStream {
+		f.transport = FramedStream
+		if err := s.openStream(f, s.readFramedStream); err != nil {
+			return "", "", err
+		}
+	} else if !t.Loss && !t.Reorder && offers.OrderedStream {
+		f.transport = OrderedStream
+		if err := s.openStream(f, s.readOrderedStream); err != nil {
 			return "", "", err
 		}
 	} else if t.Loss || t.Reorder {
@@ -300,6 +343,105 @@ func (s *Service) acceptOrdered(f *flow, listener *net.UnixListener, first func(
 			continue
 		}
 		go s.readOrdered(f, conn)
+	}
+}
+
+// openStream listens on a stream socket at the stream's path, keeps the first connection for the life of the
+// stream and refuses any other, and reads it with read.
+func (s *Service) openStream(f *flow, read func(*flow, net.Conn)) error {
+	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: f.address, Net: "unix"})
+	if err != nil {
+		return err
+	}
+	var mu sync.Mutex
+	var held net.Conn
+	f.closer = func() {
+		listener.Close()
+		mu.Lock()
+		if held != nil {
+			held.Close()
+		}
+		mu.Unlock()
+	}
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			mu.Lock()
+			first := held == nil
+			if first {
+				held = conn
+			}
+			mu.Unlock()
+			if !first {
+				s.cfg.Log.Warn("stream", "unit", f.unit, "stream", f.stream, "refused", "a second connection")
+				conn.Close()
+				continue
+			}
+			go read(f, conn)
+		}
+	}()
+	return nil
+}
+
+// message reads one message from a stream socket: its length, a u32 little-endian, then that many bytes.
+// A length beyond the bound is not read: the connection is closed, since nothing after it can be found.
+func (s *Service) message(f *flow, conn net.Conn, buf []byte) ([]byte, bool) {
+	var length [4]byte
+	if _, err := io.ReadFull(conn, length[:]); err != nil {
+		return nil, false
+	}
+	n := int(binary.LittleEndian.Uint32(length[:]))
+	if n > len(buf) {
+		s.cfg.Log.Warn("stream", "unit", f.unit, "stream", f.stream, "fault", "a message longer than the bound", "bytes", n, "bound", len(buf))
+		conn.Close()
+		return nil, false
+	}
+	if _, err := io.ReadFull(conn, buf[:n]); err != nil {
+		return nil, false
+	}
+	return buf[:n], true
+}
+
+// readOrderedStream reads one data envelope per message, in order.
+func (s *Service) readOrderedStream(f *flow, conn net.Conn) {
+	buf := make([]byte, packet)
+	for {
+		m, ok := s.message(f, conn, buf)
+		if !ok {
+			return
+		}
+		e := &pluginv1.Envelope{}
+		if err := proto.Unmarshal(m, e); err != nil || e.GetData() == nil {
+			s.cfg.Log.Warn("stream", "unit", f.unit, "stream", f.stream, "refused", "a message that is not a data envelope", "message", e.GetMessageId())
+			continue
+		}
+		s.deliver(f, e.GetData().GetSequence(), uint64(e.GetSentAtUnixNano()), slices.Clone(e.GetData().GetPayload()))
+	}
+}
+
+// readFramedStream reads one frame per message, as readFrames does per datagram.
+func (s *Service) readFramedStream(f *flow, conn net.Conn) {
+	buf := make([]byte, packet)
+	var last uint64
+	for {
+		m, ok := s.message(f, conn, buf)
+		if !ok {
+			return
+		}
+		if len(m) < header {
+			s.cfg.Log.Warn("stream", "unit", f.unit, "stream", f.stream, "refused", "a message shorter than a frame's header", "bytes", len(m))
+			continue
+		}
+		sequence := binary.LittleEndian.Uint64(m[0:8])
+		if !f.tolerates.Loss && last != 0 && sequence > last+1 {
+			s.cfg.Log.Warn("stream", "unit", f.unit, "stream", f.stream, "fault", "a gap in the sequence of a stream that does not tolerate loss",
+				"after", last, "sequence", sequence)
+		}
+		last = max(last, sequence)
+		s.deliver(f, sequence, binary.LittleEndian.Uint64(m[8:16]), slices.Clone(m[header:]))
 	}
 }
 

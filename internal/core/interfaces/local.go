@@ -107,14 +107,15 @@ type Config struct {
 // Sessions are the units' Sessions, by unit.
 type Sessions interface {
 	Open(unit string) bool
-	OffersShared(unit string) bool
+	// Offers says what the library of a unit's Session offered at registration.
+	Offers(unit string) streams.Offers
 	Instruct(ctx context.Context, unit string, c *pluginv1.Control) (*pluginv1.Ack, error)
 	Ask(ctx context.Context, unit string, q *pluginv1.Query_Question) (*pluginv1.Query_Answer, error)
 }
 
 // Transports are the streams' own transports.
 type Transports interface {
-	Open(unit string, incarnation uint64, stream string, t streams.Tolerances, shared bool) (streams.Transport, string, error)
+	Open(unit string, incarnation uint64, stream string, t streams.Tolerances, offers streams.Offers) (streams.Transport, string, error)
 	Close(unit, stream, reason string) bool
 	Discard(unit, stream string)
 	Active(unit string) []string

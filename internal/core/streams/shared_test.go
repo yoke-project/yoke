@@ -56,12 +56,12 @@ func TestAStreamThatToleratesLossIsCarriedOnTheRingWhereOffered(t *testing.T) {
 		{"station.events", streams.Tolerances{Reorder: true}, streams.Framed},
 		{"station.spectra", streams.Tolerances{}, streams.Ordered},
 	} {
-		transport, _, err := b.svc.Open("acquire", 1, c.stream, c.tolerates, true)
+		transport, _, err := b.svc.Open("acquire", 1, c.stream, c.tolerates, streams.Offers{Shared: true})
 		if err != nil || transport != c.want {
 			t.Errorf("%s opened as %s (%v), want %s", c.stream, transport, err, c.want)
 		}
 	}
-	if transport, _, _ := b.svc.Open("archive", 1, "archive.preview", streams.Tolerances{Loss: true}, false); transport != streams.Framed {
+	if transport, _, _ := b.svc.Open("archive", 1, "archive.preview", streams.Tolerances{Loss: true}, streams.Offers{}); transport != streams.Framed {
 		t.Errorf("for a library that offers nothing, a stream that tolerates loss opened as %s", transport)
 	}
 	_, f := produce(t, b.svc.Address("acquire", "station.preview"))
@@ -95,7 +95,7 @@ func TestAStreamThatToleratesLossIsCarriedOnTheRingWhereOffered(t *testing.T) {
 // std: yoke:a-streams-transport.10
 func TestTheRingsDescriptorGoesToOneProducerAndItsSocketEndsTheStream(t *testing.T) {
 	b := newBench(t)
-	_, address, err := b.svc.Open("acquire", 3, "station.preview", streams.Tolerances{Loss: true}, true)
+	_, address, err := b.svc.Open("acquire", 3, "station.preview", streams.Tolerances{Loss: true}, streams.Offers{Shared: true})
 	if err != nil {
 		t.Fatal(err)
 	}

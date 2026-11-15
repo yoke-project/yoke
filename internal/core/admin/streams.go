@@ -99,7 +99,7 @@ func (c *Core) streamStart(ctx context.Context, actor event.Actor, r *administra
 	if c.flows(id, stream) {
 		return answer(flowing(streamActivated)), nil
 	}
-	transport, address, err := c.Streams.Open(id, incarnation, stream, tolerates, c.Sessions.OffersShared(id))
+	transport, address, err := c.Streams.Open(id, incarnation, stream, tolerates, c.Sessions.Offers(id))
 	if err != nil {
 		return nil, about("unit.no_session", "unit", id, fmt.Sprintf("the transport of %s could not be created: %v", stream, err))
 	}

@@ -77,6 +77,13 @@ func frameOf(f streams.Frame) []byte {
 	return append(out, f.Payload...)
 }
 
+// lengthed is a frame as a stream socket carries it: its length, a u32 little-endian, then the frame.
+func lengthed(frame []byte) []byte {
+	out := make([]byte, 4, 4+len(frame))
+	binary.LittleEndian.PutUint32(out, uint32(len(frame)))
+	return append(out, frame...)
+}
+
 // subscribeStream grants a delivery of a unit's stream to this attachment and says where its data
 // arrives: a socket in the instance's tree the client connects to, on a channel bound as a local socket;
 // the attachment's own connection on one bound on an address. Subscribing to a stream not flowing is
@@ -163,7 +170,14 @@ func (s *Surface) subscribeStream(r *interfacev1.Request, a *attachment) (*inter
 		if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 			return nil, aboutUnit("unit.no_session", id, err.Error())
 		}
-		listener, err := net.ListenUnix("unixpacket", &net.UnixAddr{Name: path, Net: "unixpacket"})
+		// A library that reads a stream socket is delivered on one, each frame after its length; any other
+		// on the packet socket every library reads.
+		streamed := slices.Contains(r.GetStreamSubscribe().GetReads(), interfacev1.UnitStream_READS_STREAM_SOCKET)
+		network := "unixpacket"
+		if streamed {
+			network = "unix"
+		}
+		listener, err := net.ListenUnix(network, &net.UnixAddr{Name: path, Net: network})
 		if err != nil {
 			return nil, aboutUnit("unit.no_session", id, err.Error())
 		}
@@ -195,7 +209,11 @@ func (s *Surface) subscribeStream(r *interfacev1.Request, a *attachment) (*inter
 				case <-done:
 					return
 				case f := <-frames:
-					if _, err := conn.Write(frameOf(f)); err != nil {
+					out := frameOf(f)
+					if streamed {
+						out = lengthed(out)
+					}
+					if _, err := conn.Write(out); err != nil {
 						// A delivery that cannot be written to ends as a slow client's does: released, its
 						// socket closed, so the client learns it, and the reason said.
 						behind.Store(true)
@@ -207,6 +225,9 @@ func (s *Surface) subscribeStream(r *interfacev1.Request, a *attachment) (*inter
 			}
 		}()
 		answer.Arrives = &interfacev1.Delivering_Socket{Socket: path}
+		if streamed {
+			answer.Arrives = &interfacev1.Delivering_StreamSocket{StreamSocket: path}
+		}
 	} else {
 		go func() {
 			for {

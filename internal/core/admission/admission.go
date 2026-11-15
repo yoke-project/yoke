@@ -64,6 +64,9 @@ type Session struct {
 	// Shared says the unit's library offers the shared object, so a stream of it that tolerates loss may
 	// be carried on a ring.
 	Shared bool
+	// Offered is every transport the unit's library offered at registration, beyond the ordered and the
+	// framed every library speaks.
+	Offered []pluginv1.Control_Activate_Transport
 }
 
 // Admission decides registrations.
@@ -213,7 +216,7 @@ func (a *Admission) decide(req *pluginv1.RegisterRequest) (*pluginv1.RegisterRes
 	terms := &pluginv1.HeartbeatTerms{Interval: durationpb.New(composed.Policy.HeartbeatInterval), Tolerance: composed.Policy.HeartbeatTolerance}
 	a.live[req.Unit] = id
 	a.sessions[id] = &Session{ID: id, Unit: req.Unit, Plugin: req.Plugin, Granted: granted, Heartbeat: terms, Scope: sc,
-		Shared: slices.Contains(req.GetTransports(), pluginv1.Control_Activate_TRANSPORT_SHARED_OBJECT)}
+		Shared: slices.Contains(req.GetTransports(), pluginv1.Control_Activate_TRANSPORT_SHARED_OBJECT), Offered: slices.Clone(req.GetTransports())}
 	resp := &pluginv1.RegisterResponse{Outcome: pluginv1.RegisterResponse_OUTCOME_ACCEPTED, SessionId: id, Granted: granted, Heartbeat: terms}
 	if len(slices.Concat(lists(withheld)...)) > 0 {
 		resp.Outcome, resp.Withheld = pluginv1.RegisterResponse_OUTCOME_ACCEPTED_WITH_RESTRICTIONS, withheld

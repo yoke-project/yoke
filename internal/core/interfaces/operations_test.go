@@ -64,7 +64,7 @@ type fakeSessions struct {
 	present []bool
 }
 
-func (f *fakeSessions) OffersShared(string) bool { return false }
+func (f *fakeSessions) Offers(string) streams.Offers { return streams.Offers{} }
 
 func (f *fakeSessions) Open(id string) bool { return id == "acquire" || id == "mute" || id == "broken" }
 

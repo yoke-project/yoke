@@ -66,11 +66,11 @@ type opening struct {
 	opened []string
 }
 
-func (o *opening) Open(unitID string, incarnation uint64, stream string, t streams.Tolerances, shared bool) (streams.Transport, string, error) {
+func (o *opening) Open(unitID string, incarnation uint64, stream string, t streams.Tolerances, offers streams.Offers) (streams.Transport, string, error) {
 	o.mu.Lock()
 	o.opened = append(o.opened, unitID+" "+stream)
 	o.mu.Unlock()
-	return o.Service.Open(unitID, incarnation, stream, t, shared)
+	return o.Service.Open(unitID, incarnation, stream, t, offers)
 }
 
 func (f *fakeSessions) instructions() []instruction {

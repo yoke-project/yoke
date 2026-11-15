@@ -195,7 +195,7 @@ func (s *Surface) streamStart(ctx context.Context, r *interfacev1.Request) (*int
 	if slices.Contains(s.cfg.Transports.Active(id), stream) {
 		return answer(done()), nil
 	}
-	transport, address, err := s.cfg.Transports.Open(id, incarnation, stream, tolerates, s.cfg.Sessions.OffersShared(id))
+	transport, address, err := s.cfg.Transports.Open(id, incarnation, stream, tolerates, s.cfg.Sessions.Offers(id))
 	if err != nil {
 		return nil, aboutUnit("unit.no_session", id, fmt.Sprintf("the transport of %s could not be created: %v", stream, err))
 	}
