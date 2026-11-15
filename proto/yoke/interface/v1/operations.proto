@@ -75,8 +75,20 @@ message Question {
 }
 
 message UnitStream {
+  // What a library can read a delivery from, beyond the per-subscriber packet socket every library
+  // reads. Named at stream.subscribe, and nowhere else; the Core answers with one of them, or with the
+  // packet socket, never with one the library did not name.
+  enum Reads {
+    READS_UNSPECIFIED = 0;
+    // A stream socket, each frame preceded by its length as a u32, little-endian.
+    READS_STREAM_SOCKET = 1;
+    // The stream's shared ring itself, handed as a descriptor opened for reading alone.
+    READS_SHARED_OBJECT = 2;
+  }
   string unit = 1;
   string stream = 2;
+  // At stream.subscribe: the deliveries this library can read. Ignored by every other operation.
+  repeated Reads reads = 3;
 }
 
 message StreamRelease {
@@ -150,6 +162,13 @@ message Delivering {
     bool connection = 3;
     // The browser projection's path, upgraded to a binary WebSocket.
     string path = 4;
+    // A per-subscriber stream socket, each frame preceded by its length, for a library that reads one.
+    string stream_socket = 6;
+    // A per-subscriber stream socket that is the delivery's lifeline: at each activation a message of
+    // one byte carrying a descriptor of that activation's ring, opened for reading alone; at each stop
+    // a message of length zero. Its closing ends the delivery. For a library that reads the shared
+    // object, and a stream carried on the ring.
+    string shared = 7;
   }
   bool flowing = 5;
 }

@@ -86,6 +86,12 @@ const (
 	Control_Activate_TRANSPORT_ORDERED       Control_Activate_Transport = 1
 	Control_Activate_TRANSPORT_FRAMED        Control_Activate_Transport = 2
 	Control_Activate_TRANSPORT_SHARED_OBJECT Control_Activate_Transport = 3
+	// The ordered transport on a stream socket, each envelope preceded by its length as a u32,
+	// little-endian. Used only for a library that offered it at registration.
+	Control_Activate_TRANSPORT_ORDERED_STREAM Control_Activate_Transport = 4
+	// The framed transport on a stream socket, each frame preceded by its length as a u32,
+	// little-endian, a frame written whole or not at all. Used only for a library that offered it.
+	Control_Activate_TRANSPORT_FRAMED_STREAM Control_Activate_Transport = 5
 )
 
 // Enum value maps for Control_Activate_Transport.
@@ -95,12 +101,16 @@ var (
 		1: "TRANSPORT_ORDERED",
 		2: "TRANSPORT_FRAMED",
 		3: "TRANSPORT_SHARED_OBJECT",
+		4: "TRANSPORT_ORDERED_STREAM",
+		5: "TRANSPORT_FRAMED_STREAM",
 	}
 	Control_Activate_Transport_value = map[string]int32{
-		"TRANSPORT_UNSPECIFIED":   0,
-		"TRANSPORT_ORDERED":       1,
-		"TRANSPORT_FRAMED":        2,
-		"TRANSPORT_SHARED_OBJECT": 3,
+		"TRANSPORT_UNSPECIFIED":    0,
+		"TRANSPORT_ORDERED":        1,
+		"TRANSPORT_FRAMED":         2,
+		"TRANSPORT_SHARED_OBJECT":  3,
+		"TRANSPORT_ORDERED_STREAM": 4,
+		"TRANSPORT_FRAMED_STREAM":  5,
 	}
 )
 
@@ -1285,23 +1295,25 @@ const file_yoke_plugin_v1_families_proto_rawDesc = "" +
 	"\x15CAUSE_PLUGIN_DISABLED\x10\x02\x12\x18\n" +
 	"\x14CAUSE_SCOPE_EXCEEDED\x10\x03\x12\x1a\n" +
 	"\x16CAUSE_PROTOCOL_FAILURE\x10\x04B\x06\n" +
-	"\x04kind\"\x96\x04\n" +
+	"\x04kind\"\xd2\x04\n" +
 	"\aControl\x12;\n" +
 	"\acommand\x18\x01 \x01(\v2\x1f.yoke.plugin.v1.Control.CommandH\x00R\acommand\x12>\n" +
 	"\bactivate\x18\x02 \x01(\v2 .yoke.plugin.v1.Control.ActivateH\x00R\bactivate\x122\n" +
 	"\x04stop\x18\x03 \x01(\v2\x1c.yoke.plugin.v1.Control.StopH\x00R\x04stop\x1a7\n" +
 	"\aCommand\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x18\n" +
-	"\apayload\x18\x02 \x01(\fR\apayload\x1a\xf8\x01\n" +
+	"\apayload\x18\x02 \x01(\fR\apayload\x1a\xb4\x02\n" +
 	"\bActivate\x12\x16\n" +
 	"\x06stream\x18\x01 \x01(\tR\x06stream\x12H\n" +
 	"\ttransport\x18\x02 \x01(\x0e2*.yoke.plugin.v1.Control.Activate.TransportR\ttransport\x12\x18\n" +
-	"\aaddress\x18\x03 \x01(\tR\aaddress\"p\n" +
+	"\aaddress\x18\x03 \x01(\tR\aaddress\"\xab\x01\n" +
 	"\tTransport\x12\x19\n" +
 	"\x15TRANSPORT_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11TRANSPORT_ORDERED\x10\x01\x12\x14\n" +
 	"\x10TRANSPORT_FRAMED\x10\x02\x12\x1b\n" +
-	"\x17TRANSPORT_SHARED_OBJECT\x10\x03\x1a\x1e\n" +
+	"\x17TRANSPORT_SHARED_OBJECT\x10\x03\x12\x1c\n" +
+	"\x18TRANSPORT_ORDERED_STREAM\x10\x04\x12\x1b\n" +
+	"\x17TRANSPORT_FRAMED_STREAM\x10\x05\x1a\x1e\n" +
 	"\x04Stop\x12\x16\n" +
 	"\x06stream\x18\x01 \x01(\tR\x06streamB\x06\n" +
 	"\x04kind\"\xb0\x01\n" +

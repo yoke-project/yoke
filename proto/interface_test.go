@@ -15,6 +15,19 @@ import (
 
 const iface = "yoke.interface.v1"
 
+func enumOf(t *testing.T, files *protoregistry.Files, name string) protoreflect.EnumDescriptor {
+	t.Helper()
+	found, err := files.FindDescriptorByName(protoreflect.FullName(iface + "." + name))
+	if err != nil {
+		t.Fatalf("no enum %s: %v", name, err)
+	}
+	ed, ok := found.(protoreflect.EnumDescriptor)
+	if !ok {
+		t.Fatalf("%s is not an enum", name)
+	}
+	return ed
+}
+
 func ifc(t *testing.T, files *protoregistry.Files, name string) protoreflect.MessageDescriptor {
 	t.Helper()
 	found, err := files.FindDescriptorByName(protoreflect.FullName(iface + "." + name))
@@ -161,8 +174,10 @@ func TestACommandAndAQuestionCarryAnOpaquePayloadAndComeBackCorrelated(t *testin
 func TestWhereAStreamsDataArrivesAndTheFrameOnTheConnection(t *testing.T) {
 	files := definitions(t)
 	where := ifc(t, files, "Delivering")
-	same(t, "the answer to stream.subscribe", fields(where), []string{"delivery", "socket", "connection", "path", "flowing"})
-	same(t, "where the data arrives", union(t, where, "arrives"), []string{"socket", "connection", "path"})
+	same(t, "the answer to stream.subscribe", fields(where), []string{"delivery", "socket", "connection", "path", "stream_socket", "shared", "flowing"})
+	same(t, "where the data arrives", union(t, where, "arrives"), []string{"socket", "connection", "path", "stream_socket", "shared"})
+	same(t, "what stream.subscribe names", fields(ifc(t, files, "UnitStream")), []string{"unit", "stream", "reads"})
+	same(t, "the deliveries a library can read", values(enumOf(t, files, "UnitStream.Reads")), []string{"READS_STREAM_SOCKET", "READS_SHARED_OBJECT"})
 	delivery := ifc(t, files, "StreamDelivery")
 	same(t, "a stream delivery", fields(delivery), []string{"delivery", "sequence", "sent_at", "payload"})
 	for name, kind := range map[string]protoreflect.Kind{"sequence": protoreflect.Uint64Kind, "sent_at": protoreflect.Uint64Kind, "payload": protoreflect.BytesKind} {
