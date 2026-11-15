@@ -27,7 +27,7 @@ from yoke.interface.v1 import events_pb2 as yoke_dot_interface_dot_v1_dot_events
 from yoke.interface.v1 import records_pb2 as yoke_dot_interface_dot_v1_dot_records__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\"yoke/interface/v1/operations.proto\x12\x11yoke.interface.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1eyoke/interface/v1/events.proto\x1a\x1fyoke/interface/v1/records.proto\"\xdf\x04\n\x07Request\x12\x0f\n\x07version\x18\x01 \x01(\r\x12\x37\n\x0c\x61uthenticate\x18\x02 \x01(\x0b\x32\x1f.yoke.interface.v1.AuthenticateH\x00\x12\'\n\x04read\x18\x03 \x01(\x0b\x32\x17.yoke.interface.v1.ReadH\x00\x12\x31\n\tsubscribe\x18\x04 \x01(\x0b\x32\x1c.yoke.interface.v1.SubscribeH\x00\x12-\n\x07\x63onfirm\x18\x05 \x01(\x0b\x32\x1a.yoke.interface.v1.ConfirmH\x00\x12-\n\x07\x63ommand\x18\x06 \x01(\x0b\x32\x1a.yoke.interface.v1.CommandH\x00\x12,\n\x05query\x18\x07 \x01(\x0b\x32\x1b.yoke.interface.v1.QuestionH\x00\x12\x35\n\x0cstream_start\x18\x08 \x01(\x0b\x32\x1d.yoke.interface.v1.UnitStreamH\x00\x12\x34\n\x0bstream_stop\x18\t \x01(\x0b\x32\x1d.yoke.interface.v1.UnitStreamH\x00\x12\x39\n\x10stream_subscribe\x18\n \x01(\x0b\x32\x1d.yoke.interface.v1.UnitStreamH\x00\x12>\n\x12stream_unsubscribe\x18\x0b \x01(\x0b\x32 .yoke.interface.v1.StreamReleaseH\x00\x12-\n\x07reclaim\x18\x0c \x01(\x0b\x32\x1a.yoke.interface.v1.ReclaimH\x00\x42\x0b\n\toperation\"\x98\x01\n\x0c\x41uthenticate\x12<\n\x08password\x18\x01 \x01(\x0b\x32(.yoke.interface.v1.Authenticate.PasswordH\x00\x12\x0f\n\x05token\x18\x02 \x01(\tH\x00\x1a+\n\x08Password\x12\x0f\n\x07\x61\x63\x63ount\x18\x01 \x01(\t\x12\x0e\n\x06secret\x18\x02 \x01(\tB\x0c\n\ncredential\"&\n\x04Read\x12\x0c\n\x04kind\x18\x01 \x01(\t\x12\x10\n\x08identity\x18\x02 \x01(\t\"6\n\tSubscribe\x12)\n\x06\x66ilter\x18\x01 \x01(\x0b\x32\x19.yoke.interface.v1.Filter\"1\n\x07\x43onfirm\x12\x14\n\x0csubscription\x18\x01 \x01(\t\x12\x10\n\x08sequence\x18\x02 \x01(\x04\"6\n\x07\x43ommand\x12\x0c\n\x04unit\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12\x0f\n\x07payload\x18\x03 \x01(\x0c\"7\n\x08Question\x12\x0c\n\x04unit\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12\x0f\n\x07payload\x18\x03 \x01(\x0c\"*\n\nUnitStream\x12\x0c\n\x04unit\x18\x01 \x01(\t\x12\x0e\n\x06stream\x18\x02 \x01(\t\"!\n\rStreamRelease\x12\x10\n\x08\x64\x65livery\x18\x01 \x01(\t\"\t\n\x07Reclaim\"\xd9\x04\n\x08Response\x12\x38\n\x0c\x61uthenticate\x18\x01 \x01(\x0b\x32 .yoke.interface.v1.AuthenticatedH\x00\x12*\n\x04read\x18\x02 \x01(\x0b\x32\x1a.yoke.interface.v1.RecordsH\x00\x12\x32\n\tsubscribe\x18\x03 \x01(\x0b\x32\x1d.yoke.interface.v1.SubscribedH\x00\x12/\n\x07\x63onfirm\x18\x04 \x01(\x0b\x32\x1c.yoke.interface.v1.ConfirmedH\x00\x12\x32\n\x07\x63ommand\x18\x05 \x01(\x0b\x32\x1f.yoke.interface.v1.AcknowledgedH\x00\x12,\n\x05query\x18\x06 \x01(\x0b\x32\x1b.yoke.interface.v1.AnsweredH\x00\x12\x37\n\x0cstream_start\x18\x07 \x01(\x0b\x32\x1f.yoke.interface.v1.AcknowledgedH\x00\x12\x36\n\x0bstream_stop\x18\x08 \x01(\x0b\x32\x1f.yoke.interface.v1.AcknowledgedH\x00\x12\x39\n\x10stream_subscribe\x18\t \x01(\x0b\x32\x1d.yoke.interface.v1.DeliveringH\x00\x12\x39\n\x12stream_unsubscribe\x18\n \x01(\x0b\x32\x1b.yoke.interface.v1.ReleasedH\x00\x12/\n\x07reclaim\x18\x0b \x01(\x0b\x32\x1c.yoke.interface.v1.ReclaimedH\x00\x42\x08\n\x06\x61nswer\"\\\n\rAuthenticated\x12\x0f\n\x07\x61\x63\x63ount\x18\x01 \x01(\t\x12\r\n\x05token\x18\x02 \x01(\t\x12+\n\x07\x65xpires\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\xa4\x01\n\nSubscribed\x12/\n\x08snapshot\x18\x01 \x01(\x0b\x32\x1b.yoke.interface.v1.SnapshotH\x00\x12)\n\x05\x65vent\x18\x02 \x01(\x0b\x32\x18.yoke.interface.v1.EventH\x00\x12/\n\x08overflow\x18\x03 \x01(\x0b\x32\x1b.yoke.interface.v1.SnapshotH\x00\x42\t\n\x07\x63\x61rries\"\x0b\n\tConfirmed\"\xb6\x01\n\x0c\x41\x63knowledged\x12\x38\n\x07outcome\x18\x01 \x01(\x0e\x32\'.yoke.interface.v1.Acknowledged.Outcome\x12\x0c\n\x04line\x18\x02 \x01(\t\"^\n\x07Outcome\x12\x17\n\x13OUTCOME_UNSPECIFIED\x10\x00\x12\x14\n\x10OUTCOME_ACCEPTED\x10\x01\x12\x10\n\x0cOUTCOME_DONE\x10\x02\x12\x12\n\x0eOUTCOME_FAILED\x10\x03\"\x1b\n\x08\x41nswered\x12\x0f\n\x07payload\x18\x01 \x01(\x0c\"r\n\nDelivering\x12\x10\n\x08\x64\x65livery\x18\x01 \x01(\t\x12\x10\n\x06socket\x18\x02 \x01(\tH\x00\x12\x14\n\nconnection\x18\x03 \x01(\x08H\x00\x12\x0e\n\x04path\x18\x04 \x01(\tH\x00\x12\x0f\n\x07\x66lowing\x18\x05 \x01(\x08\x42\t\n\x07\x61rrives\"\n\n\x08Released\"O\n\tReclaimed\x12\x31\n\x07\x63hannel\x18\x01 \x01(\x0b\x32 .yoke.interface.v1.ChannelRecord\x12\x0f\n\x07\x63hanged\x18\x02 \x01(\x08\x42\x42Z@github.com/yoke-project/yoke/proto/yoke/interface/v1;interfacev1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\"yoke/interface/v1/operations.proto\x12\x11yoke.interface.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1eyoke/interface/v1/events.proto\x1a\x1fyoke/interface/v1/records.proto\"\xdf\x04\n\x07Request\x12\x0f\n\x07version\x18\x01 \x01(\r\x12\x37\n\x0c\x61uthenticate\x18\x02 \x01(\x0b\x32\x1f.yoke.interface.v1.AuthenticateH\x00\x12\'\n\x04read\x18\x03 \x01(\x0b\x32\x17.yoke.interface.v1.ReadH\x00\x12\x31\n\tsubscribe\x18\x04 \x01(\x0b\x32\x1c.yoke.interface.v1.SubscribeH\x00\x12-\n\x07\x63onfirm\x18\x05 \x01(\x0b\x32\x1a.yoke.interface.v1.ConfirmH\x00\x12-\n\x07\x63ommand\x18\x06 \x01(\x0b\x32\x1a.yoke.interface.v1.CommandH\x00\x12,\n\x05query\x18\x07 \x01(\x0b\x32\x1b.yoke.interface.v1.QuestionH\x00\x12\x35\n\x0cstream_start\x18\x08 \x01(\x0b\x32\x1d.yoke.interface.v1.UnitStreamH\x00\x12\x34\n\x0bstream_stop\x18\t \x01(\x0b\x32\x1d.yoke.interface.v1.UnitStreamH\x00\x12\x39\n\x10stream_subscribe\x18\n \x01(\x0b\x32\x1d.yoke.interface.v1.UnitStreamH\x00\x12>\n\x12stream_unsubscribe\x18\x0b \x01(\x0b\x32 .yoke.interface.v1.StreamReleaseH\x00\x12-\n\x07reclaim\x18\x0c \x01(\x0b\x32\x1a.yoke.interface.v1.ReclaimH\x00\x42\x0b\n\toperation\"\x98\x01\n\x0c\x41uthenticate\x12<\n\x08password\x18\x01 \x01(\x0b\x32(.yoke.interface.v1.Authenticate.PasswordH\x00\x12\x0f\n\x05token\x18\x02 \x01(\tH\x00\x1a+\n\x08Password\x12\x0f\n\x07\x61\x63\x63ount\x18\x01 \x01(\t\x12\x0e\n\x06secret\x18\x02 \x01(\tB\x0c\n\ncredential\"&\n\x04Read\x12\x0c\n\x04kind\x18\x01 \x01(\t\x12\x10\n\x08identity\x18\x02 \x01(\t\"6\n\tSubscribe\x12)\n\x06\x66ilter\x18\x01 \x01(\x0b\x32\x19.yoke.interface.v1.Filter\"1\n\x07\x43onfirm\x12\x14\n\x0csubscription\x18\x01 \x01(\t\x12\x10\n\x08sequence\x18\x02 \x01(\x04\"6\n\x07\x43ommand\x12\x0c\n\x04unit\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12\x0f\n\x07payload\x18\x03 \x01(\x0c\"7\n\x08Question\x12\x0c\n\x04unit\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12\x0f\n\x07payload\x18\x03 \x01(\x0c\"\xb0\x01\n\nUnitStream\x12\x0c\n\x04unit\x18\x01 \x01(\t\x12\x0e\n\x06stream\x18\x02 \x01(\t\x12\x32\n\x05reads\x18\x03 \x03(\x0e\x32#.yoke.interface.v1.UnitStream.Reads\"P\n\x05Reads\x12\x15\n\x11READS_UNSPECIFIED\x10\x00\x12\x17\n\x13READS_STREAM_SOCKET\x10\x01\x12\x17\n\x13READS_SHARED_OBJECT\x10\x02\"!\n\rStreamRelease\x12\x10\n\x08\x64\x65livery\x18\x01 \x01(\t\"\t\n\x07Reclaim\"\xd9\x04\n\x08Response\x12\x38\n\x0c\x61uthenticate\x18\x01 \x01(\x0b\x32 .yoke.interface.v1.AuthenticatedH\x00\x12*\n\x04read\x18\x02 \x01(\x0b\x32\x1a.yoke.interface.v1.RecordsH\x00\x12\x32\n\tsubscribe\x18\x03 \x01(\x0b\x32\x1d.yoke.interface.v1.SubscribedH\x00\x12/\n\x07\x63onfirm\x18\x04 \x01(\x0b\x32\x1c.yoke.interface.v1.ConfirmedH\x00\x12\x32\n\x07\x63ommand\x18\x05 \x01(\x0b\x32\x1f.yoke.interface.v1.AcknowledgedH\x00\x12,\n\x05query\x18\x06 \x01(\x0b\x32\x1b.yoke.interface.v1.AnsweredH\x00\x12\x37\n\x0cstream_start\x18\x07 \x01(\x0b\x32\x1f.yoke.interface.v1.AcknowledgedH\x00\x12\x36\n\x0bstream_stop\x18\x08 \x01(\x0b\x32\x1f.yoke.interface.v1.AcknowledgedH\x00\x12\x39\n\x10stream_subscribe\x18\t \x01(\x0b\x32\x1d.yoke.interface.v1.DeliveringH\x00\x12\x39\n\x12stream_unsubscribe\x18\n \x01(\x0b\x32\x1b.yoke.interface.v1.ReleasedH\x00\x12/\n\x07reclaim\x18\x0b \x01(\x0b\x32\x1c.yoke.interface.v1.ReclaimedH\x00\x42\x08\n\x06\x61nswer\"\\\n\rAuthenticated\x12\x0f\n\x07\x61\x63\x63ount\x18\x01 \x01(\t\x12\r\n\x05token\x18\x02 \x01(\t\x12+\n\x07\x65xpires\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\xa4\x01\n\nSubscribed\x12/\n\x08snapshot\x18\x01 \x01(\x0b\x32\x1b.yoke.interface.v1.SnapshotH\x00\x12)\n\x05\x65vent\x18\x02 \x01(\x0b\x32\x18.yoke.interface.v1.EventH\x00\x12/\n\x08overflow\x18\x03 \x01(\x0b\x32\x1b.yoke.interface.v1.SnapshotH\x00\x42\t\n\x07\x63\x61rries\"\x0b\n\tConfirmed\"\xb6\x01\n\x0c\x41\x63knowledged\x12\x38\n\x07outcome\x18\x01 \x01(\x0e\x32\'.yoke.interface.v1.Acknowledged.Outcome\x12\x0c\n\x04line\x18\x02 \x01(\t\"^\n\x07Outcome\x12\x17\n\x13OUTCOME_UNSPECIFIED\x10\x00\x12\x14\n\x10OUTCOME_ACCEPTED\x10\x01\x12\x10\n\x0cOUTCOME_DONE\x10\x02\x12\x12\n\x0eOUTCOME_FAILED\x10\x03\"\x1b\n\x08\x41nswered\x12\x0f\n\x07payload\x18\x01 \x01(\x0c\"\x9d\x01\n\nDelivering\x12\x10\n\x08\x64\x65livery\x18\x01 \x01(\t\x12\x10\n\x06socket\x18\x02 \x01(\tH\x00\x12\x14\n\nconnection\x18\x03 \x01(\x08H\x00\x12\x0e\n\x04path\x18\x04 \x01(\tH\x00\x12\x17\n\rstream_socket\x18\x06 \x01(\tH\x00\x12\x10\n\x06shared\x18\x07 \x01(\tH\x00\x12\x0f\n\x07\x66lowing\x18\x05 \x01(\x08\x42\t\n\x07\x61rrives\"\n\n\x08Released\"O\n\tReclaimed\x12\x31\n\x07\x63hannel\x18\x01 \x01(\x0b\x32 .yoke.interface.v1.ChannelRecord\x12\x0f\n\x07\x63hanged\x18\x02 \x01(\x08\x42\x42Z@github.com/yoke-project/yoke/proto/yoke/interface/v1;interfacev1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -51,30 +51,32 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_COMMAND']._serialized_end=1121
   _globals['_QUESTION']._serialized_start=1123
   _globals['_QUESTION']._serialized_end=1178
-  _globals['_UNITSTREAM']._serialized_start=1180
-  _globals['_UNITSTREAM']._serialized_end=1222
-  _globals['_STREAMRELEASE']._serialized_start=1224
-  _globals['_STREAMRELEASE']._serialized_end=1257
-  _globals['_RECLAIM']._serialized_start=1259
-  _globals['_RECLAIM']._serialized_end=1268
-  _globals['_RESPONSE']._serialized_start=1271
-  _globals['_RESPONSE']._serialized_end=1872
-  _globals['_AUTHENTICATED']._serialized_start=1874
-  _globals['_AUTHENTICATED']._serialized_end=1966
-  _globals['_SUBSCRIBED']._serialized_start=1969
-  _globals['_SUBSCRIBED']._serialized_end=2133
-  _globals['_CONFIRMED']._serialized_start=2135
-  _globals['_CONFIRMED']._serialized_end=2146
-  _globals['_ACKNOWLEDGED']._serialized_start=2149
-  _globals['_ACKNOWLEDGED']._serialized_end=2331
-  _globals['_ACKNOWLEDGED_OUTCOME']._serialized_start=2237
-  _globals['_ACKNOWLEDGED_OUTCOME']._serialized_end=2331
-  _globals['_ANSWERED']._serialized_start=2333
-  _globals['_ANSWERED']._serialized_end=2360
-  _globals['_DELIVERING']._serialized_start=2362
-  _globals['_DELIVERING']._serialized_end=2476
-  _globals['_RELEASED']._serialized_start=2478
-  _globals['_RELEASED']._serialized_end=2488
-  _globals['_RECLAIMED']._serialized_start=2490
-  _globals['_RECLAIMED']._serialized_end=2569
+  _globals['_UNITSTREAM']._serialized_start=1181
+  _globals['_UNITSTREAM']._serialized_end=1357
+  _globals['_UNITSTREAM_READS']._serialized_start=1277
+  _globals['_UNITSTREAM_READS']._serialized_end=1357
+  _globals['_STREAMRELEASE']._serialized_start=1359
+  _globals['_STREAMRELEASE']._serialized_end=1392
+  _globals['_RECLAIM']._serialized_start=1394
+  _globals['_RECLAIM']._serialized_end=1403
+  _globals['_RESPONSE']._serialized_start=1406
+  _globals['_RESPONSE']._serialized_end=2007
+  _globals['_AUTHENTICATED']._serialized_start=2009
+  _globals['_AUTHENTICATED']._serialized_end=2101
+  _globals['_SUBSCRIBED']._serialized_start=2104
+  _globals['_SUBSCRIBED']._serialized_end=2268
+  _globals['_CONFIRMED']._serialized_start=2270
+  _globals['_CONFIRMED']._serialized_end=2281
+  _globals['_ACKNOWLEDGED']._serialized_start=2284
+  _globals['_ACKNOWLEDGED']._serialized_end=2466
+  _globals['_ACKNOWLEDGED_OUTCOME']._serialized_start=2372
+  _globals['_ACKNOWLEDGED_OUTCOME']._serialized_end=2466
+  _globals['_ANSWERED']._serialized_start=2468
+  _globals['_ANSWERED']._serialized_end=2495
+  _globals['_DELIVERING']._serialized_start=2498
+  _globals['_DELIVERING']._serialized_end=2655
+  _globals['_RELEASED']._serialized_start=2657
+  _globals['_RELEASED']._serialized_end=2667
+  _globals['_RECLAIMED']._serialized_start=2669
+  _globals['_RECLAIMED']._serialized_end=2748
 # @@protoc_insertion_point(module_scope)

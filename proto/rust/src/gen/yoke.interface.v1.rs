@@ -479,6 +479,56 @@ pub struct UnitStream {
     pub unit: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
     pub stream: ::prost::alloc::string::String,
+    /// At stream.subscribe: the deliveries this library can read. Ignored by every other operation.
+    #[prost(enumeration = "unit_stream::Reads", repeated, tag = "3")]
+    pub reads: ::prost::alloc::vec::Vec<i32>,
+}
+/// Nested message and enum types in `UnitStream`.
+pub mod unit_stream {
+    /// What a library can read a delivery from, beyond the per-subscriber packet socket every library
+    /// reads. Named at stream.subscribe, and nowhere else; the Core answers with one of them, or with the
+    /// packet socket, never with one the library did not name.
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
+    #[repr(i32)]
+    pub enum Reads {
+        Unspecified = 0,
+        /// A stream socket, each frame preceded by its length as a u32, little-endian.
+        StreamSocket = 1,
+        /// The stream's shared ring itself, handed as a descriptor opened for reading alone.
+        SharedObject = 2,
+    }
+    impl Reads {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "READS_UNSPECIFIED",
+                Self::StreamSocket => "READS_STREAM_SOCKET",
+                Self::SharedObject => "READS_SHARED_OBJECT",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "READS_UNSPECIFIED" => Some(Self::Unspecified),
+                "READS_STREAM_SOCKET" => Some(Self::StreamSocket),
+                "READS_SHARED_OBJECT" => Some(Self::SharedObject),
+                _ => None,
+            }
+        }
+    }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct StreamRelease {
@@ -620,7 +670,7 @@ pub struct Delivering {
     pub delivery: ::prost::alloc::string::String,
     #[prost(bool, tag = "5")]
     pub flowing: bool,
-    #[prost(oneof = "delivering::Arrives", tags = "2, 3, 4")]
+    #[prost(oneof = "delivering::Arrives", tags = "2, 3, 4, 6, 7")]
     pub arrives: ::core::option::Option<delivering::Arrives>,
 }
 /// Nested message and enum types in `Delivering`.
@@ -636,6 +686,15 @@ pub mod delivering {
         /// The browser projection's path, upgraded to a binary WebSocket.
         #[prost(string, tag = "4")]
         Path(::prost::alloc::string::String),
+        /// A per-subscriber stream socket, each frame preceded by its length, for a library that reads one.
+        #[prost(string, tag = "6")]
+        StreamSocket(::prost::alloc::string::String),
+        /// A per-subscriber stream socket that is the delivery's lifeline: at each activation a message of
+        /// one byte carrying a descriptor of that activation's ring, opened for reading alone; at each stop
+        /// a message of length zero. Its closing ends the delivery. For a library that reads the shared
+        /// object, and a stream carried on the ring.
+        #[prost(string, tag = "7")]
+        Shared(::prost::alloc::string::String),
     }
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
