@@ -3,10 +3,11 @@ import datetime
 from google.protobuf import timestamp_pb2 as _timestamp_pb2
 from yoke.interface.v1 import events_pb2 as _events_pb2
 from yoke.interface.v1 import records_pb2 as _records_pb2
+from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
-from collections.abc import Mapping as _Mapping
+from collections.abc import Iterable as _Iterable, Mapping as _Mapping
 from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
@@ -97,12 +98,22 @@ class Question(_message.Message):
     def __init__(self, unit: _Optional[str] = ..., type: _Optional[str] = ..., payload: _Optional[bytes] = ...) -> None: ...
 
 class UnitStream(_message.Message):
-    __slots__ = ("unit", "stream")
+    __slots__ = ("unit", "stream", "reads")
+    class Reads(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        READS_UNSPECIFIED: _ClassVar[UnitStream.Reads]
+        READS_STREAM_SOCKET: _ClassVar[UnitStream.Reads]
+        READS_SHARED_OBJECT: _ClassVar[UnitStream.Reads]
+    READS_UNSPECIFIED: UnitStream.Reads
+    READS_STREAM_SOCKET: UnitStream.Reads
+    READS_SHARED_OBJECT: UnitStream.Reads
     UNIT_FIELD_NUMBER: _ClassVar[int]
     STREAM_FIELD_NUMBER: _ClassVar[int]
+    READS_FIELD_NUMBER: _ClassVar[int]
     unit: str
     stream: str
-    def __init__(self, unit: _Optional[str] = ..., stream: _Optional[str] = ...) -> None: ...
+    reads: _containers.RepeatedScalarFieldContainer[UnitStream.Reads]
+    def __init__(self, unit: _Optional[str] = ..., stream: _Optional[str] = ..., reads: _Optional[_Iterable[_Union[UnitStream.Reads, str]]] = ...) -> None: ...
 
 class StreamRelease(_message.Message):
     __slots__ = ("delivery",)
@@ -189,18 +200,22 @@ class Answered(_message.Message):
     def __init__(self, payload: _Optional[bytes] = ...) -> None: ...
 
 class Delivering(_message.Message):
-    __slots__ = ("delivery", "socket", "connection", "path", "flowing")
+    __slots__ = ("delivery", "socket", "connection", "path", "stream_socket", "shared", "flowing")
     DELIVERY_FIELD_NUMBER: _ClassVar[int]
     SOCKET_FIELD_NUMBER: _ClassVar[int]
     CONNECTION_FIELD_NUMBER: _ClassVar[int]
     PATH_FIELD_NUMBER: _ClassVar[int]
+    STREAM_SOCKET_FIELD_NUMBER: _ClassVar[int]
+    SHARED_FIELD_NUMBER: _ClassVar[int]
     FLOWING_FIELD_NUMBER: _ClassVar[int]
     delivery: str
     socket: str
     connection: bool
     path: str
+    stream_socket: str
+    shared: str
     flowing: bool
-    def __init__(self, delivery: _Optional[str] = ..., socket: _Optional[str] = ..., connection: _Optional[bool] = ..., path: _Optional[str] = ..., flowing: _Optional[bool] = ...) -> None: ...
+    def __init__(self, delivery: _Optional[str] = ..., socket: _Optional[str] = ..., connection: _Optional[bool] = ..., path: _Optional[str] = ..., stream_socket: _Optional[str] = ..., shared: _Optional[str] = ..., flowing: _Optional[bool] = ...) -> None: ...
 
 class Released(_message.Message):
     __slots__ = ()

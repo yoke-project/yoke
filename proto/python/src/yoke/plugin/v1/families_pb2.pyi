@@ -59,10 +59,14 @@ class Control(_message.Message):
             TRANSPORT_ORDERED: _ClassVar[Control.Activate.Transport]
             TRANSPORT_FRAMED: _ClassVar[Control.Activate.Transport]
             TRANSPORT_SHARED_OBJECT: _ClassVar[Control.Activate.Transport]
+            TRANSPORT_ORDERED_STREAM: _ClassVar[Control.Activate.Transport]
+            TRANSPORT_FRAMED_STREAM: _ClassVar[Control.Activate.Transport]
         TRANSPORT_UNSPECIFIED: Control.Activate.Transport
         TRANSPORT_ORDERED: Control.Activate.Transport
         TRANSPORT_FRAMED: Control.Activate.Transport
         TRANSPORT_SHARED_OBJECT: Control.Activate.Transport
+        TRANSPORT_ORDERED_STREAM: Control.Activate.Transport
+        TRANSPORT_FRAMED_STREAM: Control.Activate.Transport
         STREAM_FIELD_NUMBER: _ClassVar[int]
         TRANSPORT_FIELD_NUMBER: _ClassVar[int]
         ADDRESS_FIELD_NUMBER: _ClassVar[int]

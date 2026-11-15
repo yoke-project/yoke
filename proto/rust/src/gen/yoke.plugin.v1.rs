@@ -276,6 +276,12 @@ pub mod control {
             Ordered = 1,
             Framed = 2,
             SharedObject = 3,
+            /// The ordered transport on a stream socket, each envelope preceded by its length as a u32,
+            /// little-endian. Used only for a library that offered it at registration.
+            OrderedStream = 4,
+            /// The framed transport on a stream socket, each frame preceded by its length as a u32,
+            /// little-endian, a frame written whole or not at all. Used only for a library that offered it.
+            FramedStream = 5,
         }
         impl Transport {
             /// String value of the enum field names used in the ProtoBuf definition.
@@ -288,6 +294,8 @@ pub mod control {
                     Self::Ordered => "TRANSPORT_ORDERED",
                     Self::Framed => "TRANSPORT_FRAMED",
                     Self::SharedObject => "TRANSPORT_SHARED_OBJECT",
+                    Self::OrderedStream => "TRANSPORT_ORDERED_STREAM",
+                    Self::FramedStream => "TRANSPORT_FRAMED_STREAM",
                 }
             }
             /// Creates an enum from field names used in the ProtoBuf definition.
@@ -297,6 +305,8 @@ pub mod control {
                     "TRANSPORT_ORDERED" => Some(Self::Ordered),
                     "TRANSPORT_FRAMED" => Some(Self::Framed),
                     "TRANSPORT_SHARED_OBJECT" => Some(Self::SharedObject),
+                    "TRANSPORT_ORDERED_STREAM" => Some(Self::OrderedStream),
+                    "TRANSPORT_FRAMED_STREAM" => Some(Self::FramedStream),
                     _ => None,
                 }
             }
