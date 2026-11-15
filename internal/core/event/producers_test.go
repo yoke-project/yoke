@@ -28,6 +28,7 @@ var makes = map[string]string{
 	"channel.resumed":            "ChannelResumed",
 	"channel.detached":           "ChannelDetached",
 	"channel.subscription.stale": "SubscriptionStale",
+	"channel.delivery.failed":    "DeliveryFailed",
 	"connection.closed":          "ConnectionClosed",
 	"plugin.policy.changed":      "PolicyChanged",
 }

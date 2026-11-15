@@ -108,6 +108,7 @@ var declared = map[string]Class{
 	"channel.suspended":          Level,
 	"channel.resumed":            Level,
 	"channel.subscription.stale": Level,
+	"channel.delivery.failed":    Edge,
 	"connection.closed":          Level,
 	"plugin.policy.changed":      Level,
 }
@@ -349,6 +350,13 @@ func ChannelDetached(name, client, reason string) Event {
 // it keeps meanwhile.
 func ChannelSuspended(name, reason, by, retains string) Event {
 	return concluded("channel.suspended", Subject{Kind: Channel, ID: name}, Notable, map[string]any{"reason": reason, "by": by, "retains": retains})
+}
+
+// DeliveryFailed is the Core's conclusion that it could not write a stream's data to a client of a channel,
+// and released the delivery: the client learns it by its socket closing, and anybody watching learns why.
+func DeliveryFailed(channel, unitID, stream, delivery, reason string) Event {
+	return concluded("channel.delivery.failed", Subject{Kind: Channel, ID: channel}, Notable,
+		map[string]any{"unit": unitID, "stream": stream, "delivery": delivery, "reason": reason})
 }
 
 // ChannelResumed is the Core's conclusion that a suspended channel is no longer suspended.

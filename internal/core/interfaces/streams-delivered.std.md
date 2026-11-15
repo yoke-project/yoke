@@ -95,3 +95,29 @@
 | **Precondition** | a delivery of a flowing stream on a local-socket channel, whose client connects and never reads, holding at most four frames |
 | **Action** | the stream's transport reads far more than the socket and the delivery can hold |
 | **Expected** | the delivery is released: its socket closes, so the client reads what reached it and then the end, never a gap; and unsubscribing it afterwards is refused, since the attachment no longer holds it |
+
+## yoke:streams-delivered.08 — a frame up to the bound reaches a client on a per-subscriber socket
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/70-interface-surface/07 §The three delivery paths · arch/50-plugin-surface/08 §The figures this document sets |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a delivery of a flowing stream on a local-socket channel, whose client connects and reads |
+| **Action** | the stream's transport reads a frame of 600 KiB and one of 1 MiB, each larger than a host's default send buffer |
+| **Expected** | the client reads both, whole and in order, with their sequence |
+
+## yoke:streams-delivered.09 — a delivery the Core cannot write to is released and said
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/70-interface-surface/07 §What ends a delivery · arch/45-events/06 §`channel` |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a delivery of a flowing stream on a local-socket channel, whose client connects and then closes its socket |
+| **Action** | the stream's transport reads frames |
+| **Expected** | `channel.delivery.failed` is published naming the channel, the unit, the stream, the delivery and the reason; and unsubscribing the delivery afterwards is refused, since the attachment no longer holds it |
