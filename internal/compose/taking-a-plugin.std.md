@@ -95,3 +95,16 @@
 | **Precondition** | the reference tier's host; an application project made by `init`; a Plugin project in Go built with the family's library, whose Manifest is kept in its source |
 | **Action** | `add plugin <path> --yes`; `build` the package; install it and bring its instance up |
 | **Expected** | the unit's Plugin is admitted — its Manifest matches its declaration — and reaches running; `plugins.yaml` is not in what was installed |
+
+## yoke:taking-a-plugin.08 — a Plugin that needs a device is taken with its binding
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/20-composer/01 §The verbs |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a Plugin project whose Manifest declares `device:camera`, and an application project |
+| **Action** | `add plugin <source> --yes`, then `add plugin <source> --yes --bind camera=/dev/null` |
+| **Expected** | the first is refused with `unit.needs.unbound` and writes nothing; the second writes the unit binding `camera` to `/dev/null`, its program, its Manifest and its line in `plugins.yaml` |

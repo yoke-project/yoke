@@ -373,3 +373,28 @@ func TestTakingAPluginGrantsItNothing(t *testing.T) {
 		}
 	}
 }
+
+// std: yoke:taking-a-plugin.08
+func TestAPluginThatNeedsADeviceIsTakenWithItsBinding(t *testing.T) {
+	app, source := authored(t), greeterSource(t)
+	needing := "manifest: 1\nid: com.example.greeter\nprotocol: 1\nneeds:\n  - device:camera\n"
+	os.WriteFile(filepath.Join(source, "plugin", "com.example.greeter.yaml"), []byte(needing), 0o644)
+	git(t, source, "commit", "-q", "-am", "it needs a camera")
+	before := snapshot(t, app)
+	if code, out := takePlugin(t, "", source, "--yes", "--dir", app); code == Done || !strings.Contains(out, "unit.needs.unbound") {
+		t.Fatalf("without --bind: %d %s", code, out)
+	}
+	if after := snapshot(t, app); len(after) != len(before) {
+		t.Errorf("a refused take left %d files where there were %d", len(after), len(before))
+	}
+	if code, out := takePlugin(t, "", source, "--yes", "--dir", app, "--bind", "camera=/dev/null"); code != Done {
+		t.Fatalf("with --bind: %d %s", code, out)
+	}
+	descriptor, _ := os.ReadFile(filepath.Join(app, Descriptor))
+	if !strings.Contains(string(descriptor), "camera: /dev/null") {
+		t.Errorf("the unit does not bind the camera:\n%s", descriptor)
+	}
+	if lines := taken(t, app); len(lines) != 1 {
+		t.Errorf("plugins.yaml holds %d lines", len(lines))
+	}
+}
