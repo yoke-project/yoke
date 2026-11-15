@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"path/filepath"
 	"slices"
@@ -55,7 +56,125 @@ func StreamCases() []Case {
 			Issues:       "`stream.stop` of it, on the interface surface; then `emit` on it",
 			Requires:     "an acknowledgement; an observation `stopped` naming the stream; then a refusal `stream.inactive`",
 			Run:          stoppedAndClosed},
+		{Contract: "plugin", ID: "yoke:plugin.19", Title: "the library offers the stream socket, and its streams are activated on it",
+			Cites:        []string{"specs/50.86", "arch/50-plugin-surface/07 §What the two tolerances select", "arch/50-plugin-surface/08 §Where the data goes"},
+			Precondition: "the two streams case 13 activated",
+			Issues:       "nothing: the transports case 13 observed are read",
+			Requires:     "the stream that tolerates nothing activated on `ordered_stream`, and the one that tolerates loss on `framed_stream` or `shared_object`: a library that offers neither stream socket would leave a frame bounded by its host's socket buffer",
+			Run:          activatedOnAStreamSocket},
+		{Contract: "plugin", ID: "yoke:plugin.20", Title: "a frame larger than 1 MiB, on a stream that declares it, arrives whole",
+			Cites:        []string{"specs/50.86", "arch/50-plugin-surface/02 §The four declared lists", "arch/50-plugin-surface/07 §The shared ring"},
+			Precondition: "the harness's Manifest declaring a stream that tolerates loss with a `max_frame` of at least 2 MiB; the suite subscribed to it, reading a stream socket",
+			Issues:       "`stream.start` of it; then `emit-sized` on it of 1572864 bytes",
+			Requires:     "an observation `activated` naming the stream; the emission answered with no refusal; the delivery carrying one frame of sequence 1 whose payload is 1572864 bytes, byte i being i mod 251",
+			Run:          aLargeFrameArrivesWhole},
 	}
+}
+
+// largeFrame is what case 20 asks to be emitted, and what it checks arrives.
+const largeFrame = 1572864
+
+// largeStream is a declared stream that tolerates loss and declares a largest frame of at least 2 MiB.
+func (r *Run) largeStream() string {
+	var m struct {
+		Streams []struct {
+			ID            string `yaml:"id"`
+			ToleratesLoss bool   `yaml:"tolerates_loss"`
+			MaxFrame      int64  `yaml:"max_frame"`
+		} `yaml:"streams"`
+	}
+	yaml.Unmarshal([]byte(r.described), &m)
+	for _, s := range m.Streams {
+		if s.ToleratesLoss && s.MaxFrame >= 2<<20 {
+			return s.ID
+		}
+	}
+	return ""
+}
+
+// readStreamDelivery reads a per-subscriber stream socket: each message its length, then the 16-byte
+// header and the payload.
+func readStreamDelivery(path string) (*delivery, error) {
+	conn, err := net.Dial("unix", path)
+	if err != nil {
+		return nil, err
+	}
+	d := &delivery{conn: conn, frames: make(chan Frame, 64)}
+	go func() {
+		defer close(d.frames)
+		for {
+			var length [4]byte
+			if _, err := io.ReadFull(conn, length[:]); err != nil {
+				return
+			}
+			body := make([]byte, binary.LittleEndian.Uint32(length[:]))
+			if _, err := io.ReadFull(conn, body); err != nil || len(body) < 16 {
+				return
+			}
+			d.frames <- Frame{Sequence: binary.LittleEndian.Uint64(body[0:8]), SentAt: binary.LittleEndian.Uint64(body[8:16]), Payload: string(body[16:])}
+		}
+	}()
+	return d, nil
+}
+
+// std: yoke:plugin.19
+func activatedOnAStreamSocket(r *Run) Outcome {
+	strict, lossy := r.streamsDeclared()
+	got := fmt.Sprintf("%s on %q, %s on %q", strict, r.activated[strict], lossy, r.activated[lossy])
+	if r.activated[strict] != "ordered_stream" || !slices.Contains([]string{"framed_stream", "shared_object"}, r.activated[lossy]) {
+		return Fail("the activations of case 13", "`ordered_stream`, and `framed_stream` or `shared_object`", got)
+	}
+	return Pass()
+}
+
+// std: yoke:plugin.20
+func aLargeFrameArrivesWhole(r *Run) Outcome {
+	h, err := r.Unit()
+	if err != nil {
+		return Fail("`emit-sized`", "the harness of case 8", err.Error())
+	}
+	large := r.largeStream()
+	if large == "" {
+		return Fail("`stream.start`", "a Manifest declaring a stream that tolerates loss with a `max_frame` of at least 2 MiB", r.described)
+	}
+	a, err := r.Attach()
+	if err != nil {
+		return Fail("the suite attaching to `suite`", "an attachment", err.Error())
+	}
+	subject := &interfacev1.UnitStream{Unit: h.Hello().Unit, Stream: large, Reads: []interfacev1.UnitStream_Reads{interfacev1.UnitStream_READS_STREAM_SOCKET}}
+	resp, code, err := a.Call(&interfacev1.Request{Operation: &interfacev1.Request_StreamSubscribe{StreamSubscribe: subject}})
+	socket := resp.GetStreamSubscribe().GetStreamSocket()
+	if err != nil || code != "" || socket == "" {
+		return Fail("`stream.subscribe` of "+large+" reading a stream socket", "a delivery on a stream socket", fmt.Sprintf("%v %q %v", resp, code, err))
+	}
+	d, err := readStreamDelivery(socket)
+	if err != nil {
+		return Fail("`stream.subscribe` of "+large, "a socket the suite reaches", err.Error())
+	}
+	r.held = append(r.held, func() { d.conn.Close() })
+	if resp, code, err := a.Call(&interfacev1.Request{Operation: &interfacev1.Request_StreamStart{StreamStart: subject}}); err != nil || code != "" {
+		return Fail("`stream.start` of "+large, "an acknowledgement", fmt.Sprintf("%v %q %v", resp, code, err))
+	}
+	if o, before, ok := observed(h, "activated", 10*time.Second); !ok || o.Fields["stream"] != large {
+		return Fail("`stream.start` of "+large, "an observation `activated` naming it", fmt.Sprintf("%v %v", o, before))
+	}
+	res := h.Do("emit-sized", map[string]any{"stream": large, "bytes": largeFrame})
+	if res.Unrecognised {
+		return Absent("emit-sized")
+	}
+	if res.Refusal != "" || res.Lost {
+		return Fail("`emit-sized` of "+strconv.Itoa(largeFrame)+" bytes on "+large, "an answer with no refusal", fmt.Sprintf("%q lost=%v", res.Refusal, res.Lost))
+	}
+	f, ok := d.next(20 * time.Second)
+	if !ok || f.Sequence != 1 || len(f.Payload) != largeFrame {
+		return Fail("`emit-sized` on "+large, "one frame of sequence 1 and "+strconv.Itoa(largeFrame)+" bytes", fmt.Sprintf("sequence %d, %d bytes, arrived=%v", f.Sequence, len(f.Payload), ok))
+	}
+	for i := range len(f.Payload) {
+		if f.Payload[i] != byte(i%251) {
+			return Fail("`emit-sized` on "+large, "byte i being i mod 251", fmt.Sprintf("byte %d is %d", i, f.Payload[i]))
+		}
+	}
+	return Pass()
 }
 
 // streamsDeclared are the declared streams that tolerate nothing and that tolerate loss.
@@ -262,6 +381,7 @@ func activatedOnItsTransport(r *Run) Outcome {
 			return Fail("`stream.start` of "+stream, "an observation `activated` naming it, on the transport "+strings.Join(transports, " or "),
 				fmt.Sprintf("%v %v", o, before))
 		}
+		r.activated[stream] = fmt.Sprint(o.Fields["transport"])
 	}
 	return Pass()
 }
