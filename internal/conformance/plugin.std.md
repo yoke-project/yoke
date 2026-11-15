@@ -227,6 +227,32 @@
 | **Action** | `stream.stop` of it, on the interface surface; then `emit` on it |
 | **Expected** | an acknowledgement; an observation `stopped` naming the stream; then a refusal `stream.inactive` |
 
+## yoke:plugin.19 — the library offers the stream socket, and its streams are activated on it
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/50.86 · arch/50-plugin-surface/07 §What the two tolerances select · arch/50-plugin-surface/08 §Where the data goes |
+| **Level** | L2 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the two streams case 13 activated |
+| **Action** | nothing: the transports case 13 observed are read |
+| **Expected** | the stream that tolerates nothing activated on `ordered_stream`, and the one that tolerates loss on `framed_stream` or `shared_object`: a library that offers neither stream socket would leave a frame bounded by its host's socket buffer |
+
+## yoke:plugin.20 — a frame larger than 1 MiB, on a stream that declares it, arrives whole
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/50.86 · arch/50-plugin-surface/02 §The four declared lists · arch/50-plugin-surface/07 §The shared ring |
+| **Level** | L2 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the harness's Manifest declaring a stream that tolerates loss with a `max_frame` of at least 2 MiB; the suite subscribed to it, reading a stream socket |
+| **Action** | `stream.start` of it; then `emit-sized` on it of 1572864 bytes |
+| **Expected** | an observation `activated` naming the stream; the emission answered with no refusal; the delivery carrying one frame of sequence 1 whose payload is 1572864 bytes, byte i being i mod 251 |
+
 ## yoke:plugin.12 — disabling the plugin revokes the Session, and the process ends
 
 | Field | Value |

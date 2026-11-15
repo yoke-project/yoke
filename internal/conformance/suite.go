@@ -285,7 +285,7 @@ func Execute(cfg Config) (Report, error) {
 	}
 
 	// Drive: only the cases of the contract the harness implements.
-	run := &Run{tree: tree, control: control, described: text, instance: paths["run"], deliveries: map[string]*delivery{}}
+	run := &Run{tree: tree, control: control, described: text, instance: paths["run"], deliveries: map[string]*delivery{}, activated: map[string]string{}}
 	defer run.release()
 	if outside {
 		administering, err := control.launch(cfg, "CONFORMANCE_INSTANCE="+paths["run"])
@@ -403,6 +403,7 @@ type Run struct {
 	held       []func()             // the attachments the suite holds itself
 	consumer   *Attachment          // the suite's attachment to the channel a plugin run composes for it
 	deliveries map[string]*delivery // what the suite reads, by stream
+	activated  map[string]string    // the transport each stream was activated on, as case 13 observed it
 }
 
 // Described is the Manifest the harness described at the start of the run.
