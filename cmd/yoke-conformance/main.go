@@ -14,6 +14,10 @@ import (
 )
 
 func main() {
+	// Launched by the Core as the producer of an interface run.
+	if os.Getenv(conformance.Producing) == "1" {
+		os.Exit(conformance.Produce())
+	}
 	// --version alone is answered before anything else, and nothing is started (prj_structure/95).
 	if version.Asked(os.Args[1:]) {
 		fmt.Println(version.Line("yoke-conformance", version.BuildStated()))

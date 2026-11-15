@@ -240,6 +240,17 @@ func Execute(cfg Config) (Report, error) {
 		return report, err
 	}
 	harness, _ := filepath.Abs(cfg.Harness)
+	// An interface run composes the producer — this program, launched as a unit of the fixture — so a
+	// stream flows for the interface library to read.
+	if contract == "interface" {
+		self, err := os.Executable()
+		if err != nil {
+			return report, err
+		}
+		if err := os.Symlink(self, filepath.Join(paths["plugins"], head.ID)); err != nil {
+			return report, err
+		}
+	}
 	if !outside {
 		if err := os.Symlink(harness, filepath.Join(paths["plugins"], head.ID)); err != nil {
 			return report, err
@@ -254,6 +265,9 @@ func Execute(cfg Config) (Report, error) {
 	units := map[string]any{"harness": map[string]any{"kind": "plugin", "plugin": head.ID, "env": env}}
 	if outside {
 		units = map[string]any{}
+	}
+	if contract == "interface" {
+		units = map[string]any{Producer: map[string]any{"kind": "plugin", "plugin": head.ID, "env": map[string]string{Producing: "1"}}}
 	}
 	// A beat every second shows within seconds what a library sends on its own; a hundred and twenty
 	// missed intervals keep a unit whose author has not reported yet alive for the whole run.
@@ -404,6 +418,7 @@ type Run struct {
 	consumer   *Attachment          // the suite's attachment to the channel a plugin run composes for it
 	deliveries map[string]*delivery // what the suite reads, by stream
 	activated  map[string]string    // the transport each stream was activated on, as case 13 observed it
+	produced   bool                 // the producer of an interface run granted its stream, and the stream started
 }
 
 // Described is the Manifest the harness described at the start of the run.
