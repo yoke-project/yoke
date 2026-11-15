@@ -27,7 +27,7 @@ const usage = `usage: yoke-compose <verb> [options]
   new plugin <id> --language L [--dir D] [--program P] [--release V | --template FILE]
                                                             make a Plugin project from its family's template
 
-  add plugin <url>@<tag>|<path> [--as U] [--yes] [--dir D]  take a Plugin into the application, recorded in plugins.yaml
+  add plugin <url>@<tag>|<path> [--as U] [--bind N=V]... [--yes] [--dir D]  take a Plugin into the application, recorded in plugins.yaml
   update plugin <id> [--to <tag>] [--yes] [--dir D]         take a Plugin again: a repository at a tag, a path as it stands
   plugins [--dir D]                                         what was taken, and whether each tag still names its commit
   add unit <name> --kind K [--exec P | --image R | --plugin ID] [--arg A]... [--depends-on U]... [--bind N=V]...
@@ -234,6 +234,15 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		if verb == "add" && len(rest) > 0 && rest[0] == "plugin" {
 			as := fs.String("as", "", "the unit's name; by default the program's")
 			yes := fs.Bool("yes", false, "run the author's build without asking, for continuous integration")
+			var bind [][2]string
+			fs.Func("bind", "a binding the Plugin's needs take, need=value; repeat it", func(s string) error {
+				need, value, ok := strings.Cut(s, "=")
+				if !ok || need == "" || value == "" {
+					return fmt.Errorf("--bind %q is not need=value", s)
+				}
+				bind = append(bind, [2]string{need, value})
+				return nil
+			})
 			positional, flags := positionals(rest[1:], fs)
 			if fs.Parse(flags) != nil {
 				return Refused
@@ -243,7 +252,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 				return Refused
 			}
 			var unit string
-			if unit, err = AddPlugin(*dir, positional[0], TakeOptions{As: *as, Yes: *yes, Out: stdout}); err == nil {
+			if unit, err = AddPlugin(*dir, positional[0], TakeOptions{As: *as, Yes: *yes, Bind: bind, Out: stdout}); err == nil {
 				fmt.Fprintf(stdout, "took %s as the unit %s, recorded in %s\n", positional[0], unit, Plugins)
 			}
 			break

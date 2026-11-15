@@ -34,6 +34,9 @@ type TakeOptions struct {
 	As string
 	// Yes answers the question before the author's build, for continuous integration.
 	Yes bool
+	// Bind is what the unit binds its needs to, need and value, in the order given: a Plugin whose
+	// Manifest needs a device cannot be taken without it.
+	Bind [][2]string
 	// Out receives what is shown and the build's output; Answer is where the answer is read from, the
 	// standard input where nil.
 	Out    io.Writer
@@ -154,7 +157,7 @@ func take(dir, path string, t *taking, o TakeOptions) (string, error) {
 		return "", err
 	}
 	placed = append(placed, manifest)
-	options := UnitOptions{Kind: "plugin", Plugin: p.ID, Exec: program}
+	options := UnitOptions{Kind: "plugin", Plugin: p.ID, Exec: program, Bind: o.Bind}
 	if image != "" {
 		options.Exec, options.Image = "", image
 	}
