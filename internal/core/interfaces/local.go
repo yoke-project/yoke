@@ -4,6 +4,7 @@ import (
 	"context"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"io"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -120,6 +121,7 @@ type Transports interface {
 	Discard(unit, stream string)
 	Active(unit string) []string
 	Feed(unit, stream string, to func(streams.Frame), released func()) (stop func())
+	FeedRing(unit, stream string, opened func(*os.File), stopped func(), released func()) (stop func())
 	NextSubscriber(unit, stream string) string
 }
 

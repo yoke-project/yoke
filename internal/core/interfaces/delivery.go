@@ -9,6 +9,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"golang.org/x/sys/unix"
+
 	interfacev1 "github.com/yoke-project/yoke/proto/yoke/interface/v1"
 
 	"github.com/yoke-project/yoke/internal/core/event"
@@ -89,6 +91,91 @@ func lengthed(frame []byte) []byte {
 	return append(out, frame...)
 }
 
+// deliverRing answers a delivery whose client reads the ring itself. Its per-subscriber socket is the
+// delivery's lifeline, a stream socket each message of which follows its length: at each activation one
+// byte carrying a descriptor of that activation's ring, opened for reading alone; at each stop, a message of
+// length zero. Its closing ends the delivery. A write that fails ends it as a slow client's end does.
+func (s *Surface) deliverRing(id, stream, n string, answer *interfacev1.Delivering, held *deliveries, release func(), closer *func()) (*interfacev1.Response, *interfacev1.Refusal) {
+	path := filepath.Join(s.cfg.Root, "plugins", id, "subscribers", stream, n+".sock")
+	if len(path) > ceiling {
+		return nil, refusal("operation.malformed", "the subscriber's socket path "+path+" is beyond what a socket path may have")
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		return nil, aboutUnit("unit.no_session", id, err.Error())
+	}
+	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
+	if err != nil {
+		return nil, aboutUnit("unit.no_session", id, err.Error())
+	}
+	listener.SetUnlinkOnClose(false)
+	var mu sync.Mutex
+	var conn *net.UnixConn
+	var current *os.File
+	failed := false
+	// send writes one message on the lifeline, the lock held: the ring's descriptor, or a stop.
+	send := func(ring *os.File) {
+		if conn == nil || failed {
+			return
+		}
+		message, rights := []byte{0, 0, 0, 0}, []byte(nil)
+		if ring != nil {
+			message, rights = []byte{1, 0, 0, 0, 0}, unix.UnixRights(int(ring.Fd()))
+		}
+		if _, _, err := conn.WriteMsgUnix(message, rights, nil); err != nil {
+			failed = true
+			s.publish(event.DeliveryFailed(s.cfg.Channel.Name, id, stream, n, err.Error()))
+			go held.drop(n)
+		}
+	}
+	opened := func(f *os.File) {
+		mu.Lock()
+		defer mu.Unlock()
+		if current != nil {
+			current.Close()
+		}
+		current = f
+		send(f)
+	}
+	stopped := func() {
+		mu.Lock()
+		defer mu.Unlock()
+		if current != nil {
+			current.Close()
+			current = nil
+		}
+		send(nil)
+	}
+	*closer = func() {
+		listener.Close()
+		mu.Lock()
+		if conn != nil {
+			conn.Close()
+		}
+		if current != nil {
+			current.Close()
+			current = nil
+		}
+		mu.Unlock()
+		os.Remove(path)
+	}
+	go func() {
+		c, err := listener.AcceptUnix()
+		if err != nil {
+			return
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		conn = c
+		if current != nil {
+			send(current)
+		}
+	}()
+	answer.Arrives = &interfacev1.Delivering_Shared{Shared: path}
+	stop := s.cfg.Transports.FeedRing(id, stream, opened, stopped, func() { held.drop(n) })
+	held.add(n, func() { stop(); release() })
+	return &interfacev1.Response{Answer: &interfacev1.Response_StreamSubscribe{StreamSubscribe: answer}}, nil
+}
+
 // subscribeStream grants a delivery of a unit's stream to this attachment and says where its data
 // arrives: a socket in the instance's tree the client connects to, on a channel bound as a local socket;
 // the attachment's own connection on one bound on an address. Subscribing to a stream not flowing is
@@ -157,6 +244,13 @@ func (s *Surface) subscribeStream(r *interfacev1.Request, a *attachment) (*inter
 		})
 	}
 	answer := &interfacev1.Delivering{Delivery: n, Flowing: slices.Contains(s.cfg.Transports.Active(id), stream)}
+	// A client on the host whose library reads the shared object, of a stream carried on the ring, reads
+	// the ring itself: the Core hands it each activation's ring and says each stop, and carries nothing.
+	local := s.cfg.Channel.Transport != "http+ws" && (s.cfg.Channel.Address == nil || s.cfg.Channel.Address.Class == "local")
+	if local && slices.Contains(r.GetStreamSubscribe().GetReads(), interfacev1.UnitStream_READS_SHARED_OBJECT) &&
+		m.Streams[at].ToleratesLoss && s.cfg.Sessions != nil && s.cfg.Sessions.Offers(id).Shared {
+		return s.deliverRing(id, stream, n, answer, held, release, &closer)
+	}
 	if s.cfg.Channel.Transport == "http+ws" {
 		// The browser projection's delivery is one binary WebSocket, at the path the answer names.
 		path := "/v1/streams/" + id + "/" + stream + "/" + n

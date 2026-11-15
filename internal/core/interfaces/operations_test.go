@@ -62,9 +62,11 @@ type fakeSessions struct {
 	mu      sync.Mutex
 	handed  []*pluginv1.Control
 	present []bool
+	// offers is what every unit's library offered; nothing unless a case says so.
+	offers streams.Offers
 }
 
-func (f *fakeSessions) Offers(string) streams.Offers { return streams.Offers{} }
+func (f *fakeSessions) Offers(string) streams.Offers { return f.offers }
 
 func (f *fakeSessions) Open(id string) bool { return id == "acquire" || id == "mute" || id == "broken" }
 

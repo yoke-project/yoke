@@ -13,12 +13,14 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/proto"
 
 	interfacev1 "github.com/yoke-project/yoke/proto/yoke/interface/v1"
 	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
 
 	"github.com/yoke-project/yoke/internal/core/interfaces"
+	"github.com/yoke-project/yoke/internal/core/ring"
 	"github.com/yoke-project/yoke/internal/core/streams"
 	"github.com/yoke-project/yoke/internal/core/unit"
 	"github.com/yoke-project/yoke/internal/gate"
@@ -27,6 +29,7 @@ import (
 // delivering is a deployment whose bench unit acquire is granted station.spectra and declares
 // station.preview without its grant, with a transport service the test drives as a unit would.
 type delivering struct {
+	offers     streams.Offers
 	queue      int
 	w          *world
 	root       string
@@ -42,17 +45,23 @@ func deliveringOn(t *testing.T, channels ...gate.Channel) *delivering {
 // deliveringWith is deliveringOn with each delivery holding at most queue frames, the default where 0.
 func deliveringWith(t *testing.T, queue int, channels ...gate.Channel) *delivering {
 	t.Helper()
-	d := &delivering{queue: queue, w: newWorld(), root: root(t)}
+	return deliveringAll(t, queue, streams.Offers{}, channels...)
+}
+
+// deliveringAll is deliveringWith, every unit's library having offered offers.
+func deliveringAll(t *testing.T, queue int, offers streams.Offers, channels ...gate.Channel) *delivering {
+	t.Helper()
+	d := &delivering{queue: queue, offers: offers, w: newWorld(), root: root(t)}
 	d.transports = streams.New(streams.Config{Root: d.root, Log: slog.New(slog.NewTextHandler(io.Discard, nil)), Publish: d.w.publish})
 	t.Cleanup(func() { d.transports.CloseAll("acquire", streams.UnitExited) })
-	manifest := &gate.Manifest{ID: "com.example.station", Streams: []gate.Stream{{ID: "station.spectra"}, {ID: "station.preview"}}}
+	manifest := &gate.Manifest{ID: "com.example.station", Streams: []gate.Stream{{ID: "station.spectra"}, {ID: "station.preview"}, {ID: "station.raw", ToleratesLoss: true}}}
 	b, err := interfaces.BindServing(d.root, "", mode, channels, func(ch gate.Channel) interfacev1.InterfaceServer {
 		return interfaces.NewSurface(interfaces.Config{
-			Channel: ch, Root: d.root, Queue: d.queue, Bus: d.w.bus, Publish: d.w.publish, Units: bench{}, Sessions: &fakeSessions{}, Transports: d.transports,
+			Channel: ch, Root: d.root, Queue: d.queue, Bus: d.w.bus, Publish: d.w.publish, Units: bench{}, Sessions: &fakeSessions{offers: d.offers}, Transports: d.transports,
 			Declared: func(id string) (*gate.Manifest, bool) { return manifest, benchUnits[id].kind == unit.Plugin },
 			Granted: func(id string) ([]string, []string, []string) {
 				if id == "acquire" {
-					return []string{"station.spectra"}, nil, nil
+					return []string{"station.spectra", "station.raw"}, nil, nil
 				}
 				return nil, nil, nil
 			},
@@ -425,5 +434,135 @@ func TestAClientThatReadsAStreamSocketIsDeliveredOnOne(t *testing.T) {
 		if n != 16+want || binary.LittleEndian.Uint64(body[0:8]) != uint64(i+1) {
 			t.Errorf("frame %d: %d bytes, sequence %d", i+1, n, binary.LittleEndian.Uint64(body[0:8]))
 		}
+	}
+}
+
+// lifeline reads one message of a delivery's lifeline: its length, and the descriptor it carries if any.
+func lifeline(t *testing.T, conn *net.UnixConn) (int, *os.File) {
+	t.Helper()
+	conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	head, oob := make([]byte, 4), make([]byte, unix.CmsgSpace(4))
+	n, oobn, _, _, err := conn.ReadMsgUnix(head, oob)
+	if err != nil || n != 4 {
+		t.Fatalf("no message on the lifeline: %d bytes, %v", n, err)
+	}
+	length := int(binary.LittleEndian.Uint32(head))
+	var f *os.File
+	if oobn > 0 {
+		messages, _ := unix.ParseSocketControlMessage(oob[:oobn])
+		if len(messages) == 1 {
+			if fds, err := unix.ParseUnixRights(&messages[0]); err == nil && len(fds) == 1 {
+				f = os.NewFile(uintptr(fds[0]), "ring")
+				t.Cleanup(func() { f.Close() })
+			}
+		}
+	}
+	if length > 0 {
+		body := make([]byte, length)
+		if _, err := io.ReadFull(conn, body); err != nil {
+			t.Fatalf("the lifeline's message of %d bytes: %v", length, err)
+		}
+	}
+	return length, f
+}
+
+// producing opens the stream on the ring as an activation would, and writes one frame into it as its unit.
+func (d *delivering) producing(t *testing.T, sequence uint64, payload []byte) {
+	t.Helper()
+	_, address, err := d.transports.Open("acquire", 3, "station.raw", streams.Tolerances{Loss: true}, streams.Offers{Shared: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err := net.DialUnix("unixpacket", nil, &net.UnixAddr{Name: address, Net: "unixpacket"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { c.Close() })
+	c.SetReadDeadline(time.Now().Add(2 * time.Second))
+	buf, oob := make([]byte, 1), make([]byte, unix.CmsgSpace(4))
+	_, oobn, _, _, err := c.ReadMsgUnix(buf, oob)
+	if err != nil {
+		t.Fatal(err)
+	}
+	messages, _ := unix.ParseSocketControlMessage(oob[:oobn])
+	fds, _ := unix.ParseUnixRights(&messages[0])
+	f := os.NewFile(uintptr(fds[0]), "ring")
+	defer f.Close()
+	w, err := ring.OpenWriter(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+	if err := w.Publish(1000+sequence, payload); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// read is the frames a client reading the ring finds in it, from the first.
+func readRing(t *testing.T, f *os.File) []ring.Frame {
+	t.Helper()
+	r, err := ring.OpenReader(f)
+	if err != nil {
+		t.Fatalf("the descriptor is not a ring a reader opens: %v", err)
+	}
+	defer r.Close()
+	var got []ring.Frame
+	for {
+		f, _, err := r.Next(100 * time.Millisecond)
+		if err != nil {
+			return got
+		}
+		got = append(got, f)
+	}
+}
+
+// std: yoke:streams-delivered.11
+func TestAClientThatReadsTheSharedObjectIsHandedEachRingAndAStop(t *testing.T) {
+	d := deliveringAll(t, 0, streams.Offers{Shared: true}, gate.Channel{Name: "panel", Transport: "local", Clients: "single"})
+	a, _ := attachTo(t, d.bound.Address("panel"))
+	a.next(t)
+	reads := subscribeTo("station.raw")
+	reads.GetStreamSubscribe().Reads = []interfacev1.UnitStream_Reads{interfacev1.UnitStream_READS_SHARED_OBJECT}
+	got := a.answerTo(t, "s", reads).GetAnswer().GetStreamSubscribe()
+	if got.GetShared() == "" {
+		t.Fatalf("answered %v, not the lifeline", got.GetArrives())
+	}
+	conn, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: got.GetShared(), Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	time.Sleep(50 * time.Millisecond)
+
+	d.producing(t, 1, []byte("first"))
+	n, f := lifeline(t, conn)
+	if n != 1 || f == nil {
+		t.Fatalf("at the activation the lifeline carried %d bytes and descriptor %v", n, f)
+	}
+	if frames := readRing(t, f); len(frames) != 1 || string(frames[0].Payload) != "first" {
+		t.Errorf("the first ring holds %+v", frames)
+	}
+	if _, err := f.WriteAt([]byte{1}, 0); err == nil {
+		t.Error("the client's descriptor of the ring can write")
+	}
+
+	d.transports.Close("acquire", "station.raw", streams.Asked)
+	if n, f := lifeline(t, conn); n != 0 || f != nil {
+		t.Errorf("at the stop the lifeline carried %d bytes and descriptor %v", n, f)
+	}
+
+	d.producing(t, 1, []byte("second"))
+	n, g := lifeline(t, conn)
+	if n != 1 || g == nil {
+		t.Fatalf("at the second activation the lifeline carried %d bytes and descriptor %v", n, g)
+	}
+	if frames := readRing(t, g); len(frames) != 1 || string(frames[0].Payload) != "second" {
+		t.Errorf("the second ring holds %+v", frames)
+	}
+
+	a.answerTo(t, "u", &interfacev1.Request{Version: 1, Operation: &interfacev1.Request_StreamUnsubscribe{StreamUnsubscribe: &interfacev1.StreamRelease{Delivery: got.GetDelivery()}}})
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if n, err := conn.Read(make([]byte, 4)); err == nil {
+		t.Errorf("after the release the lifeline carried %d more bytes", n)
 	}
 }
