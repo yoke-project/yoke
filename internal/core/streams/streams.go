@@ -148,6 +148,11 @@ type feed struct {
 	key
 	to       func(Frame)
 	released func()
+	// opened and stopped make a feed of the ring itself rather than of its frames: handed a descriptor
+	// of each activation's ring, opened for reading alone, and told of each stop. Such a feed is given
+	// no frame.
+	opened  func(*os.File)
+	stopped func()
 }
 
 type key struct{ unit, stream string }
@@ -161,6 +166,8 @@ type flow struct {
 	address     string
 	closer      func()
 	read        atomic.Uint64
+	// ring is the stream's ring, where it is carried on one.
+	ring *ring.Ring
 }
 
 // New is a service with no transport open.
@@ -180,6 +187,13 @@ func (s *Service) Path(unitID, stream string) string {
 // open is refused: activation is once per flow.
 func (s *Service) Open(unitID string, incarnation uint64, stream string, t Tolerances, offers Offers) (Transport, string, error) {
 	k := key{unitID, stream}
+	// What a feed of the ring is told runs once the lock is let go, so a feed may write to its client.
+	var after []func()
+	defer func() {
+		for _, run := range after {
+			run()
+		}
+	}()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, open := s.open[k]; open {
@@ -240,6 +254,16 @@ func (s *Service) Open(unitID string, incarnation uint64, stream string, t Toler
 		})
 	}
 	s.open[k] = f
+	if f.ring != nil {
+		for fd := range s.feeds {
+			if fd.key == k && fd.opened != nil {
+				if readable, err := f.ring.ReaderFile(); err == nil {
+					opened := fd.opened
+					after = append(after, func() { opened(readable) })
+				}
+			}
+		}
+	}
 	s.cfg.Log.Info("stream", "unit", unitID, "stream", stream, "event", "opened", "transport", string(f.transport))
 	return f.transport, address, nil
 }
@@ -272,6 +296,7 @@ func (s *Service) openShared(f *flow) error {
 		return err
 	}
 	f.transport = Shared
+	f.ring = r
 	done := make(chan struct{})
 	var mu sync.Mutex
 	var held net.Conn
@@ -508,7 +533,7 @@ func (s *Service) deliver(f *flow, sequence, sentAt uint64, payload []byte) {
 	s.mu.Lock()
 	var to []func(Frame)
 	for fd := range s.feeds {
-		if fd.key == f.key {
+		if fd.key == f.key && fd.to != nil {
 			to = append(to, fd.to)
 		}
 	}
@@ -580,6 +605,17 @@ func (s *Service) CloseAll(unitID, reason string) {
 
 // remove ends a flow: the socket goes first, so nothing more arrives, then the stop is published.
 func (s *Service) remove(f *flow, reason string) {
+	s.mu.Lock()
+	var stopped []func()
+	for fd := range s.feeds {
+		if fd.key == f.key && fd.stopped != nil {
+			stopped = append(stopped, fd.stopped)
+		}
+	}
+	s.mu.Unlock()
+	for _, stop := range stopped {
+		stop()
+	}
 	f.closer()
 	if err := os.Remove(f.address); err != nil && !errors.Is(err, os.ErrNotExist) {
 		s.cfg.Log.Warn("stream", "unit", f.unit, "stream", f.stream, "error", err.Error())
@@ -612,6 +648,29 @@ func (s *Service) Feed(unitID, stream string, to func(Frame), released func()) (
 	s.mu.Lock()
 	s.feeds[fd] = true
 	s.mu.Unlock()
+	return func() {
+		s.mu.Lock()
+		delete(s.feeds, fd)
+		s.mu.Unlock()
+	}
+}
+
+// FeedRing is a consumer of a unit's stream that reads its ring itself: handed a descriptor of each
+// activation's ring opened for reading alone — at once, where the stream flows on one — and told of each
+// stop, across stops and starts, until the unit's Session ends, when it is released. It is given no frame:
+// the Core carries nothing to it.
+func (s *Service) FeedRing(unitID, stream string, opened func(*os.File), stopped func(), released func()) (stop func()) {
+	fd := &feed{key: key{unitID, stream}, released: released, opened: opened, stopped: stopped}
+	s.mu.Lock()
+	s.feeds[fd] = true
+	var readable *os.File
+	if f, open := s.open[fd.key]; open && f.ring != nil {
+		readable, _ = f.ring.ReaderFile()
+	}
+	s.mu.Unlock()
+	if readable != nil {
+		opened(readable)
+	}
 	return func() {
 		s.mu.Lock()
 		delete(s.feeds, fd)
