@@ -24,10 +24,8 @@ github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/yoke-project/yoke-sdk-go v0.7.2-0.20261109174709-964aa90ef9c8 h1:Zb7ukYTyC8SEzPYEJdRiyzyAbF8wDSyjL4UuvPywzoM=
 github.com/yoke-project/yoke-sdk-go v0.7.2-0.20261109174709-964aa90ef9c8/go.mod h1:P2TGBh/vmcjmZW+rHFGRYNDZp1vZ0cdnoPAx7ISD84M=
-github.com/yoke-project/yoke/proto v0.5.0 h1:UYyJqNVYGoVFihyR0O/9jZoxt56F4jfg9LHz5xm/oc8=
-github.com/yoke-project/yoke/proto v0.5.0/go.mod h1:05vmHgz6Ng2GjbfPp0HdITHPlygSbZoWdAXhdJSYbKo=
-github.com/yoke-project/yoke/proto v0.5.1-0.20261115153113-3165c043e0b8 h1:1hfeaCv7EHKTlG5ybiNa5vZgs5K7Wr9MkGrVJXPCjno=
-github.com/yoke-project/yoke/proto v0.5.1-0.20261115153113-3165c043e0b8/go.mod h1:05vmHgz6Ng2GjbfPp0HdITHPlygSbZoWdAXhdJSYbKo=
+github.com/yoke-project/yoke/proto v0.6.0 h1:whsVO7LZPo7h9I/Gf84qJP3R4DXQeImiTB0uU3eE66c=
+github.com/yoke-project/yoke/proto v0.6.0/go.mod h1:05vmHgz6Ng2GjbfPp0HdITHPlygSbZoWdAXhdJSYbKo=
 go.yaml.in/yaml/v3 v3.0.5 h1:N6y/pJk8buWs9NY5ERU2HSMfm+IuD/OtfdAnq6kESPw=
 go.yaml.in/yaml/v3 v3.0.5/go.mod h1:HVTZu1O7/Vkt2N+BFy8Zza+lnLsABggaTM2ZpNIGuKg=
 golang.org/x/mod v0.41.0 h1:qJmnOUb4YB+FsEuM3HcWucdZASCPGhsX6uljO6pog0c=
