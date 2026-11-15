@@ -185,3 +185,20 @@ func TestTheProducersDescriptorWritesAndAReadersCannot(t *testing.T) {
 		t.Error("a reader's descriptor maps for writing")
 	}
 }
+
+// std: yoke:the-shared-ring.08
+func TestARingIsSizedToItsStreamsLargestFrame(t *testing.T) {
+	for _, c := range []struct {
+		maxFrame        int64
+		slots, capacity uint32
+	}{
+		{1 << 20, 32, 1 << 20},
+		{4 << 20, 32, 4 << 20},
+		{16 << 20, 8, 16 << 20},
+		{64 << 20, 4, 64 << 20},
+	} {
+		if slots, capacity := Geometry(c.maxFrame); slots != c.slots || capacity != c.capacity {
+			t.Errorf("a largest frame of %d: %d slots of %d, want %d of %d", c.maxFrame, slots, capacity, c.slots, c.capacity)
+		}
+	}
+}

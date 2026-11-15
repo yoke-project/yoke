@@ -58,6 +58,22 @@ type Ring struct {
 // Create creates a ring of the figures layout 1 sets, labelled as given.
 func Create(label string) (*Ring, error) { return CreateWith(label, Slots, Capacity) }
 
+// The memory a ring may take whole, beyond which it holds fewer slots, and the fewest it holds.
+const (
+	Budget   = 128 << 20
+	MinSlots = 4
+)
+
+// Geometry is the ring a stream declaring maxFrame as its largest frame is carried on: slots of that
+// capacity, Slots of them while they fit in Budget, otherwise as many as fit, never fewer than MinSlots.
+func Geometry(maxFrame int64) (slots, capacity uint32) {
+	slots = Slots
+	if fit := Budget / maxFrame; fit < int64(slots) {
+		slots = uint32(max(fit, MinSlots))
+	}
+	return slots, uint32(maxFrame)
+}
+
 // CreateWith creates a ring of the given geometry: an anonymous memory file, sized, labelled, its header
 // written.
 func CreateWith(label string, slots, capacity uint32) (*Ring, error) {

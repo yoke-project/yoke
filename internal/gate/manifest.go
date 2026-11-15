@@ -36,7 +36,16 @@ type Stream struct {
 	ID               string
 	ToleratesLoss    bool
 	ToleratesReorder bool
+	// MaxFrame is the largest payload the stream emits, in bytes: MaxFrameDefault when the Manifest says
+	// nothing, at most MaxFrameCeiling.
+	MaxFrame int64
 }
+
+// The largest frame a stream may declare, and the one it has when it declares none.
+const (
+	MaxFrameDefault int64 = 1 << 20
+	MaxFrameCeiling int64 = 64 << 20
+)
 
 // Capability is what an operator may grant, governing exactly one object.
 type Capability struct {
@@ -191,8 +200,8 @@ func (c *checker) manifestShape() bool {
 		}
 		return c.str(v, joined(at, "id"), false)
 	}
-	list("streams", []string{"tolerates_loss", "tolerates_reorder"}, func(entry map[string]*node, at string) {
-		s := Stream{}
+	list("streams", []string{"tolerates_loss", "tolerates_reorder", "max_frame"}, func(entry map[string]*node, at string) {
+		s := Stream{MaxFrame: MaxFrameDefault}
 		if v, ok := id(entry, at); ok {
 			if !nameOK(v) || v == "." || v == ".." {
 				c.refuse("name.not_a_path_component", joined(at, "id"), "the stream %q is not a path component: no separator, no null byte, neither . nor ..", v)
@@ -204,6 +213,18 @@ func (c *checker) manifestShape() bool {
 		}
 		if v, there := entry["tolerates_reorder"]; there {
 			s.ToleratesReorder, _ = c.boolean(v, joined(at, "tolerates_reorder"))
+		}
+		if v, there := entry["max_frame"]; there {
+			where := joined(at, "max_frame")
+			n, err := strconv.ParseInt(v.text(), 10, 64)
+			switch {
+			case !v.isScalar() || err != nil:
+				c.refuse("field.type", where, "%s is %q, not a number of bytes", where, v.text())
+			case n < 1 || n > MaxFrameCeiling:
+				c.refuse("stream.max_frame", where, "the stream's largest frame is %d bytes, and it is from 1 to %d", n, MaxFrameCeiling)
+			default:
+				s.MaxFrame = n
+			}
 		}
 		m.Streams = append(m.Streams, s)
 	})

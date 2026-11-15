@@ -103,3 +103,49 @@ func TestALibraryThatOffersNoStreamSocketKeepsThePacketSockets(t *testing.T) {
 		}
 	}
 }
+
+// std: yoke:a-streams-transport.14
+func TestAStreamsLargestFrameSizesItsRingAndBoundsItsSocket(t *testing.T) {
+	b := newBench(t)
+	_, address, err := b.svc.Open("acquire", 1, "station.raw", streams.Tolerances{Loss: true, MaxFrame: 16 << 20}, streams.Offers{Shared: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, f := produce(t, address)
+	if f == nil {
+		t.Fatal("the producer was handed no ring")
+	}
+	head := make([]byte, 24)
+	if _, err := f.ReadAt(head, 0); err != nil {
+		t.Fatal(err)
+	}
+	if slots, capacity := binary.LittleEndian.Uint32(head[12:]), binary.LittleEndian.Uint32(head[16:]); slots != 8 || capacity != 16<<20 {
+		t.Errorf("the ring holds %d slots of %d, want 8 of %d", slots, capacity, 16<<20)
+	}
+	three := bytes.Repeat([]byte{3}, 3<<20)
+	for _, c := range []struct {
+		stream   string
+		maxFrame int64
+		read     bool
+	}{{"station.four", 4 << 20, true}, {"station.one", 0, false}} {
+		before := len(b.read(t, 0))
+		_, address, err := b.svc.Open("acquire", 1, c.stream, streams.Tolerances{Loss: true, MaxFrame: c.maxFrame}, streams.Offers{FramedStream: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		conn, err := net.Dial("unix", address)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer conn.Close()
+		conn.Write(prefixed(frame(1, 1, three)))
+		time.Sleep(200 * time.Millisecond)
+		got := b.read(t, 0)[before:]
+		if c.read && (len(got) != 1 || len(got[0].Payload) != len(three)) {
+			t.Errorf("%s: read %d messages", c.stream, len(got))
+		}
+		if !c.read && len(got) != 0 {
+			t.Errorf("%s, bounded at 1 MiB, read a message of 3 MiB", c.stream)
+		}
+	}
+}

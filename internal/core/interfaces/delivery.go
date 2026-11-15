@@ -21,7 +21,12 @@ import (
 // data message may carry and its header. A packet larger than the socket's send buffer is refused, and a
 // host's default is far below the bound; the kernel grants it up to net.core.wmem_max, and a frame that
 // still does not fit is a write that fails. No system parameter is touched.
-const sendBuffer = 16 + 1<<20 + 4096
+func sendBuffer(largest int64) int {
+	if largest <= 0 {
+		largest = 1 << 20
+	}
+	return 16 + int(largest) + 4096
+}
 
 // Queued is how many frames a delivery holds for a client that reads slower than the stream flows. Past
 // it the delivery is released and the client told, rather than a frame dropped: a delivery never removes
@@ -101,9 +106,11 @@ func (s *Surface) subscribeStream(r *interfacev1.Request, a *attachment) (*inter
 	if !ok {
 		return nil, aboutUnit("subject.unknown", id, "nothing this channel may address is the unit "+id)
 	}
-	if !slices.ContainsFunc(m.Streams, func(d gate.Stream) bool { return d.ID == stream }) {
+	at := slices.IndexFunc(m.Streams, func(d gate.Stream) bool { return d.ID == stream })
+	if at < 0 {
 		return nil, aboutItem("scope.undeclared", stream, stream+" was never declared by the unit's Plugin")
 	}
+	largest := m.Streams[at].MaxFrame
 	var granted []string
 	if s.cfg.Granted != nil {
 		granted, _, _ = s.cfg.Granted(id)
@@ -199,7 +206,7 @@ func (s *Surface) subscribeStream(r *interfacev1.Request, a *attachment) (*inter
 				return
 			}
 			if unix, ok := conn.(*net.UnixConn); ok {
-				unix.SetWriteBuffer(sendBuffer)
+				unix.SetWriteBuffer(sendBuffer(largest))
 			}
 			mu.Lock()
 			client = conn

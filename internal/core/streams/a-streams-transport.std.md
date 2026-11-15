@@ -173,3 +173,16 @@
 | **Precondition** | a unit whose library offered nothing, as a published library of 0.14 offers nothing but the ring |
 | **Action** | a stream that tolerates nothing and one that tolerates loss are opened |
 | **Expected** | the first is the packet socket, the second the datagram socket, as before: a Core of this release still serves a library that does not know the stream socket |
+
+## yoke:a-streams-transport.14 — a stream's declared largest frame sizes its ring and bounds its stream socket
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/50-plugin-surface/07 §The shared ring · arch/50-plugin-surface/08 §The figures this document sets |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a stream that tolerates loss declaring 16 MiB, its library offering the ring; another declaring 4 MiB on the framed stream socket; a third declaring nothing on the same |
+| **Action** | the first's ring is read from the descriptor handed to the producer; on the second a message of 3 MiB is written, then on the third |
+| **Expected** | the ring holds 8 slots of 16 MiB; the second reads its 3 MiB message whole; the third, bounded at 1 MiB, ends its transport rather than read it |

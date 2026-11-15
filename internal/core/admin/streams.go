@@ -31,7 +31,7 @@ func (c *Core) stream(id, stream string) (streams.Tolerances, uint64, *administr
 	if m, ok := c.Manifest(plugin); ok && plugin != "" {
 		for _, s := range m.Streams {
 			if s.ID == stream {
-				declared = &streams.Tolerances{Loss: s.ToleratesLoss, Reorder: s.ToleratesReorder}
+				declared = &streams.Tolerances{Loss: s.ToleratesLoss, Reorder: s.ToleratesReorder, MaxFrame: s.MaxFrame}
 			}
 		}
 	}
