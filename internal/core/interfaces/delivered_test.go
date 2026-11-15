@@ -3,6 +3,7 @@ package interfaces_test
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net"
@@ -81,6 +82,29 @@ func (d *delivering) flow(t *testing.T) func(sequence uint64, payload []byte) {
 		raw, _ := proto.Marshal(&pluginv1.Envelope{MessageId: "d", SentAtUnixNano: int64(1000 + sequence),
 			Payload: &pluginv1.Envelope_Data{Data: &pluginv1.Data{Sequence: sequence, Payload: payload}}})
 		conn.Write(raw)
+	}
+}
+
+// flowSized is flow, with the unit's socket able to send a message of size bytes, as a library sending
+// large frames sets it.
+func (d *delivering) flowSized(t *testing.T, size int) func(sequence uint64, payload []byte) {
+	t.Helper()
+	_, address, err := d.transports.Open("acquire", 3, "station.spectra", streams.Tolerances{}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn, err := net.Dial("unixpacket", address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn.(*net.UnixConn).SetWriteBuffer(size)
+	t.Cleanup(func() { conn.Close() })
+	return func(sequence uint64, payload []byte) {
+		raw, _ := proto.Marshal(&pluginv1.Envelope{MessageId: "d", SentAtUnixNano: int64(1000 + sequence),
+			Payload: &pluginv1.Envelope_Data{Data: &pluginv1.Data{Sequence: sequence, Payload: payload}}})
+		if _, err := conn.Write(raw); err != nil {
+			t.Errorf("the unit could not send %d bytes: %v", len(raw), err)
+		}
 	}
 }
 
@@ -298,5 +322,70 @@ func TestADeliveryWhoseClientFallsBehindIsReleased(t *testing.T) {
 	ref := a.answerTo(t, "u", &interfacev1.Request{Version: 1, Operation: &interfacev1.Request_StreamUnsubscribe{StreamUnsubscribe: &interfacev1.StreamRelease{Delivery: got.GetDelivery()}}}).GetRefusal()
 	if ref == nil {
 		t.Error("the released delivery could still be unsubscribed")
+	}
+}
+
+// std: yoke:streams-delivered.08
+func TestAFrameUpToTheBoundReachesAClientOnASocket(t *testing.T) {
+	d := deliveringOn(t, gate.Channel{Name: "panel", Transport: "local", Clients: "single"})
+	a, _ := attachTo(t, d.bound.Address("panel"))
+	a.next(t)
+	got := a.answerTo(t, "s", subscribeTo("station.spectra")).GetAnswer().GetStreamSubscribe()
+	conn, err := net.Dial("unixpacket", got.GetSocket())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	conn.(*net.UnixConn).SetReadBuffer(4 << 20)
+	time.Sleep(50 * time.Millisecond)
+	write := d.flowSized(t, 2<<20)
+	sizes := []int{600 << 10, 1 << 20}
+	for i, n := range sizes {
+		write(uint64(i+1), bytes.Repeat([]byte{byte(i + 1)}, n))
+	}
+	buf := make([]byte, 16+(2<<20))
+	for i, n := range sizes {
+		conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+		got, err := conn.Read(buf)
+		if err != nil {
+			t.Fatalf("frame %d of %d bytes did not arrive: %v", i+1, n, err)
+		}
+		if got != 16+n || binary.LittleEndian.Uint64(buf[0:8]) != uint64(i+1) || buf[16] != byte(i+1) {
+			t.Fatalf("frame %d: read %d bytes, sequence %d; want %d bytes, sequence %d", i+1, got, binary.LittleEndian.Uint64(buf[0:8]), 16+n, i+1)
+		}
+	}
+}
+
+// std: yoke:streams-delivered.09
+func TestADeliveryTheCoreCannotWriteToIsReleasedAndSaid(t *testing.T) {
+	d := deliveringOn(t, gate.Channel{Name: "panel", Transport: "local", Clients: "single"})
+	a, _ := attachTo(t, d.bound.Address("panel"))
+	a.next(t)
+	got := a.answerTo(t, "s", subscribeTo("station.spectra")).GetAnswer().GetStreamSubscribe()
+	conn, err := net.Dial("unixpacket", got.GetSocket())
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(50 * time.Millisecond)
+	conn.Close()
+	write := d.flow(t)
+	deadline := time.Now().Add(5 * time.Second)
+	for i := uint64(1); len(d.w.of("channel.delivery.failed")) == 0; i++ {
+		if time.Now().After(deadline) {
+			t.Fatal("no channel.delivery.failed was published for a client that closed its socket")
+		}
+		write(i, []byte("x"))
+		time.Sleep(10 * time.Millisecond)
+	}
+	e := d.w.of("channel.delivery.failed")[0]
+	var detail map[string]string
+	json.Unmarshal(e.Detail, &detail)
+	if e.Subject.ID != "panel" || detail["unit"] != "acquire" || detail["stream"] != "station.spectra" ||
+		detail["delivery"] != got.GetDelivery() || detail["reason"] == "" {
+		t.Errorf("published %+v", e)
+	}
+	ref := a.answerTo(t, "u", &interfacev1.Request{Version: 1, Operation: &interfacev1.Request_StreamUnsubscribe{StreamUnsubscribe: &interfacev1.StreamRelease{Delivery: got.GetDelivery()}}}).GetRefusal()
+	if ref == nil {
+		t.Error("the failed delivery could still be unsubscribed")
 	}
 }

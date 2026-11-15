@@ -11,10 +11,17 @@ import (
 
 	interfacev1 "github.com/yoke-project/yoke/proto/yoke/interface/v1"
 
+	"github.com/yoke-project/yoke/internal/core/event"
 	"github.com/yoke-project/yoke/internal/core/streams"
 	"github.com/yoke-project/yoke/internal/core/unit"
 	"github.com/yoke-project/yoke/internal/gate"
 )
+
+// sendBuffer is what the Core asks of each socket it writes a delivery on: room for the largest frame a
+// data message may carry and its header. A packet larger than the socket's send buffer is refused, and a
+// host's default is far below the bound; the kernel grants it up to net.core.wmem_max, and a frame that
+// still does not fit is a write that fails. No system parameter is touched.
+const sendBuffer = 16 + 1<<20 + 4096
 
 // Queued is how many frames a delivery holds for a client that reads slower than the stream flows. Past
 // it the delivery is released and the client told, rather than a frame dropped: a delivery never removes
@@ -177,6 +184,9 @@ func (s *Surface) subscribeStream(r *interfacev1.Request, a *attachment) (*inter
 			if err != nil {
 				return
 			}
+			if unix, ok := conn.(*net.UnixConn); ok {
+				unix.SetWriteBuffer(sendBuffer)
+			}
 			mu.Lock()
 			client = conn
 			mu.Unlock()
@@ -186,6 +196,11 @@ func (s *Surface) subscribeStream(r *interfacev1.Request, a *attachment) (*inter
 					return
 				case f := <-frames:
 					if _, err := conn.Write(frameOf(f)); err != nil {
+						// A delivery that cannot be written to ends as a slow client's does: released, its
+						// socket closed, so the client learns it, and the reason said.
+						behind.Store(true)
+						s.publish(event.DeliveryFailed(s.cfg.Channel.Name, id, stream, n, err.Error()))
+						go held.drop(n)
 						return
 					}
 				}
