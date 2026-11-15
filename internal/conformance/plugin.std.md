@@ -186,7 +186,7 @@
 | **Label** | blocking |
 | **Precondition** | the harness of case 8, granted everything; its Manifest declaring a stream that tolerates nothing and one that tolerates loss; the suite attached to the channel `suite` the run composes |
 | **Action** | for each of the two streams, `stream.subscribe` and then `stream.start`, on the interface surface |
-| **Expected** | for each, a delivery on a per-subscriber socket and an acknowledgement; and an observation `activated` naming the stream, with the transport `ordered` for the one that tolerates nothing, and for the one that tolerates loss `framed` — or `shared_object` where the library offered the shared ring at registration |
+| **Expected** | for each, a delivery on a per-subscriber socket and an acknowledgement; and an observation `activated` naming the stream, with the transport `ordered` — or `ordered_stream` where the library offered the stream socket — for the one that tolerates nothing, and for the one that tolerates loss `framed`, `framed_stream`, or `shared_object` where the library offered the shared ring |
 
 ## yoke:plugin.14 — what is emitted on the ordered transport arrives in order, numbered from 1, unchanged
 
