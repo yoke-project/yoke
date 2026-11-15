@@ -147,3 +147,16 @@
 | **Precondition** | a Manifest carrying `endpoint`, `autostart` and `digest` at the top, and a `description` on a capability |
 | **Action** | check it |
 | **Expected** | four `manifest.field.removed` refusals, each at its field, the messages naming where the statement lives — the unit's identity, the unit in the composing document, the descriptor, the shared vocabulary |
+
+## yoke:the-manifest.12 — a stream declares its largest frame, 1 MiB when it does not, and at most 64 MiB
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/50-plugin-surface/02 §The four declared lists · arch/95-reference/01 |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a Manifest whose streams declare no `max_frame`, `4194304`, `67108864`, `67108865`, `0` and `big` |
+| **Action** | the Manifest is read |
+| **Expected** | the first is 1 MiB, the second and third their values; the fourth and fifth are refused as `stream.max_frame` at their location, and the last as `field.type` |

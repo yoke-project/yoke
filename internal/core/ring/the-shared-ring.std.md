@@ -95,3 +95,16 @@
 | **Precondition** | a ring, the descriptor handed to the producer and the one the Core keeps |
 | **Action** | map each for writing |
 | **Expected** | the producer's maps for writing; the reader's is refused |
+
+## yoke:the-shared-ring.08 — a ring is sized to its stream's largest frame
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/50-plugin-surface/07 §The shared ring · arch/95-reference/01 |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | streams declaring their largest frame as 1 MiB, 4 MiB, 16 MiB and 64 MiB |
+| **Action** | the geometry of each one's ring is computed |
+| **Expected** | 32 slots of 1 MiB and of 4 MiB; 8 of 16 MiB; 4 of 64 MiB, the floor even beyond 128 MiB in all |

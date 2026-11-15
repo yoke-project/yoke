@@ -174,7 +174,7 @@ func (s *Surface) stream(id, stream string) (streams.Tolerances, uint64, *interf
 	if ref != nil {
 		return streams.Tolerances{}, 0, ref
 	}
-	return streams.Tolerances{Loss: m.Streams[i].ToleratesLoss, Reorder: m.Streams[i].ToleratesReorder}, incarnation, nil
+	return streams.Tolerances{Loss: m.Streams[i].ToleratesLoss, Reorder: m.Streams[i].ToleratesReorder, MaxFrame: m.Streams[i].MaxFrame}, incarnation, nil
 }
 
 func done() *interfacev1.Acknowledged {

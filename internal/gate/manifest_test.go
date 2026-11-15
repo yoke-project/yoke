@@ -76,8 +76,8 @@ func TestAManifestIsReadIntoWhatItDeclares(t *testing.T) {
 		Path: installed, ID: "com.yoke.station.acquire", Protocol: 1,
 		Needs: []gate.Need{{Class: "device", Name: "instrument"}},
 		Streams: []gate.Stream{
-			{ID: "station.spectra"},
-			{ID: "station.preview", ToleratesLoss: true, ToleratesReorder: true},
+			{ID: "station.spectra", MaxFrame: gate.MaxFrameDefault},
+			{ID: "station.preview", ToleratesLoss: true, ToleratesReorder: true, MaxFrame: gate.MaxFrameDefault},
 		},
 		Commands:    []string{"calibrate"},
 		Queries:     []string{"head-status"},
@@ -218,7 +218,7 @@ capabilities:
 	if m == nil {
 		t.Fatal("the Manifest was refused")
 	}
-	want := []gate.Stream{{ID: "plain"}, {ID: "shuffled", ToleratesReorder: true}}
+	want := []gate.Stream{{ID: "plain", MaxFrame: gate.MaxFrameDefault}, {ID: "shuffled", ToleratesReorder: true, MaxFrame: gate.MaxFrameDefault}}
 	if !reflect.DeepEqual(m.Streams, want) {
 		t.Errorf("the streams are %+v, want %+v", m.Streams, want)
 	}
@@ -293,6 +293,58 @@ capabilities:
 	for _, f := range removed {
 		if where, there := want[f.Location]; !there || !strings.Contains(f.Message, where) {
 			t.Errorf("%s: %q does not say where it lives now (%q)", f.Location, f.Message, where)
+		}
+	}
+}
+
+// std: yoke:the-manifest.12
+func TestAStreamDeclaresItsLargestFrame(t *testing.T) {
+	r, m := manifest(t, installed, `
+manifest: 1
+id: com.yoke.station.acquire
+protocol: 1
+streams:
+  - id: s.none
+  - id: s.four
+    max_frame: 4194304
+  - id: s.ceiling
+    max_frame: 67108864
+capabilities:
+  - { name: a, governs: { stream: s.none } }
+  - { name: b, governs: { stream: s.four } }
+  - { name: c, governs: { stream: s.ceiling } }
+`)
+	if m == nil {
+		t.Fatalf("no Manifest read: %v", codes(r))
+	}
+	sizes := map[string]int64{}
+	for _, s := range m.Streams {
+		sizes[s.ID] = s.MaxFrame
+	}
+	for id, want := range map[string]int64{"s.none": 1 << 20, "s.four": 4 << 20, "s.ceiling": 64 << 20} {
+		if sizes[id] != want {
+			t.Errorf("%s's largest frame is %d, want %d", id, sizes[id], want)
+		}
+	}
+	r, _ = manifest(t, installed, `
+manifest: 1
+id: com.yoke.station.acquire
+protocol: 1
+streams:
+  - id: s.beyond
+    max_frame: 67108865
+  - id: s.zero
+    max_frame: 0
+  - id: s.word
+    max_frame: big
+`)
+	refused := map[string]string{}
+	for _, f := range r.Findings {
+		refused[f.Location] = f.Code
+	}
+	for at, code := range map[string]string{"streams.0.max_frame": "stream.max_frame", "streams.1.max_frame": "stream.max_frame", "streams.2.max_frame": "field.type"} {
+		if refused[at] != code {
+			t.Errorf("%s: found %q, want %s (%v)", at, refused[at], code, codes(r))
 		}
 	}
 }

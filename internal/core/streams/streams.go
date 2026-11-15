@@ -86,7 +86,19 @@ func (t Transport) Activation() pluginv1.Control_Activate_Transport {
 }
 
 // Tolerances are what a stream's data tolerates, as its Manifest declares them.
-type Tolerances struct{ Loss, Reorder bool }
+type Tolerances struct {
+	Loss, Reorder bool
+	// MaxFrame is the largest payload the stream declares it emits; zero is the default, 1 MiB.
+	MaxFrame int64
+}
+
+// largest is the stream's largest payload, the default where it declares none.
+func (t Tolerances) largest() int64 {
+	if t.MaxFrame <= 0 {
+		return 1 << 20
+	}
+	return t.MaxFrame
+}
 
 // The reasons a stream stops.
 const (
@@ -237,7 +249,8 @@ func (s *Service) Open(unitID string, incarnation uint64, stream string, t Toler
 // and keeps that connection for the life of the stream; it reads the ring itself and delivers what it
 // reads. Closing the socket ends the stream, and the memory goes when the last descriptor on it closes.
 func (s *Service) openShared(f *flow) error {
-	r, err := ring.Create(fmt.Sprintf("yoke-%s-%s-%s", s.cfg.Instance, f.unit, f.stream))
+	slots, capacity := ring.Geometry(f.tolerates.largest())
+	r, err := ring.CreateWith(fmt.Sprintf("yoke-%s-%s-%s", s.cfg.Instance, f.unit, f.stream), slots, capacity)
 	if err != nil {
 		return err
 	}
@@ -407,7 +420,7 @@ func (s *Service) message(f *flow, conn net.Conn, buf []byte) ([]byte, bool) {
 
 // readOrderedStream reads one data envelope per message, in order.
 func (s *Service) readOrderedStream(f *flow, conn net.Conn) {
-	buf := make([]byte, packet)
+	buf := make([]byte, f.tolerates.largest()+4096)
 	for {
 		m, ok := s.message(f, conn, buf)
 		if !ok {
@@ -424,7 +437,7 @@ func (s *Service) readOrderedStream(f *flow, conn net.Conn) {
 
 // readFramedStream reads one frame per message, as readFrames does per datagram.
 func (s *Service) readFramedStream(f *flow, conn net.Conn) {
-	buf := make([]byte, packet)
+	buf := make([]byte, f.tolerates.largest()+4096)
 	var last uint64
 	for {
 		m, ok := s.message(f, conn, buf)
