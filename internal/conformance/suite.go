@@ -247,7 +247,7 @@ func Execute(cfg Config) (Report, error) {
 	}
 	coreYAML, _ := yaml.Marshal(map[string]any{"state_dir": paths["state"], "runtime_dir": paths["run"],
 		"plugins": map[string]any{"manifests": paths["plugins.d"], "executables": paths["plugins"]}})
-	env := map[string]string{"CONFORMANCE_SOCKET": control.path}
+	env := map[string]string{"CONFORMANCE_SOCKET": control.path, "CONFORMANCE_FEATURES": Features}
 	for k, v := range cfg.HarnessEnv {
 		env[k] = v
 	}
@@ -516,11 +516,17 @@ func listen(path string) (*control, error) {
 
 func (c *control) close() { c.listener.Close() }
 
+// Features names, comma-separated, what a harness may declare for this suite beyond what every Core it
+// may meet reads. A Core of an earlier release refuses a Manifest key it does not know, and a family's
+// own continuous integration runs the suite and the Core last published; a harness declares a feature
+// only where the suite running it names it, and a suite of an earlier release names none.
+const Features = "max_frame"
+
 // launch starts the harness out of band, as the suite does to have it describe itself, and to have an
 // administrative harness administer the instance.
 func (c *control) launch(cfg Config, env ...string) (*exec.Cmd, error) {
 	cmd := exec.Command(cfg.Harness)
-	cmd.Env = append(append(os.Environ(), "CONFORMANCE_SOCKET="+c.path), env...)
+	cmd.Env = append(append(os.Environ(), "CONFORMANCE_SOCKET="+c.path, "CONFORMANCE_FEATURES="+Features), env...)
 	for k, v := range cfg.HarnessEnv {
 		cmd.Env = append(cmd.Env, k+"="+v)
 	}

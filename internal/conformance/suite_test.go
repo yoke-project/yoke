@@ -40,6 +40,7 @@ func harness() int {
 	}
 	log, _ := os.OpenFile(os.Getenv("TEST_HARNESS_LOG"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	send := func(v map[string]any) { b, _ := json.Marshal(v); conn.Write(append(b, '\n')) }
+	fmt.Fprintf(log, "%s features=%s\n", os.Getenv("YOKE_UNIT"), os.Getenv("CONFORMANCE_FEATURES"))
 	contract := os.Getenv("TEST_CONTRACT")
 	if contract == "" {
 		contract = "plugin"
@@ -504,5 +505,32 @@ func TestAskedForAReportARunWritesItAsJSON(t *testing.T) {
 	}
 	if !strings.Contains(written.Error, "hello") || len(written.Cells) != 0 || written.OK {
 		t.Errorf("the report of a harness that never answered: error=%q cells=%v ok=%v", written.Error, written.Cells, written.OK)
+	}
+}
+
+// std: yoke:the-conformance-suite.13
+func TestTheSuiteNamesToAHarnessWhatItMayDeclare(t *testing.T) {
+	cfg, log := config(t, unitHello)
+	if report, err := conformance.Execute(cfg); err != nil || !report.OK {
+		t.Fatalf("the run gave %v and %+v", err, report)
+	}
+	b, _ := os.ReadFile(log)
+	var outOfBand, asAUnit bool
+	for _, line := range strings.Split(string(b), "\n") {
+		unit, features, found := strings.Cut(line, " features=")
+		if !found {
+			continue
+		}
+		if features != conformance.Features || !strings.Contains(features, "max_frame") {
+			t.Errorf("a launch was told %q", features)
+		}
+		if unit == "" {
+			outOfBand = true
+		} else {
+			asAUnit = true
+		}
+	}
+	if !outOfBand || !asAUnit {
+		t.Errorf("told out of band %v, as a unit %v:\n%s", outOfBand, asAUnit, b)
 	}
 }

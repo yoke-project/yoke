@@ -161,3 +161,16 @@
 | **Action** | run the suite each time, and read the file |
 | **Expected** | the first file names the Core and its version, the harness's contract, declared version, language and SDK line, holds one entry per cell with its case, language, result and detail — `pass` and `absent` — and says not every cell passed; the second names the harness that did not answer and why, holds no cell, and says not every cell passed; both runs exit non-zero |
 
+
+## yoke:the-conformance-suite.13 — the suite names to a harness what it may declare
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/90-sdks/03 §The harness |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a harness the suite launches, out of band and as a unit |
+| **Action** | the suite launches it |
+| **Expected** | both launches carry `CONFORMANCE_FEATURES` naming `max_frame`, so a harness declares a stream's largest frame only to a suite whose Core reads it |
