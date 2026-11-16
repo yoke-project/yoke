@@ -3,10 +3,12 @@ package streams_test
 import (
 	"bytes"
 	"encoding/json"
+	"log/slog"
 	"net"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -122,5 +124,77 @@ func TestTheRingsDescriptorGoesToOneProducerAndItsSocketEndsTheStream(t *testing
 	json.Unmarshal(events[0].Detail, &d)
 	if d.Stream != "station.preview" || d.Reason != "asked" {
 		t.Errorf("the stop says %+v", d)
+	}
+}
+
+// std: yoke:a-streams-transport.15
+func TestTheCoreReadsARingsFrameForADeliveryItRelaysAlone(t *testing.T) {
+	root, _ := os.MkdirTemp("", "yt")
+	t.Cleanup(func() { os.RemoveAll(root) })
+	log := &syncBuffer{}
+	// No Deliver: nothing but a feed takes what the Core reads.
+	svc := streams.New(streams.Config{Root: root, Instance: "bench", Log: slog.New(slog.NewTextHandler(log, nil))})
+	t.Cleanup(func() { svc.CloseAll("acquire", streams.UnitExited) })
+	direct := svc.FeedRing("acquire", "station.preview", func(f *os.File) { f.Close() }, func() {}, func() {})
+	defer direct()
+
+	activation := func(incarnation uint64) {
+		t.Helper()
+		_, address, err := svc.Open("acquire", incarnation, "station.preview", streams.Tolerances{Loss: true}, streams.Offers{Shared: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, f := produce(t, address)
+		if f == nil {
+			t.Fatal("the producer was handed no descriptor")
+		}
+		w, err := ring.OpenWriter(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer w.Close()
+		for i := range 3 {
+			if err := w.Publish(uint64(100+i), []byte{byte(i)}); err != nil {
+				t.Fatal(err)
+			}
+			// Apart, so that a reader that reads meets each frame.
+			time.Sleep(20 * time.Millisecond)
+		}
+	}
+
+	activation(1)
+	time.Sleep(300 * time.Millisecond)
+	svc.Close("acquire", "station.preview", streams.Asked)
+	if said := log.String(); !strings.Contains(said, "event=stopped") || !strings.Contains(said, "read=3 relayed=0") {
+		t.Fatalf("nothing was relayed, and the first stop says: %s", said)
+	}
+
+	var mu sync.Mutex
+	var relayed []streams.Frame
+	relay := svc.Feed("acquire", "station.preview", func(f streams.Frame) {
+		mu.Lock()
+		defer mu.Unlock()
+		relayed = append(relayed, f)
+	}, func() {})
+	defer relay()
+	activation(2)
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		mu.Lock()
+		n := len(relayed)
+		mu.Unlock()
+		if n >= 3 || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	svc.Close("acquire", "station.preview", streams.Asked)
+	mu.Lock()
+	defer mu.Unlock()
+	if len(relayed) != 3 || relayed[0].Sequence != 1 || relayed[2].Sequence != 3 || !bytes.Equal(relayed[2].Payload, []byte{2}) {
+		t.Errorf("the relayed consumer was given %+v", relayed)
+	}
+	if said := log.String(); !strings.Contains(said, "read=3 relayed=3") {
+		t.Errorf("three frames were relayed, and the second stop says: %s", said)
 	}
 }

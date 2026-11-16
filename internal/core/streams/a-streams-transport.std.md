@@ -186,3 +186,17 @@
 | **Precondition** | a stream that tolerates loss declaring 16 MiB, its library offering the ring; another declaring 4 MiB on the framed stream socket; a third declaring nothing on the same |
 | **Action** | the first's ring is read from the descriptor handed to the producer; on the second a message of 3 MiB is written, then on the third |
 | **Expected** | the ring holds 8 slots of 16 MiB; the second reads its 3 MiB message whole; the third, bounded at 1 MiB, ends its transport rather than read it |
+
+## yoke:a-streams-transport.15 — the Core reads a ring's frame for a delivery it relays, and for nothing else
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/50-plugin-surface/07 §The shared ring · arch/70-interface-surface/07 §The three delivery paths |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an instance `bench`, and a stream that tolerates loss open on the shared ring, its one consumer reading the ring itself |
+| **Action** | the producer publishes three frames, and the stream is stopped; it is opened again with a consumer the Core relays to beside the first, three frames are published, and it is stopped |
+| **Expected** | the first stop counts three frames and none relayed; the relayed consumer is given the second activation's three frames in order, and the second stop counts three frames, three relayed |
+

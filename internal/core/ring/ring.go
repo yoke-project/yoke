@@ -273,6 +273,27 @@ func (r *Reader) Next(interval time.Duration) (Frame, uint64, error) {
 	}
 }
 
+// Pass moves the reader past every frame published, reading none of them, and returns how many it
+// passed. It waits at most the interval given for a frame to be published.
+func (r *Reader) Pass(interval time.Duration) (uint64, error) {
+	deadline := time.Now().Add(interval)
+	for {
+		wake := atomic.LoadUint32(u32(r.mem, offWake))
+		published := atomic.LoadUint64(u64(r.mem, offPublished))
+		if published < r.next {
+			left := time.Until(deadline)
+			if left <= 0 {
+				return 0, ErrNoFrame
+			}
+			futexWait(u32(r.mem, offWake), wake, left)
+			continue
+		}
+		passed := published - r.next + 1
+		r.next = published + 1
+		return passed, nil
+	}
+}
+
 // Close lets the reader's mapping go.
 func (r *Reader) Close() { unix.Munmap(r.mem) }
 
