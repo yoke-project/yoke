@@ -286,3 +286,55 @@ func TestAGuardianTheManagerStartsCarriesTheSessionsDisplayAndAudio(t *testing.T
 		t.Error("the guardian was started with SESSION_SECRET")
 	}
 }
+
+// std: yoke:the-graphical-session.02
+func TestAGuardianAlreadyRunningStartsACoreWithItsOwnEnvironment(t *testing.T) {
+	bin := t.TempDir()
+	for _, program := range []string{"yoke-core", "yoke-guardian"} {
+		if said, err := exec.Command("go", "build", "-o", filepath.Join(bin, program), "github.com/yoke-project/yoke/cmd/"+program).CombinedOutput(); err != nil {
+			t.Fatalf("%s does not build: %v\n%s", program, err, said)
+		}
+	}
+	// The Core the configuration names records, per instance, the environment it was started with, and
+	// becomes the real one.
+	front, recorded := t.TempDir(), t.TempDir()
+	os.WriteFile(filepath.Join(front, "yoke-core"), []byte("#!/bin/sh\nfor a in \"$@\"; do [ \"$prev\" = --instance ] && name=\"$a\"; prev=\"$a\"; done\n"+
+		"env > "+recorded+"/\"$name\"\nexec "+filepath.Join(bin, "yoke-core")+" \"$@\"\n"), 0o755)
+	vars := account(t, "core: "+filepath.Join(front, "yoke-core")+"\n")
+	vars["PATH"] = bin + string(os.PathListSeparator) + os.Getenv("PATH")
+	t.Cleanup(func() {
+		if pid := holder(vars, "guardian.lock"); pid != 0 {
+			syscall.Kill(pid, syscall.SIGTERM)
+		}
+	})
+	// A session that names no display: a login before the compositor, or the account's systemd at boot.
+	expectDone(t, vars, "instance", "create", "com.yoke.station", "--name", "bench-a")
+	expectDone(t, vars, "instance", "create", "com.yoke.station", "--name", "bench-b")
+	expectDone(t, vars, "instance", "start", "bench-a")
+	first := holder(vars, "guardian.lock")
+	if first == 0 {
+		t.Fatal("starting bench-a left no guardian running")
+	}
+
+	// The graphical session, later: the same account, naming its display.
+	session := map[string]string{"WAYLAND_DISPLAY": "wayland-1", "DISPLAY": ":1", "XAUTHORITY": "/run/user/1000/xauth"}
+	for k, v := range session {
+		vars[k] = v
+	}
+	expectDone(t, vars, "instance", "start", "bench-b")
+	if pid := holder(vars, "guardian.lock"); pid != first {
+		t.Errorf("bench-b was started by guardian %d, not by the one already running, %d", pid, first)
+	}
+	var data []byte
+	eventually(t, "bench-b's Core to be started", 10*time.Second, func() bool {
+		data, _ = os.ReadFile(filepath.Join(recorded, "bench-b"))
+		return len(data) > 0
+	})
+	for k := range session {
+		if strings.Contains(string(data), "\n"+k+"=") || strings.HasPrefix(string(data), k+"=") {
+			t.Errorf("bench-b's Core was started with %s, which only the second session held", k)
+		}
+	}
+	expectDone(t, vars, "instance", "stop", "bench-b")
+	expectDone(t, vars, "instance", "stop", "bench-a")
+}
