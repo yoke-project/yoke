@@ -166,6 +166,9 @@ type flow struct {
 	address     string
 	closer      func()
 	read        atomic.Uint64
+	// relayed counts the frames among them that were copied for something to take; on a ring the rest
+	// were passed unread.
+	relayed atomic.Uint64
 	// ring is the stream's ring, where it is carried on one.
 	ring *ring.Ring
 }
@@ -347,7 +350,9 @@ func (s *Service) openShared(f *flow) error {
 }
 
 // readRing reads a ring frame by frame until the stream ends, delivering each frame read; a gap is what a
-// stream that tolerates loss tolerates.
+// stream that tolerates loss tolerates. While nothing is relayed from the stream — its every consumer
+// reads the ring itself, or it has none — the frames are passed and not read: the Core copies a frame
+// for a delivery it carries, and for nothing else.
 func (s *Service) readRing(f *flow, r *ring.Reader, done <-chan struct{}) {
 	defer r.Close()
 	for {
@@ -356,12 +361,33 @@ func (s *Service) readRing(f *flow, r *ring.Reader, done <-chan struct{}) {
 			return
 		default:
 		}
+		if !s.relays(f) {
+			if passed, err := r.Pass(ringInterval); err == nil {
+				f.read.Add(passed)
+			}
+			continue
+		}
 		frame, _, err := r.Next(ringInterval)
 		if err != nil {
 			continue
 		}
 		s.deliver(f, frame.Sequence, frame.Clock, frame.Payload)
 	}
+}
+
+// relays says whether a frame read from a stream would be handed to anything.
+func (s *Service) relays(f *flow) bool {
+	if s.cfg.Deliver != nil {
+		return true
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for fd := range s.feeds {
+		if fd.key == f.key && fd.to != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // ringInterval bounds a wait on a ring's wake word, so that a stream's end is noticed.
@@ -526,6 +552,7 @@ func (s *Service) readFrames(f *flow, conn *net.UnixConn) {
 
 func (s *Service) deliver(f *flow, sequence, sentAt uint64, payload []byte) {
 	f.read.Add(1)
+	f.relayed.Add(1)
 	frame := Frame{Unit: f.unit, Stream: f.stream, Sequence: sequence, SentAt: sentAt, Payload: payload}
 	if s.cfg.Deliver != nil {
 		s.cfg.Deliver(frame)
@@ -620,7 +647,7 @@ func (s *Service) remove(f *flow, reason string) {
 	if err := os.Remove(f.address); err != nil && !errors.Is(err, os.ErrNotExist) {
 		s.cfg.Log.Warn("stream", "unit", f.unit, "stream", f.stream, "error", err.Error())
 	}
-	s.cfg.Log.Info("stream", "unit", f.unit, "stream", f.stream, "event", "stopped", "reason", reason, "read", f.read.Load())
+	s.cfg.Log.Info("stream", "unit", f.unit, "stream", f.stream, "event", "stopped", "reason", reason, "read", f.read.Load(), "relayed", f.relayed.Load())
 	if s.cfg.Publish != nil {
 		s.cfg.Publish(event.StreamStopped(f.unit, f.incarnation, f.stream, reason, reason == Asked))
 	}
