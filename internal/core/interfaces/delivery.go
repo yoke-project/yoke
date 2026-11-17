@@ -94,7 +94,8 @@ func lengthed(frame []byte) []byte {
 // deliverRing answers a delivery whose client reads the ring itself. Its per-subscriber socket is the
 // delivery's lifeline, a stream socket each message of which follows its length: at each activation one
 // byte carrying a descriptor of that activation's ring, opened for reading alone; at each stop, a message of
-// length zero. Its closing ends the delivery. A write that fails ends it as a slow client's end does.
+// length zero. Its closing ends the delivery. A write that fails ends it as a slow client's end does. After
+// a stop or the end, the ring is woken: its reader waits on it with no bound, and reads its lifeline then.
 func (s *Surface) deliverRing(id, stream, n string, answer *interfacev1.Delivering, held *deliveries, release func(), closer *func()) (*interfacev1.Response, *interfacev1.Refusal) {
 	path := filepath.Join(s.cfg.Root, "plugins", id, "subscribers", stream, n+".sock")
 	if len(path) > ceiling {
@@ -151,11 +152,15 @@ func (s *Surface) deliverRing(id, stream, n string, answer *interfacev1.Deliveri
 		if conn != nil {
 			conn.Close()
 		}
+		mapped := current != nil
 		if current != nil {
 			current.Close()
 			current = nil
 		}
 		mu.Unlock()
+		if mapped {
+			s.cfg.Transports.WakeRing(id, stream)
+		}
 		os.Remove(path)
 	}
 	go func() {

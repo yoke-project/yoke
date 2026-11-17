@@ -122,6 +122,7 @@ type Transports interface {
 	Active(unit string) []string
 	Feed(unit, stream string, to func(streams.Frame), released func()) (stop func())
 	FeedRing(unit, stream string, opened func(*os.File), stopped func(), released func()) (stop func())
+	WakeRing(unit, stream string)
 	NextSubscriber(unit, stream string) string
 }
 

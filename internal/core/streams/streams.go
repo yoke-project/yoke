@@ -17,7 +17,6 @@ import (
 	"slices"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"golang.org/x/sys/unix"
 
@@ -307,6 +306,8 @@ func (s *Service) openShared(f *flow) error {
 	f.closer = func() {
 		once.Do(func() {
 			close(done)
+			// The reader waits on the ring with no bound, and closing done is seen once the word moves.
+			r.Wake()
 			listener.Close()
 			mu.Lock()
 			if held != nil {
@@ -362,12 +363,12 @@ func (s *Service) readRing(f *flow, r *ring.Reader, done <-chan struct{}) {
 		default:
 		}
 		if !s.relays(f) {
-			if passed, err := r.Pass(ringInterval); err == nil {
+			if passed, err := r.PassUntil(done); err == nil {
 				f.read.Add(passed)
 			}
 			continue
 		}
-		frame, _, err := r.Next(ringInterval)
+		frame, _, err := r.NextUntil(done)
 		if err != nil {
 			continue
 		}
@@ -389,9 +390,6 @@ func (s *Service) relays(f *flow) bool {
 	}
 	return false
 }
-
-// ringInterval bounds a wait on a ring's wake word, so that a stream's end is noticed.
-const ringInterval = 100 * time.Millisecond
 
 // acceptOrdered reads the first connection to an ordered transport and closes every later one: one
 // stream has one producer, and a second connection would be a second claim to it.
@@ -702,6 +700,16 @@ func (s *Service) FeedRing(unitID, stream string, opened func(*os.File), stopped
 		s.mu.Lock()
 		delete(s.feeds, fd)
 		s.mu.Unlock()
+	}
+}
+
+// WakeRing wakes every reader waiting on an open stream's ring, with nothing published: a reader waits on
+// the ring with no bound, and is woken after every message its lifeline carries, so that it reads it.
+func (s *Service) WakeRing(unitID, stream string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if f, open := s.open[key{unitID, stream}]; open && f.ring != nil {
+		f.ring.Wake()
 	}
 }
 
