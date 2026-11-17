@@ -643,6 +643,12 @@ func emitWhenActivated() int {
 		if err != nil {
 			return 0
 		}
+		if e.GetControl().GetStop() != nil {
+			send(func(r *pluginv1.Envelope) {
+				r.CorrelationId = e.MessageId
+				r.Payload = &pluginv1.Envelope_Ack{Ack: &pluginv1.Ack{Outcome: pluginv1.Ack_OUTCOME_DONE}}
+			})
+		}
 		if a := e.GetControl().GetActivate(); a != nil {
 			send(func(r *pluginv1.Envelope) {
 				r.CorrelationId = e.MessageId
