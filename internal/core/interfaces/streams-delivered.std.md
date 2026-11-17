@@ -147,3 +147,16 @@
 | **Precondition** | a stream that tolerates loss, the unit's library offering the ring, on a local-socket channel; a client naming `READS_SHARED_OBJECT` at `stream.subscribe` before the stream flows |
 | **Action** | the stream is activated and the producer writes a frame into its ring; the stream is stopped; it is activated again and a frame written; the delivery is released |
 | **Expected** | the answer names the delivery's lifeline; at the first activation the lifeline carries a message of one byte with a descriptor of the ring, opened for reading alone, from which the client reads the frame; at the stop, a message of length zero; at the second activation another descriptor, of another ring, with the second frame in it; at the release the lifeline closes. The Core relays nothing to the client |
+
+## yoke:streams-delivered.12 — the ring is woken after every stop and every end its lifeline carries
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/70-interface-surface/07 §The three delivery paths · arch/50-plugin-surface/07 §The shared ring |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a stream that tolerates loss, on the ring, on a local-socket channel; a client reading the shared object, its lifeline connected |
+| **Action** | the stream is activated, and the client maps the ring and notes its wake word; the stream is stopped; it is activated again and the client notes the new ring's word; the delivery is released |
+| **Expected** | at the stop the first ring's word moves, and the lifeline's stop is already there to read; at the release the second ring's word moves, and the lifeline is already closed |

@@ -44,6 +44,9 @@ const (
 // ErrNoFrame is a wait that ended with nothing published.
 var ErrNoFrame = errors.New("no frame was published in the interval")
 
+// ErrStopped is a wait ended by its caller, with nothing published.
+var ErrStopped = errors.New("the wait was stopped")
+
 // Size is the bytes a ring of the given geometry occupies.
 func Size(slots, capacity uint32) int {
 	return headerSize + int(slots)*(slotHeader+int(capacity))
@@ -116,6 +119,13 @@ func (r *Ring) ReaderFile() (*os.File, error) {
 
 // Published is the count of frames published.
 func (r *Ring) Published() uint64 { return atomic.LoadUint64(u64(r.mem, offPublished)) }
+
+// Wake changes the wake word and wakes every waiter on it, with nothing published: a reader waiting with no
+// bound looks again, and finds what stopped it.
+func (r *Ring) Wake() {
+	atomic.AddUint32(u32(r.mem, offWake), 1)
+	futexWake(u32(r.mem, offWake))
+}
 
 // Close lets the Core's hold on the ring go. The memory goes when the last descriptor on it closes.
 func (r *Ring) Close() {
@@ -236,17 +246,44 @@ func OpenReader(f *os.File) (*Reader, error) {
 // by the producer, or a slot overwritten while it was copied. It waits at most the interval given for a
 // frame to be published.
 func (r *Reader) Next(interval time.Duration) (Frame, uint64, error) {
-	deadline := time.Now().Add(interval)
+	return r.read(time.Now().Add(interval), nil)
+}
+
+// NextUntil is Next with no bound: it waits until a frame is published or stop is closed, and the closer
+// of stop then wakes the ring (Ring.Wake), so that a reader waiting at rest costs nothing.
+func (r *Reader) NextUntil(stop <-chan struct{}) (Frame, uint64, error) {
+	return r.read(time.Time{}, stop)
+}
+
+// waits waits on the wake word while it holds what was read before: until the deadline, where there is
+// one, or until stop is closed. It says why it ended where that is no frame.
+func (r *Reader) waits(wake uint32, deadline time.Time, stop <-chan struct{}) error {
+	select {
+	case <-stop:
+		return ErrStopped
+	default:
+	}
+	if deadline.IsZero() {
+		futexWait(u32(r.mem, offWake), wake, 0)
+		return nil
+	}
+	left := time.Until(deadline)
+	if left <= 0 {
+		return ErrNoFrame
+	}
+	futexWait(u32(r.mem, offWake), wake, left)
+	return nil
+}
+
+func (r *Reader) read(deadline time.Time, stop <-chan struct{}) (Frame, uint64, error) {
 	var gap uint64
 	for {
 		wake := atomic.LoadUint32(u32(r.mem, offWake))
 		published := atomic.LoadUint64(u64(r.mem, offPublished))
 		if published < r.next {
-			left := time.Until(deadline)
-			if left <= 0 {
-				return Frame{}, gap, ErrNoFrame
+			if err := r.waits(wake, deadline, stop); err != nil {
+				return Frame{}, gap, err
 			}
-			futexWait(u32(r.mem, offWake), wake, left)
 			continue
 		}
 		if oldest := published - uint64(r.slots) + 1; published >= uint64(r.slots) && r.next < oldest {
@@ -276,16 +313,22 @@ func (r *Reader) Next(interval time.Duration) (Frame, uint64, error) {
 // Pass moves the reader past every frame published, reading none of them, and returns how many it
 // passed. It waits at most the interval given for a frame to be published.
 func (r *Reader) Pass(interval time.Duration) (uint64, error) {
-	deadline := time.Now().Add(interval)
+	return r.pass(time.Now().Add(interval), nil)
+}
+
+// PassUntil is Pass with no bound, as NextUntil is Next.
+func (r *Reader) PassUntil(stop <-chan struct{}) (uint64, error) {
+	return r.pass(time.Time{}, stop)
+}
+
+func (r *Reader) pass(deadline time.Time, stop <-chan struct{}) (uint64, error) {
 	for {
 		wake := atomic.LoadUint32(u32(r.mem, offWake))
 		published := atomic.LoadUint64(u64(r.mem, offPublished))
 		if published < r.next {
-			left := time.Until(deadline)
-			if left <= 0 {
-				return 0, ErrNoFrame
+			if err := r.waits(wake, deadline, stop); err != nil {
+				return 0, err
 			}
-			futexWait(u32(r.mem, offWake), wake, left)
 			continue
 		}
 		passed := published - r.next + 1
@@ -293,6 +336,9 @@ func (r *Reader) Pass(interval time.Duration) (uint64, error) {
 		return passed, nil
 	}
 }
+
+// Word is the ring's wake word as it stands: it changes at every frame published and every wake.
+func (r *Reader) Word() uint32 { return atomic.LoadUint32(u32(r.mem, offWake)) }
 
 // Close lets the reader's mapping go.
 func (r *Reader) Close() { unix.Munmap(r.mem) }
@@ -303,11 +349,15 @@ const (
 	futexWakeOp = 1
 )
 
-// futexWait waits on a word of shared memory while it still holds val, for at most d.
+// futexWait waits on a word of shared memory while it still holds val, for at most d; a d of zero is no
+// bound.
 func futexWait(addr *uint32, val uint32, d time.Duration) {
-	ts := unix.NsecToTimespec(d.Nanoseconds())
-	unix.Syscall6(unix.SYS_FUTEX, uintptr(unsafe.Pointer(addr)), futexWaitOp, uintptr(val),
-		uintptr(unsafe.Pointer(&ts)), 0, 0)
+	var bound uintptr
+	if d > 0 {
+		ts := unix.NsecToTimespec(d.Nanoseconds())
+		bound = uintptr(unsafe.Pointer(&ts))
+	}
+	unix.Syscall6(unix.SYS_FUTEX, uintptr(unsafe.Pointer(addr)), futexWaitOp, uintptr(val), bound, 0, 0)
 }
 
 // futexWake wakes every waiter on a word of shared memory.

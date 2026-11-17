@@ -202,3 +202,52 @@ func TestARingIsSizedToItsStreamsLargestFrame(t *testing.T) {
 		}
 	}
 }
+
+// std: yoke:the-shared-ring.09
+func TestAReaderWithNoBoundWaitsUntilAFrameOrItIsStopped(t *testing.T) {
+	r, w, rd := pair(t, 4, 16)
+	stop := make(chan struct{})
+	type read struct {
+		f   Frame
+		err error
+	}
+	got := make(chan read, 1)
+	go func() {
+		f, _, err := rd.NextUntil(stop)
+		got <- read{f, err}
+	}()
+	select {
+	case g := <-got:
+		t.Fatalf("with nothing published the reader returned %v, %v", g.f.Sequence, g.err)
+	case <-time.After(500 * time.Millisecond):
+	}
+	w.Publish(7, []byte("now"))
+	select {
+	case g := <-got:
+		if g.err != nil || g.f.Sequence != 1 || g.f.Clock != 7 {
+			t.Fatalf("the frame published was read as %d, %v", g.f.Sequence, g.err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("the frame published was not read")
+	}
+
+	passed := make(chan error, 1)
+	go func() {
+		_, err := rd.PassUntil(stop)
+		passed <- err
+	}()
+	time.Sleep(100 * time.Millisecond)
+	close(stop)
+	r.Wake()
+	select {
+	case err := <-passed:
+		if err != ErrStopped {
+			t.Errorf("the stopped wait ended with %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("the reader did not see it was stopped once the ring was woken")
+	}
+	if r.Published() != 1 {
+		t.Errorf("waking the ring published %d frames", r.Published())
+	}
+}

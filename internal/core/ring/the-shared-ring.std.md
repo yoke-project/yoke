@@ -108,3 +108,16 @@
 | **Precondition** | streams declaring their largest frame as 1 MiB, 4 MiB, 16 MiB and 64 MiB |
 | **Action** | the geometry of each one's ring is computed |
 | **Expected** | 32 slots of 1 MiB and of 4 MiB; 8 of 16 MiB; 4 of 64 MiB, the floor even beyond 128 MiB in all |
+
+## yoke:the-shared-ring.09 — a reader with no bound waits until a frame is published or it is stopped
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/50-plugin-surface/07 §The shared ring |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a ring of four slots, a producer and a reader |
+| **Action** | the reader waits for a frame with no bound; after half a second the producer publishes one; the reader then waits to pass frames, and is stopped, and the ring woken |
+| **Expected** | the first wait returns nothing in the half second, and returns the frame once published; the second ends as stopped once the ring is woken, and waking it published nothing |

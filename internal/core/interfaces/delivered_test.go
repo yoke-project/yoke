@@ -566,3 +566,60 @@ func TestAClientThatReadsTheSharedObjectIsHandedEachRingAndAStop(t *testing.T) {
 		t.Errorf("after the release the lifeline carried %d more bytes", n)
 	}
 }
+
+// std: yoke:streams-delivered.12
+func TestTheRingIsWokenAfterEveryStopAndEndItsLifelineCarries(t *testing.T) {
+	d := deliveringAll(t, 0, streams.Offers{Shared: true}, gate.Channel{Name: "panel", Transport: "local", Clients: "single"})
+	a, _ := attachTo(t, d.bound.Address("panel"))
+	a.next(t)
+	reads := subscribeTo("station.raw")
+	reads.GetStreamSubscribe().Reads = []interfacev1.UnitStream_Reads{interfacev1.UnitStream_READS_SHARED_OBJECT}
+	got := a.answerTo(t, "s", reads).GetAnswer().GetStreamSubscribe()
+	conn, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: got.GetShared(), Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	time.Sleep(50 * time.Millisecond)
+
+	// woken waits for the ring's word to move from what it was, as a reader waiting on it with no bound
+	// is woken, and then finds the lifeline's message already there.
+	woken := func(what string, r *ring.Reader, was uint32) {
+		t.Helper()
+		for deadline := time.Now().Add(2 * time.Second); r.Word() == was; time.Sleep(time.Millisecond) {
+			if time.Now().After(deadline) {
+				t.Fatalf("the ring was not woken at %s", what)
+			}
+		}
+	}
+
+	d.producing(t, 1, []byte("first"))
+	_, f := lifeline(t, conn)
+	r, err := ring.OpenReader(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	was := r.Word()
+	d.transports.Close("acquire", "station.raw", streams.Asked)
+	woken("the stop", r, was)
+	conn.SetReadDeadline(time.Now().Add(50 * time.Millisecond))
+	if n, _ := lifeline(t, conn); n != 0 {
+		t.Errorf("once woken at the stop, the lifeline carried %d bytes", n)
+	}
+
+	d.producing(t, 1, []byte("second"))
+	_, g := lifeline(t, conn)
+	r2, err := ring.OpenReader(g)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r2.Close()
+	was = r2.Word()
+	a.answerTo(t, "u", &interfacev1.Request{Version: 1, Operation: &interfacev1.Request_StreamUnsubscribe{StreamUnsubscribe: &interfacev1.StreamRelease{Delivery: got.GetDelivery()}}})
+	woken("the release", r2, was)
+	conn.SetReadDeadline(time.Now().Add(50 * time.Millisecond))
+	if n, err := conn.Read(make([]byte, 4)); err == nil {
+		t.Errorf("once woken at the release, the lifeline carried %d more bytes", n)
+	}
+}
