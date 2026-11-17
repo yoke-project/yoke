@@ -97,19 +97,32 @@ func member(gid int) bool {
 }
 
 // display finds Wayland's socket and X11's in the Core's environment; either is enough, and neither is a
-// fault. On the host the runtime directory is handed beside them; in a container there is none.
+// fault. Where the environment names no Wayland display, the one Wayland socket under the runtime directory
+// is it, and more than one is a fault: which compositor a unit draws on is not the Core's to guess. On the
+// host the runtime directory is handed beside it; in a container there is none.
 func (x *expansion) display(getenv func(string) string, x11 string, contained bool) error {
 	found := false
-	if name := getenv("WAYLAND_DISPLAY"); name != "" {
-		socket := name
+	runtime := getenv("XDG_RUNTIME_DIR")
+	socket := getenv("WAYLAND_DISPLAY")
+	if socket == "" && runtime != "" {
+		sockets := wayland(runtime)
+		if len(sockets) > 1 {
+			return fmt.Errorf("the unit needs a display, the Core's environment names none, and %s holds more than one Wayland socket: %s",
+				runtime, strings.Join(sockets, ", "))
+		}
+		if len(sockets) == 1 {
+			socket = sockets[0]
+		}
+	}
+	if socket != "" {
 		if !filepath.IsAbs(socket) {
-			socket = filepath.Join(getenv("XDG_RUNTIME_DIR"), name)
+			socket = filepath.Join(runtime, socket)
 		}
 		if exists(socket) {
 			found = true
 			x.env = append(x.env, "WAYLAND_DISPLAY="+socket)
 			x.mounts = append(x.mounts, socket)
-			if runtime := getenv("XDG_RUNTIME_DIR"); runtime != "" && !contained {
+			if runtime != "" && !contained {
 				x.env = append(x.env, "XDG_RUNTIME_DIR="+runtime)
 			}
 		}
@@ -127,9 +140,23 @@ func (x *expansion) display(getenv func(string) string, x11 string, contained bo
 		}
 	}
 	if !found {
-		return errors.New("the unit needs a display, and the Core's environment names none whose socket exists")
+		return errors.New("the unit needs a display, the Core's environment names none whose socket exists, and no Wayland socket is under the runtime directory")
 	}
 	return nil
+}
+
+// wayland lists the Wayland sockets directly under the runtime directory, by name: sockets called
+// wayland-*, and never the lock files beside them.
+func wayland(runtime string) []string {
+	entries, _ := os.ReadDir(runtime)
+	var sockets []string
+	for _, e := range entries {
+		name := e.Name()
+		if strings.HasPrefix(name, "wayland-") && !strings.HasSuffix(name, ".lock") && e.Type()&os.ModeSocket != 0 {
+			sockets = append(sockets, name)
+		}
+	}
+	return sockets
 }
 
 // audio finds PipeWire's socket and PulseAudio's; either is enough, and neither is a fault.
