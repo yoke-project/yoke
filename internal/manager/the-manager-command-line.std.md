@@ -305,3 +305,16 @@
 | **Action** | run `yoke unit command bench never.declared` |
 | **Expected** | it exits with a refusal naming `scope.undeclared` and the type |
 
+
+## yoke:the-manager-command-line.24 — where the call names no instance, `YOKE_INSTANCE` does; the call's own selector wins, and a shell's connection is never overridden
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/10-manager/01 §The client verbs |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the account holding two instances, `bench-a` and `bench-b`; `YOKE_INSTANCE=bench-b` |
+| **Action** | parse a call with no `--instance`; one with `--instance bench-a`; one in a shell; then one with `YOKE_INSTANCE` unset |
+| **Expected** | `bench-b` is selected and its address is the one resolved; `bench-a` wins over the environment; in a shell nothing is selected; with neither, the two instances are refused, the refusal naming `YOKE_INSTANCE` beside `--instance` |

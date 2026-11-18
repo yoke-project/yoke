@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/yoke-project/yoke-sdk-go/admin"
 )
 
 func yoke(vars map[string]string, args ...string) (int, string) {
@@ -72,6 +74,41 @@ func TestWithNoSelectorTheAccountsOneInstanceIsAddressed(t *testing.T) {
 	os.RemoveAll(instances)
 	if got, err := operatorAddress("", false, environment(vars)); err != nil || got != "/run/station/operator.sock" {
 		t.Errorf("no instance: %q %v", got, err)
+	}
+}
+
+// std: yoke:the-manager-command-line.24
+func TestYokeInstanceSelectsWhereTheCallNamesNone(t *testing.T) {
+	state := t.TempDir()
+	instances := filepath.Join(state, "yoke", "instances")
+	os.MkdirAll(filepath.Join(instances, "bench-a"), 0o700)
+	os.MkdirAll(filepath.Join(instances, "bench-b"), 0o700)
+	vars := map[string]string{"XDG_RUNTIME_DIR": "/run/user/1000", "XDG_STATE_HOME": state, "YOKE_INSTANCE": "bench-b"}
+	// Selected by the environment, among two.
+	c := &call{args: []string{"acquire"}, getenv: environment(vars)}
+	_, instance, selected, err := c.flags(nil)
+	if err != nil || !selected || instance != "bench-b" {
+		t.Fatalf("from the environment: %q %v %v", instance, selected, err)
+	}
+	if got, err := operatorAddress(instance, selected, environment(vars)); err != nil || got != "/run/user/1000/yoke/bench-b/operator.sock" {
+		t.Errorf("bench-b: %q %v", got, err)
+	}
+	// The call's own selector wins over the environment.
+	c = &call{args: []string{"acquire", "--instance", "bench-a"}, getenv: environment(vars)}
+	if _, instance, _, _ := c.flags(nil); instance != "bench-a" {
+		t.Errorf("--instance over the environment: %q", instance)
+	}
+	// In a shell the connection names its instance, and the environment selects nothing.
+	c = &call{args: []string{"acquire"}, getenv: environment(vars), held: new(admin.Shell)}
+	if _, _, selected, _ := c.flags(nil); selected {
+		t.Error("the environment selected in a shell")
+	}
+	// Named by neither, two instances are refused, saying both ways to name one.
+	delete(vars, "YOKE_INSTANCE")
+	c = &call{args: []string{"acquire"}, getenv: environment(vars)}
+	_, instance, selected, _ = c.flags(nil)
+	if _, err := operatorAddress(instance, selected, environment(vars)); err == nil || !strings.Contains(err.Error(), "YOKE_INSTANCE") {
+		t.Errorf("two instances, none named: %v", err)
 	}
 }
 
