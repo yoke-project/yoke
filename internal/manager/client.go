@@ -95,7 +95,7 @@ func addresses(instance string, selected bool, getenv func(string) string) (admi
 			for _, l := range listed {
 				names = append(names, l.Name)
 			}
-			return admin.Addresses{}, refusef("this account has %d instances, %s: name one with --instance", len(names), strings.Join(names, ", "))
+			return admin.Addresses{}, refusef("this account has %d instances, %s: name one with --instance or YOKE_INSTANCE", len(names), strings.Join(names, ", "))
 		}
 	}
 	if selected {
@@ -122,7 +122,8 @@ func serviceAddress(getenv func(string) string) (string, error) {
 	return admin.Service(c.RuntimeDir).Operator, nil
 }
 
-// flags parses the call's arguments: the selector and the verb's own options, the rest positional.
+// flags parses the call's arguments: the selector and the verb's own options, the rest positional. The
+// selector is --instance, or else YOKE_INSTANCE.
 func (c *call) flags(define func(*flag.FlagSet)) (*flag.FlagSet, string, bool, error) {
 	fs := flag.NewFlagSet("yoke", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
@@ -149,6 +150,13 @@ func (c *call) flags(define func(*flag.FlagSet)) (*flag.FlagSet, string, bool, e
 	c.args = positional
 	selected := false
 	fs.Visit(func(f *flag.Flag) { selected = selected || f.Name == "instance" })
+	// Where the call names none, the environment may: YOKE_INSTANCE, which a script running an instance
+	// exports for what it starts beside it. Never in a shell, whose connection already names its own.
+	if !selected && c.held == nil {
+		if named := c.getenv("YOKE_INSTANCE"); named != "" {
+			*instance, selected = named, true
+		}
+	}
 	return fs, *instance, selected, nil
 }
 
