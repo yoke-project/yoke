@@ -87,7 +87,7 @@ func TestAStorageNeedIsADirectoryTheCoreCreates(t *testing.T) {
 		t.Fatal("the composition is refused")
 	}
 	state := t.TempDir()
-	units := discovery.Units(dep, func(string) (*gate.Manifest, bool) { return nil, false }, "", state)
+	units := discovery.Units(dep, func(string) (*gate.Manifest, bool) { return nil, false }, "", state, "")
 	dir := filepath.Join(state, "storage", "datasets")
 	if len(units) != 1 || !slices.Equal(units[0].Args, []string{dir}) || !slices.Equal(units[0].Needs, []supervisor.Need{{Class: "storage", Path: dir}}) {
 		t.Fatalf("resolved as %+v", units)
@@ -263,7 +263,7 @@ func TestASecretIsAFileCheckedAndMountedAtItsPath(t *testing.T) {
 	}
 	state := t.TempDir()
 	path := filepath.Join(state, "secrets", "token")
-	units := discovery.Units(dep, func(string) (*gate.Manifest, bool) { return nil, false }, "", state)
+	units := discovery.Units(dep, func(string) (*gate.Manifest, bool) { return nil, false }, "", state, "")
 	if len(units) != 1 || !slices.Equal(units[0].Args, []string{path}) || !slices.Equal(units[0].Needs, []supervisor.Need{{Class: "secret", Path: path}}) {
 		t.Fatalf("resolved as %+v", units)
 	}

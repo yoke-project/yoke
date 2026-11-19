@@ -14,9 +14,11 @@ import (
 	"errors"
 	"io/fs"
 	"log/slog"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -162,9 +164,11 @@ func (d *Discovery) Available(id string) bool {
 
 // Units are what a deployment launches: each unit that starts with it, its program resolved — a
 // plugin's from its identity in the executables directory — and every reference already resolved, a
-// binding to its value and a secret or a storage need to its path in the state directory.
-func Units(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), executables, stateDir string) []supervisor.Unit {
-	return units(dep, manifest, stateDir, nil, func(u gate.Unit) (string, string) {
+// binding to its value, a secret or a storage need to its path in the state directory, and a unit need to
+// the channel the Core binds for it under the instance root. A unit need is also a dependency on the unit
+// it is bound to.
+func Units(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), executables, stateDir, root string) []supervisor.Unit {
+	return units(dep, manifest, stateDir, root, nil, func(u gate.Unit) (string, string) {
 		if u.Kind == "plugin" {
 			return filepath.Join(executables, u.Plugin), ""
 		}
@@ -175,9 +179,9 @@ func Units(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), e
 // Descriptor are what a descriptor launches: each program inside the bundle, with the identity the
 // descriptor states for it, and each parameter reference resolved against the values the Core was executed
 // with — in the group named after the unit, then in `shared`.
-func Descriptor(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), bundle, stateDir string,
+func Descriptor(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), bundle, stateDir, root string,
 	values map[string]map[string]string) []supervisor.Unit {
-	return units(dep, manifest, stateDir, values, func(u gate.Unit) (string, string) {
+	return units(dep, manifest, stateDir, root, values, func(u gate.Unit) (string, string) {
 		if u.Exec == "" {
 			return "", ""
 		}
@@ -185,7 +189,7 @@ func Descriptor(dep *gate.Deployment, manifest func(string) (*gate.Manifest, boo
 	})
 }
 
-func units(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), stateDir string,
+func units(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), stateDir, root string,
 	values map[string]map[string]string, program func(gate.Unit) (exec, digest string)) []supervisor.Unit {
 	var out []supervisor.Unit
 	kinds := map[string]unit.Kind{"plugin": unit.Plugin, "oneshot": unit.Oneshot, "interface": unit.Interface}
@@ -195,6 +199,7 @@ func units(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), s
 			continue
 		}
 		materialised := map[string]string{}
+		uses := map[string]string{} // a unit need's key, to the unit it is bound to
 		needs := u.Needs
 		if m, ok := manifest(u.Plugin); ok && u.Kind == "plugin" {
 			needs = m.Needs
@@ -205,12 +210,18 @@ func units(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), s
 				materialised[n.Key()] = filepath.Join(stateDir, "secrets", n.Name)
 			case "storage":
 				materialised[n.Key()] = filepath.Join(stateDir, "storage", n.Name)
+			case "unit":
+				materialised[n.Key()] = filepath.Join(root, "needs", name, n.Name+".sock")
+				uses[n.Key()] = u.Bind[n.Key()]
 			}
 		}
 		parameter := func(value string) string { return Substitute(values, u.Name, value) }
 		resolve := func(value string) string {
 			value = parameter(value)
 			for key, bound := range u.Bind {
+				if _, isUse := uses[key]; isUse {
+					continue
+				}
 				bound = parameter(bound)
 				value = strings.ReplaceAll(value, "${bind."+key+"}", bound)
 			}
@@ -219,12 +230,18 @@ func units(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), s
 			}
 			return value
 		}
-		s := supervisor.Unit{ID: name, Kind: kinds[u.Kind], Plugin: u.Plugin, Image: u.Image, RestartOnFailure: u.OnFailure, DependsOn: u.DependsOn, MigratesFrom: u.MigratesFrom, Env: map[string]string{}}
+		dependsOn := slices.Clone(u.DependsOn)
+		for _, key := range slices.Sorted(maps.Keys(uses)) {
+			if bound := uses[key]; !slices.Contains(dependsOn, bound) {
+				dependsOn = append(dependsOn, bound)
+			}
+		}
+		s := supervisor.Unit{ID: name, Kind: kinds[u.Kind], Plugin: u.Plugin, Image: u.Image, RestartOnFailure: u.OnFailure, DependsOn: dependsOn, MigratesFrom: u.MigratesFrom, Env: map[string]string{}}
 		for _, n := range needs {
 			switch n.Class {
 			case "device":
 				s.Needs = append(s.Needs, supervisor.Need{Class: n.Class, Path: resolve(u.Bind[n.Key()])})
-			case "storage", "secret":
+			case "storage", "secret", "unit":
 				s.Needs = append(s.Needs, supervisor.Need{Class: n.Class, Path: materialised[n.Key()]})
 			case "display", "audio", "network":
 				s.Needs = append(s.Needs, supervisor.Need{Class: n.Class})
