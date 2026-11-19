@@ -20,6 +20,8 @@ var makes = map[string]string{
 	"unit.stream.activated":      "StreamActivated",
 	"unit.stream.stopped":        "StreamStopped",
 	"unit.command.issued":        "CommandIssued",
+	"unit.use.refused":           "UseRefused",
+	"unit.question.chained":      "QuestionChained",
 	"document.resolved":          "DocumentResolved",
 	"document.rejected":          "DocumentRejected",
 	"connection.opened":          "ConnectionOpened",
