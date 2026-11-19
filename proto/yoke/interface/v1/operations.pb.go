@@ -666,10 +666,13 @@ func (x *Command) GetPayload() []byte {
 
 // A question for a unit, opaque to the Core and bounded at 1 MiB.
 type Question struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Unit          string                 `protobuf:"bytes,1,opt,name=unit,proto3" json:"unit,omitempty"`
-	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
-	Payload       []byte                 `protobuf:"bytes,3,opt,name=payload,proto3" json:"payload,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Unit    string                 `protobuf:"bytes,1,opt,name=unit,proto3" json:"unit,omitempty"`
+	Type    string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	Payload []byte                 `protobuf:"bytes,3,opt,name=payload,proto3" json:"payload,omitempty"`
+	// On a need's channel only: the identifier of a question the asking unit was delivered and has not
+	// answered. The Core derives this question's chain and deadline from it.
+	Cause         string `protobuf:"bytes,4,opt,name=cause,proto3" json:"cause,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -723,6 +726,13 @@ func (x *Question) GetPayload() []byte {
 		return x.Payload
 	}
 	return nil
+}
+
+func (x *Question) GetCause() string {
+	if x != nil {
+		return x.Cause
+	}
+	return ""
 }
 
 type UnitStream struct {
@@ -1726,11 +1736,12 @@ const file_yoke_interface_v1_operations_proto_rawDesc = "" +
 	"\aCommand\x12\x12\n" +
 	"\x04unit\x18\x01 \x01(\tR\x04unit\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x18\n" +
-	"\apayload\x18\x03 \x01(\fR\apayload\"L\n" +
+	"\apayload\x18\x03 \x01(\fR\apayload\"b\n" +
 	"\bQuestion\x12\x12\n" +
 	"\x04unit\x18\x01 \x01(\tR\x04unit\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x18\n" +
-	"\apayload\x18\x03 \x01(\fR\apayload\"\xc5\x01\n" +
+	"\apayload\x18\x03 \x01(\fR\apayload\x12\x14\n" +
+	"\x05cause\x18\x04 \x01(\tR\x05cause\"\xc5\x01\n" +
 	"\n" +
 	"UnitStream\x12\x12\n" +
 	"\x04unit\x18\x01 \x01(\tR\x04unit\x12\x16\n" +

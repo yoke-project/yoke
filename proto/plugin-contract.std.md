@@ -100,14 +100,14 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/50.102 · specs/50.103 · specs/50.104 · specs/50.65 · arch/50-plugin-surface/08 §The eight payloads |
+| **Cites** | specs/50.102 · specs/50.103 · specs/50.104 · specs/50.65 · specs/50.107 · arch/50-plugin-surface/08 §The eight payloads · arch/50-plugin-surface/10 §The three fields of a question |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
 | **Precondition** | the eight payloads' definitions |
 | **Action** | enumerate each one's fields and the values of its closed sets |
-| **Expected** | every field `08` lists for that family and no other: a session message is `OPEN`, `CLOSE` or `REVOKED` and a revocation names one of four causes and a line; control is a command, a stream's activation naming the stream, the transport — ordered, framed, the shared object, or the ordered or framed on a stream socket with a length — and its address, or a stream's stop; an acknowledgement is `accepted`, `done` or `failed` with a line and no result; a question and an answer; data a sequence and a payload with no stream; health a grade and a line; an event its class, severity, line and detail; an error its code, message and detail |
+| **Expected** | every field `08` lists for that family and no other: a session message is `OPEN`, `CLOSE` or `REVOKED` and a revocation names one of four causes and a line; control is a command, a stream's activation naming the stream, the transport — ordered, framed, the shared object, or the ordered or framed on a stream socket with a length — and its address, or a stream's stop; an acknowledgement is `accepted`, `done` or `failed` with a line and no result; a question its type and payload, and the asker, the deadline in milliseconds and the chain the Core fills, and an answer its payload; data a sequence and a payload with no stream; health a grade and a line; an event its class, severity, line and detail; an error its code, message and detail |
 
 ## yoke:plugin-contract.09 — every code this surface refuses with is stated, and none other
 

@@ -72,6 +72,9 @@ message Question {
   string unit = 1;
   string type = 2;
   bytes payload = 3;
+  // On a need's channel only: the identifier of a question the asking unit was delivered and has not
+  // answered. The Core derives this question's chain and deadline from it.
+  string cause = 4;
 }
 
 message UnitStream {

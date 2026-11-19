@@ -146,9 +146,9 @@ func TestAReadASnapshotAndThePictureAreOneRecordOverThreeKinds(t *testing.T) {
 // std: yoke:interface-contract.05
 func TestACommandAndAQuestionCarryAnOpaquePayloadAndComeBackCorrelated(t *testing.T) {
 	files := definitions(t)
-	for _, name := range []string{"Command", "Question"} {
+	for name, want := range map[string][]string{"Command": {"unit", "type", "payload"}, "Question": {"unit", "type", "payload", "cause"}} {
 		md := ifc(t, files, name)
-		same(t, "a "+strings.ToLower(name), fields(md), []string{"unit", "type", "payload"})
+		same(t, "a "+strings.ToLower(name), fields(md), want)
 		if f := md.Fields().ByName("payload"); f == nil || f.Kind() != protoreflect.BytesKind {
 			t.Errorf("a %s's payload is not bytes", strings.ToLower(name))
 		}
@@ -191,7 +191,8 @@ var interfaceCodes = []string{
 	"operation.malformed", "operation.unknown", "compat.unsupported", "auth.required", "auth.invalid",
 	"channel.in_use", "channel.not_attached", "channel.suspended", "channel.not_local", "subject.unknown",
 	"scope.undeclared", "scope.withheld", "unit.not_running", "unit.no_session", "unit.unanswered",
-	"instance.stopping", "unit.failed",
+	"instance.stopping", "unit.failed", "use.command", "use.undeclared", "use.cause.unknown",
+	"deadline.exhausted", "stream.held",
 }
 
 // std: yoke:interface-contract.07

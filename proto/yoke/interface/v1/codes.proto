@@ -50,6 +50,16 @@ enum Code {
   CODE_INSTANCE_STOPPING = 16 [(code) = "instance.stopping"];
   // The unit answered the Core's message with an error; the detail carries the unit's own code.
   CODE_UNIT_FAILED = 17 [(code) = "unit.failed"];
+  // A command on a need's channel: a unit never instructs another.
+  CODE_USE_COMMAND = 18 [(code) = "use.command"];
+  // A question or a stream on a need's channel that the need's uses does not list.
+  CODE_USE_UNDECLARED = 19 [(code) = "use.undeclared"];
+  // A question on a need's channel names as its cause no question outstanding at that unit.
+  CODE_USE_CAUSE_UNKNOWN = 20 [(code) = "use.cause.unknown"];
+  // A question caused by another would have less than 100 ms left; the unit is never asked.
+  CODE_DEADLINE_EXHAUSTED = 21 [(code) = "deadline.exhausted"];
+  // A stop of a stream a need's channel holds, from another channel. The detail names the holding unit.
+  CODE_STREAM_HELD = 22 [(code) = "stream.held"];
 }
 
 // A refusal: a code, a message for a person, and what it names in a detail typed per code.

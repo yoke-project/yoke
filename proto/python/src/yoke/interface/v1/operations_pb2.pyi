@@ -88,14 +88,16 @@ class Command(_message.Message):
     def __init__(self, unit: _Optional[str] = ..., type: _Optional[str] = ..., payload: _Optional[bytes] = ...) -> None: ...
 
 class Question(_message.Message):
-    __slots__ = ("unit", "type", "payload")
+    __slots__ = ("unit", "type", "payload", "cause")
     UNIT_FIELD_NUMBER: _ClassVar[int]
     TYPE_FIELD_NUMBER: _ClassVar[int]
     PAYLOAD_FIELD_NUMBER: _ClassVar[int]
+    CAUSE_FIELD_NUMBER: _ClassVar[int]
     unit: str
     type: str
     payload: bytes
-    def __init__(self, unit: _Optional[str] = ..., type: _Optional[str] = ..., payload: _Optional[bytes] = ...) -> None: ...
+    cause: str
+    def __init__(self, unit: _Optional[str] = ..., type: _Optional[str] = ..., payload: _Optional[bytes] = ..., cause: _Optional[str] = ...) -> None: ...
 
 class UnitStream(_message.Message):
     __slots__ = ("unit", "stream", "reads")

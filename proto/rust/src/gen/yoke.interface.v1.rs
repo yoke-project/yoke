@@ -87,6 +87,16 @@ pub enum Code {
     InstanceStopping = 16,
     /// The unit answered the Core's message with an error; the detail carries the unit's own code.
     UnitFailed = 17,
+    /// A command on a need's channel: a unit never instructs another.
+    UseCommand = 18,
+    /// A question or a stream on a need's channel that the need's uses does not list.
+    UseUndeclared = 19,
+    /// A question on a need's channel names as its cause no question outstanding at that unit.
+    UseCauseUnknown = 20,
+    /// A question caused by another would have less than 100 ms left; the unit is never asked.
+    DeadlineExhausted = 21,
+    /// A stop of a stream a need's channel holds, from another channel. The detail names the holding unit.
+    StreamHeld = 22,
 }
 impl Code {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -113,6 +123,11 @@ impl Code {
             Self::UnitUnanswered => "CODE_UNIT_UNANSWERED",
             Self::InstanceStopping => "CODE_INSTANCE_STOPPING",
             Self::UnitFailed => "CODE_UNIT_FAILED",
+            Self::UseCommand => "CODE_USE_COMMAND",
+            Self::UseUndeclared => "CODE_USE_UNDECLARED",
+            Self::UseCauseUnknown => "CODE_USE_CAUSE_UNKNOWN",
+            Self::DeadlineExhausted => "CODE_DEADLINE_EXHAUSTED",
+            Self::StreamHeld => "CODE_STREAM_HELD",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -136,6 +151,11 @@ impl Code {
             "CODE_UNIT_UNANSWERED" => Some(Self::UnitUnanswered),
             "CODE_INSTANCE_STOPPING" => Some(Self::InstanceStopping),
             "CODE_UNIT_FAILED" => Some(Self::UnitFailed),
+            "CODE_USE_COMMAND" => Some(Self::UseCommand),
+            "CODE_USE_UNDECLARED" => Some(Self::UseUndeclared),
+            "CODE_USE_CAUSE_UNKNOWN" => Some(Self::UseCauseUnknown),
+            "CODE_DEADLINE_EXHAUSTED" => Some(Self::DeadlineExhausted),
+            "CODE_STREAM_HELD" => Some(Self::StreamHeld),
             _ => None,
         }
     }
@@ -472,6 +492,10 @@ pub struct Question {
     pub r#type: ::prost::alloc::string::String,
     #[prost(bytes = "vec", tag = "3")]
     pub payload: ::prost::alloc::vec::Vec<u8>,
+    /// On a need's channel only: the identifier of a question the asking unit was delivered and has not
+    /// answered. The Core derives this question's chain and deadline from it.
+    #[prost(string, tag = "4")]
+    pub cause: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct UnitStream {
