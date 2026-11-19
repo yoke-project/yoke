@@ -103,6 +103,17 @@ type Config struct {
 	Stopping func() bool
 	// Wait replaces the 30 s a unit is waited for, for a test.
 	Wait time.Duration
+	// Use makes this surface a need's channel: one unit's client of the unit its need is bound to, seeing
+	// that unit alone and addressing only what the need uses. Nil for a declared channel.
+	Use *Use
+}
+
+// Use is what a need's channel serves: the using unit, its need, the unit the need is bound to, and the
+// questions and streams the need uses.
+type Use struct {
+	Unit, Need, Bound string
+	Questions         []string
+	Streams           []string
 }
 
 // Sessions are the units' Sessions, by unit.

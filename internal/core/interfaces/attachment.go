@@ -185,6 +185,11 @@ func (a *attachment) handle(call string, r *interfacev1.Request, reply func(*int
 		refuse(refusal("operation.malformed", "the call "+call+" is already in flight on this attachment"))
 		return
 	}
+	if s.cfg.Use != nil && (name == "authenticate" || name == "reclaim") {
+		// A need's channel is a local socket with one client nothing prevails over.
+		refuse(refusal("operation.unknown", "a need's channel serves no "+name))
+		return
+	}
 	switch name {
 	case "authenticate":
 		// On a channel whose class establishes the caller, the answer is who it established; a client of a

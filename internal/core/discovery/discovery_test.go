@@ -451,7 +451,7 @@ units:
 	if !slices.Equal(sink.DependsOn, []string{"source"}) || !slices.Equal(sink.Args, []string{"--source", channel}) {
 		t.Errorf("sink is %+v, want it depending on source and handed %s", sink, channel)
 	}
-	if !slices.Contains(sink.Needs, supervisor.Need{Class: "unit", Path: channel}) {
+	if !slices.Contains(sink.Needs, supervisor.Need{Class: "unit", Path: channel, Name: "source", Bound: "source"}) {
 		t.Errorf("sink's needs are %+v, want the unit need at %s", sink.Needs, channel)
 	}
 }
