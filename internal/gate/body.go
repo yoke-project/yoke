@@ -168,7 +168,7 @@ var (
 	size           = regexp.MustCompile(`^([0-9]+)(KB|MB|GB)$`)
 	digest         = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 	pinnedImage    = regexp.MustCompile(`^[^@\s]+@sha256:[0-9a-f]{64}$`)
-	namedClasses   = []string{"device", "storage", "secret"}
+	namedClasses   = []string{"device", "storage", "secret", "unit"}
 	unnamedClasses = []string{"display", "audio", "network"}
 	transports     = []string{"local", "http+ws"}
 )
@@ -447,6 +447,11 @@ func (c *checker) unit(name string, n *node, outer overrides) (Unit, bool) {
 		} else if needs, ok := c.strings(nd, at("needs"), false); ok {
 			for i, written := range needs {
 				if need, ok := c.need(written, fmt.Sprintf("%s.%d", at("needs"), i)); ok {
+					if need.Class == "unit" {
+						// What a unit need uses is said in a Manifest, which this unit has none of.
+						c.refuse("needs.unit.no_manifest", fmt.Sprintf("%s.%d", at("needs"), i), "the unit %s declares %s and has no Manifest to say what it uses", name, written)
+						continue
+					}
 					u.Needs = append(u.Needs, need)
 				}
 			}
@@ -499,18 +504,18 @@ func (c *checker) need(written, location string) (Need, bool) {
 	case slices.Contains(unnamedClasses, class) && !named:
 		return Need{Class: class}, true
 	}
-	c.refuse("field.value", location, "the need %q is not one of device:<name>, storage:<name>, secret:<name>, display, audio, network", written)
+	c.refuse("field.value", location, "the need %q is not one of device:<name>, storage:<name>, secret:<name>, unit:<name>, display, audio, network", written)
 	return Need{}, false
 }
 
 // unbindable refuses a binding of a need a document never binds: every class but a device.
 func (c *checker) unbindable(n Need, at string) {
 	switch n.Class {
-	case "device":
+	case "device", "unit":
 	case "secret":
 		c.refuse("bind.secret", at, "%s names the secret %s, which a document never binds", n.Key(), n.Name)
 	default:
-		c.refuse("bind.class", at, "%s names the need %s, which the runtime satisfies and a document never binds: a device is the one class bound", n.Key(), written(n))
+		c.refuse("bind.class", at, "%s names the need %s, which the runtime satisfies and a document never binds: a device and a unit are the two classes bound", n.Key(), written(n))
 	}
 }
 

@@ -348,3 +348,56 @@ streams:
 		}
 	}
 }
+
+const accountsUser = `
+manifest: 1
+id: com.yoke.station.acquire
+protocol: 1
+needs: [ "unit:accounts", "secret:refresh" ]
+uses:
+  accounts:
+    questions: [ oauth.token ]
+    streams: [ oauth.status ]
+rewrites: [ refresh ]
+capabilities:
+  - name: query.oauth.token.ask
+    governs: { use: { need: accounts, query: oauth.token } }
+  - name: stream.oauth.status.follow
+    governs: { use: { need: accounts, stream: oauth.status } }
+`
+
+// std: yoke:the-manifest.13
+func TestAPluginSaysWhichUnitItNeedsWhatItUsesAndWhatItRewrites(t *testing.T) {
+	r, m := manifest(t, installed, accountsUser)
+	if len(r.Findings) != 0 || m == nil {
+		t.Fatalf("the Manifest gave %v", r.Findings)
+	}
+	if want := (map[string]gate.Use{"accounts": {Questions: []string{"oauth.token"}, Streams: []string{"oauth.status"}}}); !reflect.DeepEqual(m.Uses, want) {
+		t.Errorf("uses: got %v, want %v", m.Uses, want)
+	}
+	if !slices.Equal(m.Rewrites, []string{"refresh"}) {
+		t.Errorf("rewrites: got %v", m.Rewrites)
+	}
+	for _, c := range []struct{ from, to, code string }{
+		{"    streams: [ oauth.status ]\n", "    streams: [ oauth.status ]\n    commands: [ x ]\n", "uses.key"},
+		{"uses:\n  accounts:\n", "uses:\n  other:\n    questions: [ x ]\n  accounts:\n", "uses.need.undeclared"},
+		{"uses:\n  accounts:\n    questions: [ oauth.token ]\n    streams: [ oauth.status ]\n", "uses: {}\n", "uses.missing"},
+		{"    questions: [ oauth.token ]\n", "    questions: [ oauth.token, oauth.accounts ]\n", "uses.ungoverned"},
+		{"{ need: accounts, query: oauth.token }", "{ need: accounts, query: oauth.other }", "capability.use.undeclared"},
+		{"rewrites: [ refresh ]", "rewrites: [ refresh, other ]", "rewrites.undeclared"},
+	} {
+		document := strings.Replace(accountsUser, c.from, c.to, 1)
+		r, _ := manifest(t, installed, document)
+		got := codes(r)
+		if c.code == "uses.missing" || c.code == "capability.use.undeclared" {
+			// A use left without its entry also leaves its capabilities governing nothing listed.
+			if !slices.Contains(got, c.code) {
+				t.Errorf("%s: gives %v, want %s among them", c.code, got, c.code)
+			}
+			continue
+		}
+		if !slices.Equal(got, []string{c.code}) {
+			t.Errorf("%s: gives %v (%v)", c.code, got, r.Findings)
+		}
+	}
+}

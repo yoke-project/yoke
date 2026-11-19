@@ -29,6 +29,18 @@ type Manifest struct {
 	Queries      []string
 	Occurrences  []string
 	Capabilities []Capability
+	// Uses is, for each need of class unit, what the Plugin uses of the contract of the unit that meets it;
+	// nil when it declares none.
+	Uses map[string]Use
+	// Rewrites names the secrets the Plugin replaces itself.
+	Rewrites []string
+}
+
+// Use is what a Plugin uses of another unit's contract: questions it asks and streams it follows, named in
+// that unit's vocabulary. There are no commands: a unit never instructs another.
+type Use struct {
+	Questions []string
+	Streams   []string
 }
 
 // Stream is a stream the Plugin may publish. Both tolerances default to false, as a written value.
@@ -53,10 +65,13 @@ type Capability struct {
 	Governs Object
 }
 
-// Object is what a capability governs: a stream, a command, a query, an occurrence or a surface.
+// Object is what a capability governs: a stream, a command, a query, an occurrence or a surface — or a use,
+// a query or a stream (Of) of the unit a need (Need) is bound to.
 type Object struct {
 	Kind string
 	ID   string
+	Need string
+	Of   string
 }
 
 // removed are the fields of an earlier model, refused rather than ignored, with where each statement
@@ -131,7 +146,7 @@ func (c *checker) manifestShape() bool {
 			c.refuse("manifest.field.removed", e.key, "%s belongs to an earlier model and is refused: %s", e.key, where)
 			continue
 		}
-		if !slices.Contains([]string{"manifest", "id", "protocol", "needs", "streams", "commands", "queries", "occurrences", "capabilities"}, e.key) {
+		if !slices.Contains([]string{"manifest", "id", "protocol", "needs", "streams", "commands", "queries", "occurrences", "capabilities", "uses", "rewrites"}, e.key) {
 			c.refuse("key.unknown", e.key, "the key %s is not part of a Manifest", e.key)
 			continue
 		}
@@ -235,6 +250,29 @@ func (c *checker) manifestShape() bool {
 			}
 		})
 	}
+	if v, there := fields["uses"]; there && c.mapping(v, "uses") {
+		m.Uses = map[string]Use{}
+		for _, e := range v.entries() {
+			at := joined("uses", e.key)
+			use := Use{}
+			if c.mapping(e.value, at) {
+				for _, f := range e.value.entries() {
+					switch f.key {
+					case "questions":
+						use.Questions, _ = c.strings(f.value, joined(at, f.key), false)
+					case "streams":
+						use.Streams, _ = c.strings(f.value, joined(at, f.key), false)
+					default:
+						c.refuse("uses.key", joined(at, f.key), "%s is not what a Plugin uses of another unit: it asks questions and follows streams, and never instructs", f.key)
+					}
+				}
+			}
+			m.Uses[e.key] = use
+		}
+	}
+	if v, there := fields["rewrites"]; there {
+		m.Rewrites, _ = c.strings(v, "rewrites", false)
+	}
 	if v, there := fields["capabilities"]; there {
 		if !v.isSequence() {
 			c.refuse("field.type", "capabilities", "capabilities is %s, not a list", v.text())
@@ -280,6 +318,12 @@ func (c *checker) capability(n *node, at string) (Capability, bool) {
 	}
 	var objects []Object
 	for _, e := range governs.entries() {
+		if e.key == "use" {
+			if o, ok := c.use(e.value, joined(joined(at, "governs"), "use")); ok {
+				objects = append(objects, o)
+			}
+			continue
+		}
 		if !slices.Contains([]string{"stream", "command", "query", "occurrence", "surface"}, e.key) {
 			c.refuse("key.unknown", joined(joined(at, "governs"), e.key), "the key %s is not an object a capability governs", e.key)
 			continue
@@ -294,6 +338,38 @@ func (c *checker) capability(n *node, at string) (Capability, bool) {
 	}
 	capability.Governs = objects[0]
 	return capability, named
+}
+
+// use reads a capability's use block: the need, and exactly one query or stream of the unit it is bound to.
+func (c *checker) use(n *node, at string) (Object, bool) {
+	o := Object{Kind: "use"}
+	if !c.mapping(n, at) {
+		return o, false
+	}
+	for _, e := range n.entries() {
+		v, ok := c.str(e.value, joined(at, e.key), false)
+		if !ok {
+			return o, false
+		}
+		switch e.key {
+		case "need":
+			o.Need = v
+		case "query", "stream":
+			if o.Of != "" {
+				c.refuse("capability.governs.count", at, "a use names one query or one stream, not two")
+				return o, false
+			}
+			o.Of, o.ID = e.key, v
+		default:
+			c.refuse("key.unknown", joined(at, e.key), "the key %s is not part of a use", e.key)
+			return o, false
+		}
+	}
+	if o.Need == "" || o.Of == "" {
+		c.refuse("field.required", at, "a use names a need and one query or stream of it")
+		return o, false
+	}
+	return o, true
 }
 
 func findKey(n *node, key string) (*node, bool) {
@@ -313,7 +389,7 @@ func (c *checker) manifestJoins() bool {
 	where := map[Object]string{}
 	add := func(kind, list string, ids []string) {
 		for i, id := range ids {
-			o := Object{kind, id}
+			o := Object{Kind: kind, ID: id}
 			declared[o] = true
 			order = append(order, o)
 			where[o] = fmt.Sprintf("%s.%d", list, i)
@@ -331,7 +407,7 @@ func (c *checker) manifestJoins() bool {
 	for i, capability := range m.Capabilities {
 		o := capability.Governs
 		governed[o] = true
-		if o.Kind != "surface" && !declared[o] {
+		if o.Kind != "surface" && o.Kind != "use" && !declared[o] {
 			c.refuse("capability.governs.undeclared", fmt.Sprintf("capabilities.%d.governs.%s", i, o.Kind), "the capability %s governs the %s %s, which no list declares", capability.Name, o.Kind, o.ID)
 		}
 	}
@@ -340,5 +416,53 @@ func (c *checker) manifestJoins() bool {
 			c.refuse("capability.ungoverned", where[o], "the %s %s is declared and no capability governs it", o.Kind, o.ID)
 		}
 	}
+	c.usesJoins(governed)
 	return true
+}
+
+// usesJoins joins uses to the unit needs, the uses to the capabilities that govern them, and rewrites to the
+// secret needs.
+func (c *checker) usesJoins(governed map[Object]bool) {
+	m := c.manifest
+	units, secrets := map[string]bool{}, map[string]bool{}
+	for _, n := range m.Needs {
+		switch n.Class {
+		case "unit":
+			units[n.Name] = true
+		case "secret":
+			secrets[n.Name] = true
+		}
+	}
+	used := map[Object]bool{}
+	for _, need := range sortedKeys(m.Uses) {
+		use := m.Uses[need]
+		if !units[need] {
+			c.refuse("uses.need.undeclared", joined("uses", need), "uses names %s, which is no unit need the Manifest declares", need)
+			continue
+		}
+		for of, ids := range map[string][]string{"query": use.Questions, "stream": use.Streams} {
+			for _, id := range ids {
+				o := Object{Kind: "use", ID: id, Need: need, Of: of}
+				used[o] = true
+				if !governed[o] {
+					c.refuse("uses.ungoverned", joined("uses", need), "the %s %s used of %s is governed by no capability", of, id, need)
+				}
+			}
+		}
+	}
+	for _, n := range m.Needs {
+		if _, there := m.Uses[n.Name]; n.Class == "unit" && !there {
+			c.refuse("uses.missing", "uses", "the unit need %s says nothing of what it uses", n.Name)
+		}
+	}
+	for i, capability := range m.Capabilities {
+		if o := capability.Governs; o.Kind == "use" && !used[o] {
+			c.refuse("capability.use.undeclared", fmt.Sprintf("capabilities.%d.governs.use", i), "the capability %s governs the %s %s of %s, which uses does not list", capability.Name, o.Of, o.ID, o.Need)
+		}
+	}
+	for i, name := range m.Rewrites {
+		if !secrets[name] {
+			c.refuse("rewrites.undeclared", fmt.Sprintf("rewrites.%d", i), "rewrites names %s, which is no secret the Manifest needs", name)
+		}
+	}
 }

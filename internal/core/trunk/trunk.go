@@ -522,9 +522,9 @@ func declarations(st *State) error {
 	st.Deployment = dep
 	st.mu.Unlock()
 	if st.Form == Application {
-		st.Units = discovery.Descriptor(dep, d.Manifest, st.Bundle, st.Paths.State, values)
+		st.Units = discovery.Descriptor(dep, d.Manifest, st.Bundle, st.Paths.State, st.Paths.Root, values)
 	} else {
-		st.Units = discovery.Units(dep, d.Manifest, plugins.Executables, st.Paths.State)
+		st.Units = discovery.Units(dep, d.Manifest, plugins.Executables, st.Paths.State, st.Paths.Root)
 	}
 	return nil
 }
