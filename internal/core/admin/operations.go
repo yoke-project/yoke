@@ -427,7 +427,9 @@ func (c *Core) ask(ctx context.Context, actor event.Actor, r *administrativev1.R
 	waiting, cancel := context.WithTimeout(ctx, wait)
 	defer cancel()
 	c.record(actor, event.Unit, id, uint64(st.Incarnation), "asked "+id+" of the type "+q.GetType())
-	a, err := c.Sessions.Ask(waiting, id, &pluginv1.Query_Question{Type: q.GetType(), Payload: q.GetQuestion(), Asker: "operator:" + actor.Person})
+	deadline, _ := waiting.Deadline()
+	a, err := c.Sessions.Ask(waiting, id, &pluginv1.Query_Question{Type: q.GetType(), Payload: q.GetQuestion(), Asker: "operator:" + actor.Person,
+		Deadline: uint64(deadline.UnixMilli()), Chain: session.NewChain()})
 	if ref := refusedBy(err, id, q.GetType(), wait); ref != nil {
 		return nil, ref
 	}

@@ -98,6 +98,8 @@ var declared = map[string]Class{
 	"unit.condition.changed":     Level,
 	"unit.occurrence.reported":   Edge,
 	"unit.command.issued":        Edge,
+	"unit.use.refused":           Edge,
+	"unit.question.chained":      Edge,
 	"unit.stream.activated":      Level,
 	"unit.stream.stopped":        Level,
 	"document.resolved":          Level,
@@ -222,6 +224,18 @@ func CommandIssued(unitID string, incarnation uint64, command string, actor Acto
 	e := concluded("unit.command.issued", UnitSubject(unitID, incarnation), Routine, map[string]any{"command": command})
 	e.Actor = actor
 	return e
+}
+
+// UseRefused is the edge a use refused on a need's channel leaves, on the using unit: the need, the object
+// and the code — never a payload.
+func UseRefused(unitID string, incarnation uint64, need, of, object, code string) Event {
+	return concluded("unit.use.refused", UnitSubject(unitID, incarnation), Notable, map[string]any{"need": need, of: object, "code": code})
+}
+
+// QuestionChained is the edge a question caused by another leaves, on the unit asked: the chain, who asked
+// and the type — never the payload, never the answer.
+func QuestionChained(unitID string, incarnation uint64, chain, asker, query string) Event {
+	return concluded("unit.question.chained", UnitSubject(unitID, incarnation), Routine, map[string]any{"chain": chain, "asker": asker, "query": query})
 }
 
 // StreamActivated is the Core's conclusion that a stream of a unit's life was activated: its transport

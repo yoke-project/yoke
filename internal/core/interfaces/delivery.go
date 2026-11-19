@@ -195,7 +195,7 @@ func (s *Surface) subscribeStream(r *interfacev1.Request, a *attachment) (*inter
 		return nil, aboutUnit("subject.unknown", id, "nothing this channel may address is the unit "+id)
 	}
 	if s.cfg.Use != nil && !slices.Contains(s.cfg.Use.Streams, stream) {
-		return nil, aboutItem("use.undeclared", stream, "the need "+s.cfg.Use.Need+" of "+s.cfg.Use.Unit+" does not use the stream "+stream)
+		return nil, s.usedRefusal("stream", stream, aboutItem("use.undeclared", stream, "the need "+s.cfg.Use.Need+" of "+s.cfg.Use.Unit+" does not use the stream "+stream))
 	}
 	m, ok := s.cfg.Declared(id)
 	if !ok {
