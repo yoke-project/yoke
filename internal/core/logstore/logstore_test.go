@@ -288,6 +288,8 @@ func TestEveryDeclaredTypeIsKeptAsAnEntry(t *testing.T) {
 		"unit.stream.activated":      event.StreamActivated("acquire", 2, "station.spectra"),
 		"unit.stream.stopped":        event.StreamStopped("acquire", 2, "station.spectra", "asked", true),
 		"unit.command.issued":        event.CommandIssued("acquire", 2, "calibrate", event.Actor{Class: event.ByOperator, Person: "ada"}),
+		"unit.use.refused":           event.UseRefused("acquire", 2, "source", "command", "calibrate", "use.command"),
+		"unit.question.chained":      event.QuestionChained("acquire", 2, "c0ffee", "unit:archive", "head-status"),
 		"channel.attached":           event.ChannelAttached("panel", "davide"),
 		"channel.suspended":          event.ChannelSuspended("panel", "displaced", "bench", "read-only"),
 		"channel.resumed":            event.ChannelResumed("panel"),

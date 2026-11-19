@@ -304,3 +304,33 @@ func TestAnErrorAnsweringTheCoresMessageClosesTheExchange(t *testing.T) {
 		t.Errorf("the answer after the error was answered %v", refusal)
 	}
 }
+
+// std: yoke:the-families.09
+func TestAQuestionNotAnsweredIsOutstanding(t *testing.T) {
+	h := newHarness(t)
+	st := opened(t, h)
+	done := make(chan error, 1)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		_, err := h.svc.Ask(ctx, "sid-1", &pluginv1.Query_Question{Type: "range", Chain: "c0ffee", Deadline: 1234})
+		done <- err
+	}()
+	got, open := st.receive(t, 2*time.Second)
+	if !open {
+		t.Fatal("the stream closed")
+	}
+	if chain, deadline, ok := h.svc.Outstanding("acquire", got.MessageId); !ok || chain != "c0ffee" || deadline != 1234 {
+		t.Errorf("outstanding is %q %d %v", chain, deadline, ok)
+	}
+	if _, _, ok := h.svc.Outstanding("other", got.MessageId); ok {
+		t.Error("another unit has the question outstanding")
+	}
+	st.send(t, answer(got.MessageId, "ok"))
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if _, _, ok := h.svc.Outstanding("acquire", got.MessageId); ok {
+		t.Error("an answered question is still outstanding")
+	}
+}

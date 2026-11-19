@@ -705,6 +705,12 @@ func interfaceChannels(st *State) error {
 				}
 				return st.Session.Granted(id)
 			},
+			Outstanding: func(unitID, messageID string) (string, uint64, bool) {
+				if st.Session == nil {
+					return "", 0, false
+				}
+				return st.Session.Outstanding(unitID, messageID)
+			},
 			UseGranted: func(unitID, need, of, id string) bool {
 				return st.Session != nil && st.Session.UseGranted(unitID, need, of, id)
 			},

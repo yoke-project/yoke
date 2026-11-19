@@ -118,7 +118,7 @@ func (s *Surface) command(ctx context.Context, r *interfacev1.Request) (*interfa
 		return nil, ref
 	}
 	if s.cfg.Use != nil {
-		return nil, aboutItem("use.command", c.GetType(), "a unit never instructs another: no command is addressed on the channel of "+s.cfg.Use.Unit+"'s need "+s.cfg.Use.Need)
+		return nil, s.usedRefusal("command", c.GetType(), aboutItem("use.command", c.GetType(), "a unit never instructs another: no command is addressed on the channel of "+s.cfg.Use.Unit+"'s need "+s.cfg.Use.Need))
 	}
 	if !slices.Contains(m.Commands, c.GetType()) {
 		return nil, aboutItem("scope.undeclared", c.GetType(), c.GetType()+" was never declared by the unit's Plugin")
@@ -146,7 +146,7 @@ func (s *Surface) query(ctx context.Context, r *interfacev1.Request) (*interface
 		return nil, ref
 	}
 	if s.cfg.Use != nil && !slices.Contains(s.cfg.Use.Questions, q.GetType()) {
-		return nil, aboutItem("use.undeclared", q.GetType(), "the need "+s.cfg.Use.Need+" of "+s.cfg.Use.Unit+" does not use the question "+q.GetType())
+		return nil, s.usedRefusal("query", q.GetType(), aboutItem("use.undeclared", q.GetType(), "the need "+s.cfg.Use.Need+" of "+s.cfg.Use.Unit+" does not use the question "+q.GetType()))
 	}
 	if !slices.Contains(m.Queries, q.GetType()) {
 		return nil, aboutItem("scope.undeclared", q.GetType(), q.GetType()+" was never declared by the unit's Plugin")
@@ -154,12 +154,22 @@ func (s *Surface) query(ctx context.Context, r *interfacev1.Request) (*interface
 	if ref := s.useGranted("query", q.GetType()); ref != nil {
 		return nil, ref
 	}
-	if _, ref := s.reachable(q.GetUnit()); ref != nil {
+	incarnation, ref := s.reachable(q.GetUnit())
+	if ref != nil {
 		return nil, ref
 	}
-	wait, cancel := s.waiting(ctx)
+	chain, deadline, ref := s.caused(q.GetCause())
+	if ref != nil {
+		return nil, ref
+	}
+	wait, cancel := context.WithDeadline(ctx, deadline)
 	defer cancel()
-	a, err := s.cfg.Sessions.Ask(wait, q.GetUnit(), &pluginv1.Query_Question{Type: q.GetType(), Payload: q.GetPayload(), Asker: s.asker()})
+	asker := s.asker()
+	if q.GetCause() != "" && s.cfg.Publish != nil {
+		s.cfg.Publish(event.QuestionChained(q.GetUnit(), incarnation, chain, asker, q.GetType()))
+	}
+	a, err := s.cfg.Sessions.Ask(wait, q.GetUnit(), &pluginv1.Query_Question{Type: q.GetType(), Payload: q.GetPayload(),
+		Asker: asker, Deadline: uint64(deadline.UnixMilli()), Chain: chain})
 	if err != nil {
 		return nil, failed(err, q.GetUnit(), q.GetType())
 	}
@@ -184,9 +194,52 @@ func (s *Surface) useGranted(of, id string) *interfacev1.Refusal {
 		return nil
 	}
 	if s.cfg.UseGranted == nil || !s.cfg.UseGranted(s.cfg.Use.Unit, s.cfg.Use.Need, of, id) {
-		return aboutItem("scope.withheld", id, "the use of the "+of+" "+id+" is not granted to "+s.cfg.Use.Unit)
+		return s.usedRefusal(of, id, aboutItem("scope.withheld", id, "the use of the "+of+" "+id+" is not granted to "+s.cfg.Use.Unit))
 	}
 	return nil
+}
+
+// usedRefusal reports a use refused on a need's channel, on the using unit, and returns the refusal.
+func (s *Surface) usedRefusal(of, id string, ref *interfacev1.Refusal) *interfacev1.Refusal {
+	if s.cfg.Use != nil && s.cfg.Publish != nil {
+		var incarnation uint64
+		if s.cfg.Units != nil {
+			incarnation = uint64(s.cfg.Units.Status(s.cfg.Use.Unit).Incarnation)
+		}
+		s.cfg.Publish(event.UseRefused(s.cfg.Use.Unit, incarnation, s.cfg.Use.Need, of, id, ref.GetCode()))
+	}
+	return ref
+}
+
+// The margin a caused question's deadline is shortened by, and the least time it must leave.
+const (
+	CausedMargin = 500 * time.Millisecond
+	CausedLeast  = 100 * time.Millisecond
+)
+
+// caused is a question's chain and deadline: new, and the wait from now, for a question nothing caused;
+// on a need's channel, the chain of the question the using unit is answering and its deadline less the
+// margin — refused where the cause is no question outstanding at that unit, or leaves too little time.
+func (s *Surface) caused(cause string) (string, time.Time, *interfacev1.Refusal) {
+	if cause == "" {
+		wait := s.cfg.Wait
+		if wait == 0 {
+			wait = Wait
+		}
+		return session.NewChain(), time.Now().Add(wait), nil
+	}
+	if s.cfg.Use == nil || s.cfg.Outstanding == nil {
+		return "", time.Time{}, aboutItem("use.cause.unknown", cause, "only a unit's question on its need's channel has a cause")
+	}
+	chain, outer, ok := s.cfg.Outstanding(s.cfg.Use.Unit, cause)
+	if !ok {
+		return "", time.Time{}, aboutItem("use.cause.unknown", cause, cause+" is no question outstanding at "+s.cfg.Use.Unit)
+	}
+	deadline := time.UnixMilli(int64(outer)).Add(-CausedMargin)
+	if time.Until(deadline) < CausedLeast {
+		return "", time.Time{}, aboutItem("deadline.exhausted", cause, "the question caused by "+cause+" would have less than 100 ms left")
+	}
+	return chain, deadline, nil
 }
 
 // stream checks a stream of a unit up to its Session, and returns what it tolerates and the unit's life.
@@ -196,7 +249,7 @@ func (s *Surface) stream(id, stream string) (streams.Tolerances, uint64, *interf
 		return streams.Tolerances{}, 0, ref
 	}
 	if s.cfg.Use != nil && !slices.Contains(s.cfg.Use.Streams, stream) {
-		return streams.Tolerances{}, 0, aboutItem("use.undeclared", stream, "the need "+s.cfg.Use.Need+" of "+s.cfg.Use.Unit+" does not use the stream "+stream)
+		return streams.Tolerances{}, 0, s.usedRefusal("stream", stream, aboutItem("use.undeclared", stream, "the need "+s.cfg.Use.Need+" of "+s.cfg.Use.Unit+" does not use the stream "+stream))
 	}
 	i := slices.IndexFunc(m.Streams, func(d gate.Stream) bool { return d.ID == stream })
 	if i < 0 {
