@@ -168,3 +168,29 @@ func (b *Bound) Close() error {
 	b.closers = nil
 	return nil
 }
+
+// BindNeed binds a need's channel at path — needs/<unit>/<need>.sock under the instance root — in a
+// directory 0700 of its own, the socket 0600, serving the surface given in the local projection. It
+// returns what unbinds it and removes the socket.
+func BindNeed(path string, served interfacev1.InterfaceServer) (func(), error) {
+	if len(path) > ceiling {
+		return nil, fmt.Errorf("the socket path %s is %d characters, beyond the %d a socket path may have", path, len(path), ceiling)
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return nil, err
+	}
+	if err := os.Chmod(filepath.Dir(path), 0o700); err != nil {
+		return nil, err
+	}
+	os.Remove(path)
+	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
+	if err != nil {
+		return nil, err
+	}
+	listener.SetUnlinkOnClose(false)
+	if err := os.Chmod(path, 0o600); err != nil {
+		listener.Close()
+		return nil, err
+	}
+	return serve(gate.Channel{Transport: "local"}, listener, served), nil
+}

@@ -50,7 +50,7 @@ func (s *Surface) target(id string) (*gate.Manifest, *interfacev1.Refusal) {
 	if s.cfg.Stopping != nil && s.cfg.Stopping() {
 		return nil, refusal("instance.stopping", "the instance is stopping, and this operation would act")
 	}
-	if !slices.Contains(s.cfg.Units.IDs(), id) || s.cfg.Units.Kind(id) != unit.Plugin {
+	if !slices.Contains(s.cfg.Units.IDs(), id) || s.cfg.Units.Kind(id) != unit.Plugin || (s.cfg.Use != nil && id != s.cfg.Use.Bound) {
 		return nil, aboutUnit("subject.unknown", id, "nothing this channel may address is the unit "+id)
 	}
 	m, ok := s.cfg.Declared(id)
@@ -117,6 +117,9 @@ func (s *Surface) command(ctx context.Context, r *interfacev1.Request) (*interfa
 	if ref != nil {
 		return nil, ref
 	}
+	if s.cfg.Use != nil {
+		return nil, aboutItem("use.command", c.GetType(), "a unit never instructs another: no command is addressed on the channel of "+s.cfg.Use.Unit+"'s need "+s.cfg.Use.Need)
+	}
 	if !slices.Contains(m.Commands, c.GetType()) {
 		return nil, aboutItem("scope.undeclared", c.GetType(), c.GetType()+" was never declared by the unit's Plugin")
 	}
@@ -142,6 +145,9 @@ func (s *Surface) query(ctx context.Context, r *interfacev1.Request) (*interface
 	if ref != nil {
 		return nil, ref
 	}
+	if s.cfg.Use != nil && !slices.Contains(s.cfg.Use.Questions, q.GetType()) {
+		return nil, aboutItem("use.undeclared", q.GetType(), "the need "+s.cfg.Use.Need+" of "+s.cfg.Use.Unit+" does not use the question "+q.GetType())
+	}
 	if !slices.Contains(m.Queries, q.GetType()) {
 		return nil, aboutItem("scope.undeclared", q.GetType(), q.GetType()+" was never declared by the unit's Plugin")
 	}
@@ -165,6 +171,9 @@ func (s *Surface) stream(id, stream string) (streams.Tolerances, uint64, *interf
 	m, ref := s.target(id)
 	if ref != nil {
 		return streams.Tolerances{}, 0, ref
+	}
+	if s.cfg.Use != nil && !slices.Contains(s.cfg.Use.Streams, stream) {
+		return streams.Tolerances{}, 0, aboutItem("use.undeclared", stream, "the need "+s.cfg.Use.Need+" of "+s.cfg.Use.Unit+" does not use the stream "+stream)
 	}
 	i := slices.IndexFunc(m.Streams, func(d gate.Stream) bool { return d.ID == stream })
 	if i < 0 {

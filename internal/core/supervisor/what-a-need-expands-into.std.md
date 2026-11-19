@@ -121,3 +121,16 @@
 | **Precondition** | the environment's engine serving its API; a composition whose host oneshot and containerised oneshot each need `secret:token` and name `${bind.token}` as their argument; the value written at `<state>/secrets/token`, mode `0600` |
 | **Action** | start the Core and let both complete |
 | **Expected** | each reads the value from the path it was handed and says how many bytes it read; neither is handed the value in its environment |
+
+## yoke:what-a-need-expands-into.10 — a unit need's channel is bound before the launch and unbound when the incarnation ends
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/28.61 · specs/14.57 · arch/35-units/04 §The plan · arch/70-interface-surface/10 §What it is |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a supervisor whose binding of a need's channel is recorded; a unit that runs to completion with a need of class `unit`; then the same with the binding failing |
+| **Action** | launch each |
+| **Expected** | the first binds the need's channel, at its path and with the unit bound, before its process starts, and unbinds it once the unit has completed; the second never starts, and its failure names the need and its path |
