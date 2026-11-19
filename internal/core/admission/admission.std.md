@@ -186,3 +186,16 @@
 | **Precondition** | two units of one plugin, each composed |
 | **Action** | admit the first with a request naming the shared object among the transports it offers, and the second with one naming none |
 | **Expected** | both are accepted alike; the first's Session says its library offers the shared object, and the second's that it does not |
+
+## yoke:admission.15 — a use is granted where the capability governing it is, and declared where the Manifest's uses list it
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/50.112 · specs/42.31 · arch/50-plugin-surface/10 §The capabilities of a use |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a Manifest using, through its need `accounts`, the question `oauth.token` and the stream `oauth.status`, each governed by its own capability; a grant of the question's capability alone |
+| **Action** | compute the grant |
+| **Expected** | the scope grants the use of `oauth.token` through `accounts`, withholds the use of `oauth.status`, and declares nothing of another need |

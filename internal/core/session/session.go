@@ -524,6 +524,19 @@ func (s *Service) Granted(unitID string) (streams, commands, queries []string) {
 	return nil, nil, nil
 }
 
+// UseGranted says whether a unit's open Session was granted a use: the query or stream of the unit its
+// need is bound to. A unit with no Session is granted nothing.
+func (s *Service) UseGranted(unitID, need, of, id string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, l := range s.open {
+		if l.terms.Unit == unitID && !l.ended {
+			return l.terms.Scope.Check(scope.Use, scope.UseKey(need, of, id)) == pluginv1.Code_CODE_UNSPECIFIED
+		}
+	}
+	return false
+}
+
 // Forget ends a unit's Session because its incarnation ended: the machine has already concluded, and
 // nothing is told to it.
 func (s *Service) Forget(unitID string) {

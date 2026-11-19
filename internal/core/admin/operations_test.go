@@ -147,6 +147,7 @@ func (f *fakeUnits) Withdraw(id string) (supervisor.Status, bool) {
 // fakeSessions are Sessions that answer by the unit: reverse answers the bytes it was asked, reversed,
 // and silent never answers.
 type fakeSessions struct {
+	askers  []string
 	mu      sync.Mutex
 	open    map[string]string // unit → how it answers
 	revoked map[string]pluginv1.SessionMessage_Revoked_Cause
@@ -173,6 +174,7 @@ func (f *fakeSessions) Open(id string) bool {
 func (f *fakeSessions) Ask(ctx context.Context, id string, q *pluginv1.Query_Question) (*pluginv1.Query_Answer, error) {
 	f.mu.Lock()
 	how, ok := f.open[id]
+	f.askers = append(f.askers, q.GetAsker())
 	f.mu.Unlock()
 	if !ok {
 		return nil, fmt.Errorf("no Session")
@@ -533,6 +535,11 @@ func TestAQuestionIsCarriedOpaqueAndRecordedWithoutIt(t *testing.T) {
 	if got := string(resp.GetUnitAsk().GetAnswer()); got != "noitseuq-cba" {
 		t.Errorf("the answer is %q, want the bytes reversed", got)
 	}
+	b.sessions.mu.Lock()
+	if askers := b.sessions.askers; len(askers) != 1 || askers[0] != "operator:"+me(t).Username {
+		t.Errorf("the unit was asked by %v, want the operator", askers)
+	}
+	b.sessions.mu.Unlock()
 	all := entries(t, b.core.Logs, func(all []logstore.Entry) bool { return len(all) > 0 })
 	var asked []logstore.Entry
 	for _, e := range all {
