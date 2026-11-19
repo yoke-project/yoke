@@ -86,6 +86,15 @@ message Query {
   message Question {
     string type = 1;
     bytes payload = 2;
+    // Who asked, filled by the Core from the channel the question came on and never from a request:
+    // unit:<unit> for a need's channel, channel:<name> for a declared one, operator:<person> for the
+    // administrative surface.
+    string asker = 3;
+    // The instant the asker stops waiting, in milliseconds since the epoch, filled by the Core.
+    uint64 deadline = 4;
+    // The chain this question belongs to, 32 lower-case hex digits, filled by the Core: new for a
+    // question no other caused, its cause's otherwise.
+    string chain = 5;
   }
   message Answer {
     bytes payload = 1;

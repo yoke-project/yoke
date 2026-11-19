@@ -396,6 +396,18 @@ pub mod query {
         pub r#type: ::prost::alloc::string::String,
         #[prost(bytes = "vec", tag = "2")]
         pub payload: ::prost::alloc::vec::Vec<u8>,
+        /// Who asked, filled by the Core from the channel the question came on and never from a request:
+        /// unit:<unit> for a need's channel, channel:<name> for a declared one, operator:<person> for the
+        /// administrative surface.
+        #[prost(string, tag = "3")]
+        pub asker: ::prost::alloc::string::String,
+        /// The instant the asker stops waiting, in milliseconds since the epoch, filled by the Core.
+        #[prost(uint64, tag = "4")]
+        pub deadline: u64,
+        /// The chain this question belongs to, 32 lower-case hex digits, filled by the Core: new for a
+        /// question no other caused, its cause's otherwise.
+        #[prost(string, tag = "5")]
+        pub chain: ::prost::alloc::string::String,
     }
     #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct Answer {
