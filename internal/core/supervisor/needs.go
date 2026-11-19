@@ -40,6 +40,11 @@ func (s *Supervisor) expand(u Unit, contained bool) (expansion, error) {
 			err = x.audio(s.getenv)
 		case "network":
 			x.network = true
+		case "unit":
+			// The channel the Core bound, mounted at the same path inside a container.
+			if contained {
+				x.mounts = append(x.mounts, n.Path)
+			}
 		case "secret":
 			// The file the manager wrote: checked to be there, never opened, and mounted at its own path.
 			if _, err = os.Stat(n.Path); err == nil {

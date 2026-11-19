@@ -144,6 +144,8 @@ type State struct {
 	engine         *engine.Engine // the container engine step 7 reached, where a unit names an image
 	weaker         []string       // the weaker arrangements the gate reported, in force
 	interfaces     *interfaces.Bound
+	// needSurface serves a need's channel, once the declared channels are bound.
+	needSurface func(*interfaces.Use) interfacev1.InterfaceServer
 }
 
 // channelRecords are the declared channels, as the administrative surface reads them.
@@ -682,8 +684,8 @@ func interfaceChannels(st *State) error {
 		}
 		return verdict, err
 	}
-	surface := func(ch gate.Channel) interfacev1.InterfaceServer {
-		return interfaces.NewSurface(interfaces.Config{
+	configOf := func(ch gate.Channel) interfaces.Config {
+		return interfaces.Config{
 			Channel: ch, Authenticate: authenticate, Root: st.Paths.Root, Bus: st.Bus, Publish: st.publish, Confirm: confirm, Units: supervised{st}, Active: transports.Active,
 			Sessions: held{st}, Transports: transports, Stopping: st.stopping.Load, Arbiter: arbiter,
 			Declared: func(id string) (*gate.Manifest, bool) {
@@ -703,8 +705,18 @@ func interfaceChannels(st *State) error {
 				}
 				return st.Session.Granted(id)
 			},
-		})
+		}
 	}
+	surface := func(ch gate.Channel) interfacev1.InterfaceServer { return interfaces.NewSurface(configOf(ch)) }
+	// A need's channel is the same surface, one unit's client of the unit its need is bound to, with no
+	// arbitration: nothing prevails over it.
+	st.mu.Lock()
+	st.needSurface = func(use *interfaces.Use) interfacev1.InterfaceServer {
+		cfg := configOf(gate.Channel{Name: "need:" + use.Unit + "/" + use.Need, Transport: "local", Clients: "single"})
+		cfg.Arbiter, cfg.Use = nil, use
+		return interfaces.NewSurface(cfg)
+	}
+	st.mu.Unlock()
 	bound, err := interfaces.BindServing(st.Paths.Root, filepath.Join(st.Paths.State, "tls"), st.Form.SocketMode(), declared, surface)
 	if err != nil {
 		return err
@@ -1023,6 +1035,22 @@ func units(st *State) error {
 			}
 			p, ok, err := st.Registry.Plugin(plugin)
 			return err == nil && ok && !p.Enabled
+		},
+		// A unit need's channel serves what the using Plugin's Manifest says it uses.
+		BindNeed: func(unitID string, n supervisor.Need) (func(), error) {
+			st.mu.Lock()
+			serve, dep := st.needSurface, st.Deployment
+			st.mu.Unlock()
+			if serve == nil || dep == nil {
+				return nil, errors.New("no channel is served yet")
+			}
+			use := &interfaces.Use{Unit: unitID, Need: n.Name, Bound: n.Bound}
+			if u, ok := dep.Units[unitID]; ok && st.Discovery != nil {
+				if m, ok := st.Discovery.Manifest(u.Plugin); ok {
+					use.Questions, use.Streams = m.Uses[n.Name].Questions, m.Uses[n.Name].Streams
+				}
+			}
+			return interfaces.BindNeed(n.Path, serve(use))
 		},
 	}
 	if st.tokens != nil {

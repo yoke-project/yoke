@@ -29,12 +29,15 @@ func (s *Surface) recordsOf(kind, identity string) ([]*interfacev1.Record, *inte
 	var ids []string
 	switch kind {
 	case "instance":
-		if s.cfg.Instance != nil {
+		if s.cfg.Instance != nil && s.cfg.Use == nil {
 			all, ids = append(all, &interfacev1.Record{Subject: &interfacev1.Record_Instance{Instance: s.cfg.Instance()}}), append(ids, identity)
 		}
 	case "unit":
 		if s.cfg.Units != nil {
 			for _, id := range s.cfg.Units.IDs() {
+				if s.cfg.Use != nil && id != s.cfg.Use.Bound {
+					continue
+				}
 				all, ids = append(all, &interfacev1.Record{Subject: &interfacev1.Record_Unit{Unit: s.unitRecord(id)}}), append(ids, id)
 			}
 		}

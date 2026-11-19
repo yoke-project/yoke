@@ -191,8 +191,11 @@ func (s *Surface) subscribeStream(r *interfacev1.Request, a *attachment) (*inter
 	if s.cfg.Units == nil || s.cfg.Declared == nil || s.cfg.Transports == nil {
 		return nil, refusal("operation.unknown", "this Core does not serve stream.subscribe")
 	}
-	if !slices.Contains(s.cfg.Units.IDs(), id) || s.cfg.Units.Kind(id) != unit.Plugin {
+	if !slices.Contains(s.cfg.Units.IDs(), id) || s.cfg.Units.Kind(id) != unit.Plugin || (s.cfg.Use != nil && id != s.cfg.Use.Bound) {
 		return nil, aboutUnit("subject.unknown", id, "nothing this channel may address is the unit "+id)
+	}
+	if s.cfg.Use != nil && !slices.Contains(s.cfg.Use.Streams, stream) {
+		return nil, aboutItem("use.undeclared", stream, "the need "+s.cfg.Use.Need+" of "+s.cfg.Use.Unit+" does not use the stream "+stream)
 	}
 	m, ok := s.cfg.Declared(id)
 	if !ok {

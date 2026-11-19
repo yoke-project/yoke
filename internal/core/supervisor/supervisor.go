@@ -55,10 +55,13 @@ type Skipped struct {
 }
 
 // Need is one declared need as a launch expands it: its class, and the path a device is bound to, a
-// storage need is materialised at, or a secret's file is.
+// storage need is materialised at, a secret's file is, or a unit need's channel is bound at — with, for a
+// unit need, its name and the unit it is bound to.
 type Need struct {
-	Class string // device, storage, secret, display, audio or network
+	Class string // device, storage, secret, unit, display, audio or network
 	Path  string
+	Name  string
+	Bound string
 }
 
 // Policy holds the deployment's figures.
@@ -116,6 +119,9 @@ type Config struct {
 	Getenv func(string) string
 	// X11 is the directory X11 servers listen in. Empty is /tmp/.X11-unix.
 	X11 string
+	// BindNeed binds the channel of a unit's need of class unit, at the need's path, before the unit is
+	// launched, and returns what unbinds it when that incarnation ends. Nil binds nothing.
+	BindNeed func(unitID string, n Need) (func(), error)
 }
 
 // Containers is what the supervisor asks of a container engine.
@@ -201,6 +207,15 @@ type managed struct {
 	held       bool // waiting on its dependencies, with no incarnation yet
 	unobserved bool // carrying the condition of a quiet backend, which it was running on when it went quiet
 	hold       *time.Timer
+	channels   []func() // what unbinds the channels of this incarnation's unit needs
+}
+
+// unbind releases the channels of a unit's needs. Lock held.
+func (m *managed) unbind() {
+	for _, close := range m.channels {
+		close()
+	}
+	m.channels = nil
 }
 
 // Supervisor supervises the units of one instance.
@@ -407,6 +422,22 @@ func (s *Supervisor) attempt(m *managed) {
 		if err := os.MkdirAll(filepath.Join(s.cfg.Root, "plugins"), 0o750); err != nil {
 			s.failedLaunch(m, fmt.Sprintf("the directory for the unit's socket cannot be made: %v", err))
 			return
+		}
+	}
+	// A unit need's channel is bound before the process exists, so the path it is handed already answers.
+	m.unbind()
+	if s.cfg.BindNeed != nil {
+		for _, n := range m.decl.Needs {
+			if n.Class != "unit" {
+				continue
+			}
+			close, err := s.cfg.BindNeed(m.decl.ID, n)
+			if err != nil {
+				m.unbind()
+				s.failedLaunch(m, fmt.Sprintf("the channel of the need %s cannot be bound at %s: %v", n.Name, n.Path, err))
+				return
+			}
+			m.channels = append(m.channels, close)
 		}
 	}
 	// Every need is expanded at every launch: what held when the instance started says nothing about now.
@@ -661,6 +692,9 @@ func (s *Supervisor) apply(m *managed, in unit.Input) {
 				r.kill()
 			}
 		}()
+	}
+	if moved && t.To.Terminal() {
+		m.unbind()
 	}
 	if moved && t.To.Terminal() && s.cfg.Ended != nil {
 		s.cfg.Ended(m.decl.ID)

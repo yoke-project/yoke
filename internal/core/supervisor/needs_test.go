@@ -1,11 +1,13 @@
 package supervisor_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -305,6 +307,49 @@ func TestASecretIsAFileCheckedAndMountedAtItsPath(t *testing.T) {
 	s.Launch(again)
 	until(t, "the unit without its secret to fail", 3*time.Second, failed(s, "again"))
 	if st := s.Status("again"); !strings.Contains(st.Failure, "secret token") || !strings.Contains(st.Failure, path) || st.PID != 0 {
+		t.Errorf("the failure is %q, with process %d", st.Failure, st.PID)
+	}
+}
+
+// std: yoke:what-a-need-expands-into.10
+func TestAUnitNeedsChannelIsBoundBeforeTheLaunchAndUnboundAtItsEnd(t *testing.T) {
+	var mu sync.Mutex
+	var said []string
+	failing := false
+	cfg := supervisor.Config{Root: t.TempDir(), Policy: fast(), Instance: "bench", Incarnations: supervisor.NewCounter(),
+		Tokens: supervisor.NewTokens(), Output: &output{},
+		BindNeed: func(unitID string, n supervisor.Need) (func(), error) {
+			mu.Lock()
+			defer mu.Unlock()
+			if failing {
+				return nil, errors.New("refused")
+			}
+			said = append(said, "bind "+unitID+" "+n.Name+" "+n.Bound+" "+n.Path)
+			return func() {
+				mu.Lock()
+				defer mu.Unlock()
+				said = append(said, "unbind "+unitID+" "+n.Name)
+			}, nil
+		}}
+	s := supervisor.New(cfg)
+	t.Cleanup(func() { s.Stop() })
+	channel := filepath.Join(cfg.Root, "needs", "archive", "source.sock")
+	u := declared(t, "archive", unit.Oneshot, "exit-0")
+	u.Needs = []supervisor.Need{{Class: "unit", Path: channel, Name: "source", Bound: "pipeline"}}
+	s.Launch(u)
+	until(t, "archive to complete", 3*time.Second, func() bool { return s.Status("archive").State == unit.Completed })
+	mu.Lock()
+	got := slices.Clone(said)
+	failing = true
+	mu.Unlock()
+	if want := []string{"bind archive source pipeline " + channel, "unbind archive source"}; !slices.Equal(got, want) {
+		t.Errorf("the channel was %q, want %q", got, want)
+	}
+	v := declared(t, "refused", unit.Oneshot, "exit-0")
+	v.Needs = u.Needs
+	s.Launch(v)
+	until(t, "the refused unit to fail", 3*time.Second, failed(s, "refused"))
+	if st := s.Status("refused"); !strings.Contains(st.Failure, "source") || !strings.Contains(st.Failure, channel) || st.PID != 0 {
 		t.Errorf("the failure is %q, with process %d", st.Failure, st.PID)
 	}
 }
