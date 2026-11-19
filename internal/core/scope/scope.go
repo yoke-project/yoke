@@ -20,7 +20,12 @@ const (
 	Command    Kind = "command"
 	Query      Kind = "query"
 	Occurrence Kind = "occurrence"
+	// Use is a question or a stream of the unit a need is bound to, keyed by UseKey.
+	Use Kind = "use"
 )
+
+// UseKey names a use in the scope: the need, the kind of object — query or stream — and its identity.
+func UseKey(need, of, id string) string { return need + "/" + of + "/" + id }
 
 // Scope is the declared and the granted, by kind. Its zero value declares and grants nothing.
 type Scope struct {

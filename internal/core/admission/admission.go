@@ -278,6 +278,19 @@ func intersect(m *gate.Manifest, grants []string) (granted, withheld *pluginv1.S
 	sort("command", m.Commands, &granted.Commands, &withheld.Commands)
 	sort("query", m.Queries, &granted.Queries, &withheld.Queries)
 	sort("occurrence", m.Occurrences, &granted.Occurrences, &withheld.Occurrences)
+	// A use is declared by the need's uses and granted by the capability governing it; the unit used still
+	// holds its own grant, which its own Session checks.
+	for need, use := range m.Uses {
+		for of, ids := range map[string][]string{"query": use.Questions, "stream": use.Streams} {
+			for _, id := range ids {
+				key := scope.UseKey(need, of, id)
+				sc.Declare(scope.Use, key)
+				if governed[gate.Object{Kind: "use", ID: id, Need: need, Of: of}] {
+					sc.Grant(scope.Use, key)
+				}
+			}
+		}
+	}
 	return granted, withheld, sc
 }
 

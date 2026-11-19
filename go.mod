@@ -7,7 +7,7 @@ require (
 	github.com/ebitengine/purego v0.11.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/yoke-project/yoke-sdk-go v0.7.2-0.20261109174709-964aa90ef9c8
-	github.com/yoke-project/yoke/proto v0.6.0
+	github.com/yoke-project/yoke/proto v0.6.1-0.20261119232933-eb43cbcd0480
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/mod v0.41.0
 	golang.org/x/sys v0.47.0

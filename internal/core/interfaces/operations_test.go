@@ -62,6 +62,7 @@ type fakeSessions struct {
 	mu      sync.Mutex
 	handed  []*pluginv1.Control
 	present []bool
+	asked   []*pluginv1.Query_Question
 	// offers is what every unit's library offered; nothing unless a case says so.
 	offers streams.Offers
 }
@@ -105,6 +106,9 @@ func (f *fakeSessions) Ask(ctx context.Context, id string, q *pluginv1.Query_Que
 	if err := f.failure(ctx, id, q.GetType()); err != nil {
 		return nil, err
 	}
+	f.mu.Lock()
+	f.asked = append(f.asked, q)
+	f.mu.Unlock()
 	answer := slices.Clone(q.GetPayload())
 	slices.Reverse(answer)
 	return &pluginv1.Query_Answer{Payload: answer}, nil
@@ -174,6 +178,11 @@ func TestAQuestionIsCarriedAndItsAnswerComesBackOpaque(t *testing.T) {
 	if f := a.answerTo(t, "q", query([]byte{1, 2, 3})); !bytes.Equal(f.GetAnswer().GetQuery().GetPayload(), []byte{3, 2, 1}) {
 		t.Errorf("the question was answered %v", f)
 	}
+	a.sessions.mu.Lock()
+	if asked := a.sessions.asked; len(asked) != 1 || asked[0].GetAsker() != "channel:panel" {
+		t.Errorf("the unit was asked %v, want it asked by channel:panel", asked)
+	}
+	a.sessions.mu.Unlock()
 	if f := a.answerTo(t, "big", query(make([]byte, 1<<20+1))); f.GetRefusal().GetCode() != "operation.malformed" {
 		t.Errorf("a question over 1 MiB was answered %v", f)
 	}

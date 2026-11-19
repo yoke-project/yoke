@@ -151,12 +151,15 @@ func (s *Surface) query(ctx context.Context, r *interfacev1.Request) (*interface
 	if !slices.Contains(m.Queries, q.GetType()) {
 		return nil, aboutItem("scope.undeclared", q.GetType(), q.GetType()+" was never declared by the unit's Plugin")
 	}
+	if ref := s.useGranted("query", q.GetType()); ref != nil {
+		return nil, ref
+	}
 	if _, ref := s.reachable(q.GetUnit()); ref != nil {
 		return nil, ref
 	}
 	wait, cancel := s.waiting(ctx)
 	defer cancel()
-	a, err := s.cfg.Sessions.Ask(wait, q.GetUnit(), &pluginv1.Query_Question{Type: q.GetType(), Payload: q.GetPayload()})
+	a, err := s.cfg.Sessions.Ask(wait, q.GetUnit(), &pluginv1.Query_Question{Type: q.GetType(), Payload: q.GetPayload(), Asker: s.asker()})
 	if err != nil {
 		return nil, failed(err, q.GetUnit(), q.GetType())
 	}
@@ -164,6 +167,26 @@ func (s *Surface) query(ctx context.Context, r *interfacev1.Request) (*interface
 		return nil, aboutUnit("unit.unanswered", q.GetUnit(), "the answer exceeds 1 MiB, and is not carried")
 	}
 	return &interfacev1.Response{Answer: &interfacev1.Response_Query{Query: &interfacev1.Answered{Payload: a.GetPayload()}}}, nil
+}
+
+// asker is who a question from this channel is asked by: the using unit, on a need's channel, and the
+// channel otherwise — never anything a request says.
+func (s *Surface) asker() string {
+	if s.cfg.Use != nil {
+		return "unit:" + s.cfg.Use.Unit
+	}
+	return "channel:" + s.cfg.Channel.Name
+}
+
+// useGranted refuses, on a need's channel, a use the using unit was not granted; elsewhere it passes.
+func (s *Surface) useGranted(of, id string) *interfacev1.Refusal {
+	if s.cfg.Use == nil {
+		return nil
+	}
+	if s.cfg.UseGranted == nil || !s.cfg.UseGranted(s.cfg.Use.Unit, s.cfg.Use.Need, of, id) {
+		return aboutItem("scope.withheld", id, "the use of the "+of+" "+id+" is not granted to "+s.cfg.Use.Unit)
+	}
+	return nil
 }
 
 // stream checks a stream of a unit up to its Session, and returns what it tolerates and the unit's life.
@@ -178,6 +201,9 @@ func (s *Surface) stream(id, stream string) (streams.Tolerances, uint64, *interf
 	i := slices.IndexFunc(m.Streams, func(d gate.Stream) bool { return d.ID == stream })
 	if i < 0 {
 		return streams.Tolerances{}, 0, aboutItem("scope.undeclared", stream, stream+" was never declared by the unit's Plugin")
+	}
+	if ref := s.useGranted("stream", stream); ref != nil {
+		return streams.Tolerances{}, 0, ref
 	}
 	incarnation, ref := s.reachable(id)
 	if ref != nil {
