@@ -205,6 +205,9 @@ func (s *Surface) subscribeStream(r *interfacev1.Request, a *attachment) (*inter
 	if at < 0 {
 		return nil, aboutItem("scope.undeclared", stream, stream+" was never declared by the unit's Plugin")
 	}
+	if ref := s.useGranted("stream", stream); ref != nil {
+		return nil, ref
+	}
 	largest := m.Streams[at].MaxFrame
 	var granted []string
 	if s.cfg.Granted != nil {

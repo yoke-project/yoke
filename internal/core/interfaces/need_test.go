@@ -25,11 +25,15 @@ func TestANeedsChannelAnswersForTheUnitBoundAndWhatTheNeedUses(t *testing.T) {
 	manifest := &gate.Manifest{ID: "com.example.station", Commands: []string{"calibrate"}, Queries: []string{"head-status"},
 		Streams: []gate.Stream{{ID: "station.spectra"}, {ID: "station.preview", ToleratesLoss: true}}}
 	path := filepath.Join(r, "needs", "archive", "source.sock")
+	sessions := &fakeSessions{}
 	unbind, err := interfaces.BindNeed(path, interfaces.NewSurface(interfaces.Config{
 		Channel: gate.Channel{Name: "need:archive/source", Transport: "local", Clients: "single"},
-		Bus:     w.bus, Publish: w.publish, Units: bench{}, Sessions: &fakeSessions{}, Transports: transports, Wait: 200 * time.Millisecond,
+		Bus:     w.bus, Publish: w.publish, Units: bench{}, Sessions: sessions, Transports: transports, Wait: 200 * time.Millisecond,
 		Declared: func(id string) (*gate.Manifest, bool) { return manifest, benchUnits[id].kind == unit.Plugin },
 		Use:      &interfaces.Use{Unit: "archive", Need: "source", Bound: "acquire", Questions: []string{"head-status"}, Streams: []string{"station.spectra"}},
+		UseGranted: func(u, need, of, id string) bool {
+			return u == "archive" && need == "source" && of == "query" && id == "head-status"
+		},
 	}))
 	if err != nil {
 		t.Fatal(err)
@@ -51,12 +55,18 @@ func TestANeedsChannelAnswersForTheUnitBoundAndWhatTheNeedUses(t *testing.T) {
 	if f := a.answerTo(t, "q", ask("acquire")); f.GetAnswer().GetQuery() == nil {
 		t.Errorf("the question of acquire was answered %v", f)
 	}
+	sessions.mu.Lock()
+	if len(sessions.asked) != 1 || sessions.asked[0].GetAsker() != "unit:archive" {
+		t.Errorf("the unit was asked %v, want it asked by unit:archive", sessions.asked)
+	}
+	sessions.mu.Unlock()
 	for call, c := range map[string]struct {
 		r           *interfacev1.Request
 		code, names string
 	}{
 		"idle":    {ask("idle"), "subject.unknown", "idle"},
 		"command": {command("acquire", "calibrate", nil), "use.command", "calibrate"},
+		"spectra": {&interfacev1.Request{Version: 1, Operation: &interfacev1.Request_StreamStart{StreamStart: &interfacev1.UnitStream{Unit: "acquire", Stream: "station.spectra"}}}, "scope.withheld", "station.spectra"},
 		"preview": {&interfacev1.Request{Version: 1, Operation: &interfacev1.Request_StreamStart{StreamStart: &interfacev1.UnitStream{Unit: "acquire", Stream: "station.preview"}}}, "use.undeclared", "station.preview"},
 	} {
 		ref := a.answerTo(t, call, c.r).GetRefusal()

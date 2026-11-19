@@ -74,14 +74,14 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/20.2 · specs/60.45 · specs/60.46 · arch/60-administrative-surface/04 §The one operation whose content the Core does not read · arch/60-administrative-surface/07 §This surface's codes |
+| **Cites** | specs/20.2 · specs/60.45 · specs/60.46 · specs/50.107 · specs/50.108 · arch/60-administrative-surface/04 §The one operation whose content the Core does not read · arch/60-administrative-surface/07 §This surface's codes · arch/50-plugin-surface/10 §The three fields of a question |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
 | **Precondition** | a unit running in its life 4 with a Session that answers `status` with the bytes it was asked, reversed; a unit running with no Session; a unit stopped; a unit whose Session never answers, with the wait at 100 ms |
 | **Action** | ask the first `status` with some bytes; with 1 MiB and one byte; ask each of the others |
-| **Expected** | the first answer is the bytes reversed, and the log store holds an entry naming the operator, the unit and life 4, holding neither the question nor the answer; the oversized question is refused with `operation.malformed`; the others with `unit.no_session`, `unit.not_running` and `unit.unanswered`, each naming the unit in its detail |
+| **Expected** | the first answer is the bytes reversed, the unit is asked it by `operator:` and the operator's name, and the log store holds an entry naming the operator, the unit and life 4, holding neither the question nor the answer; the oversized question is refused with `operation.malformed`; the others with `unit.no_session`, `unit.not_running` and `unit.unanswered`, each naming the unit in its detail |
 
 ## yoke:the-operations.07 — every change is recorded against its actor, and an effect already true records nothing
 

@@ -103,6 +103,8 @@ type Config struct {
 	Stopping func() bool
 	// Wait replaces the 30 s a unit is waited for, for a test.
 	Wait time.Duration
+	// UseGranted says whether the using unit was granted a use; nil grants none. Read on a need's channel.
+	UseGranted func(unit, need, of, id string) bool
 	// Use makes this surface a need's channel: one unit's client of the unit its need is bound to, seeing
 	// that unit alone and addressing only what the need uses. Nil for a declared channel.
 	Use *Use

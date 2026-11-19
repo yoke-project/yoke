@@ -22,14 +22,14 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/20.2 · arch/70-interface-surface/04 §What is opaque, and what that costs the Core |
+| **Cites** | specs/20.2 · specs/50.107 · specs/50.108 · arch/70-interface-surface/04 §What is opaque, and what that costs the Core · arch/50-plugin-surface/10 §The three fields of a question |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
 | **Precondition** | an attachment, and a running Plugin unit whose Session answers a question with its bytes reversed |
 | **Action** | `query` the unit with some bytes; then with more than 1 MiB |
-| **Expected** | the answer carries the bytes reversed; the second is refused `operation.malformed` and reaches no Session |
+| **Expected** | the answer carries the bytes reversed, and the unit is asked it by `channel:panel`; the second is refused `operation.malformed` and reaches no Session |
 
 ## yoke:channel-operations.03 — a refusal is decided in the order the contract states
 

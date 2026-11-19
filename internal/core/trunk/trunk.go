@@ -705,6 +705,9 @@ func interfaceChannels(st *State) error {
 				}
 				return st.Session.Granted(id)
 			},
+			UseGranted: func(unitID, need, of, id string) bool {
+				return st.Session != nil && st.Session.UseGranted(unitID, need, of, id)
+			},
 		}
 	}
 	surface := func(ch gate.Channel) interfacev1.InterfaceServer { return interfaces.NewSurface(configOf(ch)) }
