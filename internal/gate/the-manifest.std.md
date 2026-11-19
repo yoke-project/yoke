@@ -160,3 +160,16 @@
 | **Precondition** | a Manifest whose streams declare no `max_frame`, `4194304`, `67108864`, `67108865`, `0` and `big` |
 | **Action** | the Manifest is read |
 | **Expected** | the first is 1 MiB, the second and third their values; the fourth and fifth are refused as `stream.max_frame` at their location, and the last as `field.type` |
+
+## yoke:the-manifest.13 — a Plugin says which unit it needs and what of it it uses, and which secrets it rewrites
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/42.27 · specs/42.29 · specs/42.30 · specs/42.31 · specs/42.32 · arch/50-plugin-surface/10 §What a Plugin declares · arch/15-gate/06 §Phase 2 — internal joins |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a Manifest needing `unit:accounts` and `secret:refresh`, using `oauth.token` and the stream `oauth.status` of `accounts`, rewriting `refresh`, each use governed by a capability with a `use` block; then the same with, in turn: a `uses` entry carrying `commands`; a `uses` entry for a need not declared; the `unit` need with no `uses` entry; a use no capability governs; a `use` block naming a query `uses` does not list; `rewrites` naming a secret not needed |
+| **Action** | the Manifest is read |
+| **Expected** | the first is read into its needs, its uses and its rewrites with no finding; then `uses.key`, `uses.need.undeclared`, `uses.missing`, `uses.ungoverned`, `capability.use.undeclared` and `rewrites.undeclared`, each alone |

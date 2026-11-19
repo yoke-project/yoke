@@ -21,6 +21,7 @@ import (
 
 	"github.com/yoke-project/yoke/internal/core/discovery"
 	"github.com/yoke-project/yoke/internal/core/registry"
+	"github.com/yoke-project/yoke/internal/core/supervisor"
 	"github.com/yoke-project/yoke/internal/core/trunk"
 )
 
@@ -424,5 +425,33 @@ func TestThroughTheCoreTheDocumentsReadArePublishedAndRecorded(t *testing.T) {
 		if n == 0 {
 			t.Errorf("the log store holds no %s about %s", want.typ, want.subject)
 		}
+	}
+}
+
+// std: yoke:discovery.09
+func TestAUnitNeedResolvesToItsChannelAndIsADependency(t *testing.T) {
+	d := newDeployment(t, "com.example.source", "com.example.sink")
+	write(t, d.manifests, "com.example.sink", "manifest: 1\nid: com.example.sink\nprotocol: 1\nneeds: [ \"unit:source\" ]\n"+
+		"uses: { source: { streams: [ data ] } }\ncapabilities: [ { name: follow, governs: { use: { need: source, stream: data } } } ]\n")
+	st, logged := d.ready(t, `
+units:
+  source: { kind: plugin, plugin: com.example.source }
+  sink: { kind: plugin, plugin: com.example.sink, bind: { source: source }, args: [ "--source", "${bind.source}" ] }
+`)
+	var sink *supervisor.Unit
+	for i := range st.Units {
+		if st.Units[i].ID == "sink" {
+			sink = &st.Units[i]
+		}
+	}
+	if sink == nil {
+		t.Fatalf("no sink among %+v\n%s", st.Units, logged)
+	}
+	channel := filepath.Join(st.Paths.Root, "needs", "sink", "source.sock")
+	if !slices.Equal(sink.DependsOn, []string{"source"}) || !slices.Equal(sink.Args, []string{"--source", channel}) {
+		t.Errorf("sink is %+v, want it depending on source and handed %s", sink, channel)
+	}
+	if !slices.Contains(sink.Needs, supervisor.Need{Class: "unit", Path: channel}) {
+		t.Errorf("sink's needs are %+v, want the unit need at %s", sink.Needs, channel)
 	}
 }

@@ -326,3 +326,70 @@ func TestAPluginsNeedsOtherThanADeviceAreNotBound(t *testing.T) {
 		}
 	}
 }
+
+const (
+	sourcePlugin = "manifest: 1\nid: com.example.source\nprotocol: 1\nstreams: [ { id: data } ]\n" +
+		"capabilities: [ { name: stream.data.publish, governs: { stream: data } } ]\n"
+	sinkPlugin = "manifest: 1\nid: com.example.sink\nprotocol: 1\nneeds: [ \"unit:source\" ]\n" +
+		"uses: { source: { streams: [ data ] } }\n" +
+		"capabilities: [ { name: stream.data.follow, governs: { use: { need: source, stream: data } } } ]\n"
+	peerPlugin = "manifest: 1\nid: com.example.peer\nprotocol: 1\nneeds: [ \"unit:peer\" ]\nstreams: [ { id: data } ]\n" +
+		"uses: { peer: { streams: [ data ] } }\n" +
+		"capabilities: [ { name: stream.data.publish, governs: { stream: data } }, " +
+		"{ name: stream.data.follow, governs: { use: { need: peer, stream: data } } } ]\n"
+)
+
+// std: yoke:the-composition-document.11
+func TestAUnitNeedIsBoundToAPluginUnitThatDeclaresWhatItUses(t *testing.T) {
+	dir := scanned(t, map[string]string{
+		"com.example.source": sourcePlugin, "com.example.sink": sinkPlugin, "com.example.peer": peerPlugin,
+		"com.example.other": plain("com.example.other"),
+	})
+	const head = "units:\n  src: { kind: plugin, plugin: com.example.source }\n  other: { kind: plugin, plugin: com.example.other }\n" +
+		"  panel: { kind: interface, exec: /usr/bin/panel }\n"
+	for _, c := range []struct{ document, code, names string }{
+		{head + "  snk: { kind: plugin, plugin: com.example.sink, bind: { source: src } }\n", "", ""},
+		{head + "  snk: { kind: plugin, plugin: com.example.sink }\n", "unit.needs.unbound", "source"},
+		{head + "  snk: { kind: plugin, plugin: com.example.sink, bind: { source: nobody } }\n", "bind.unit.unknown", "nobody"},
+		{head + "  snk: { kind: plugin, plugin: com.example.sink, bind: { source: panel } }\n", "bind.unit.kind", "panel"},
+		{head + "  snk: { kind: plugin, plugin: com.example.sink, bind: { source: other } }\n", "bind.unit.undeclared", "data"},
+		{head + "  a: { kind: plugin, plugin: com.example.peer, bind: { peer: b } }\n  b: { kind: plugin, plugin: com.example.peer, bind: { peer: a } }\n", "bind.unit.cycle", "a"},
+		{head + "  once: { kind: oneshot, exec: /usr/bin/once, needs: [ \"unit:x\" ] }\n", "needs.unit.no_manifest", "once"},
+	} {
+		r, _ := gate.Check(gate.Input{Document: gate.Document{Path: "bench.yaml", Kind: gate.Composition, Bytes: []byte(c.document)}, Manifests: dir})
+		if c.code == "" {
+			if len(r.Findings) != 0 {
+				t.Errorf("%s\n  gives %v, want nothing", c.document, r.Findings)
+			}
+			continue
+		}
+		if got := codes(r); !slices.Equal(got, []string{c.code}) || !strings.Contains(r.Findings[0].Message, c.names) {
+			t.Errorf("%s\n  gives %v (%v), want [%s] naming %s", c.document, got, r.Findings, c.code, c.names)
+		}
+	}
+}
+
+// std: yoke:the-composition-document.12
+func TestANeedsChannelIsOneOfThePathsThatMustFit(t *testing.T) {
+	h := host(t, "com.example.source", "com.example.user")
+	fixed := len(h.RuntimeRoot) + len("/needs/") + len("u") + len("/") + len(".sock")
+	for _, total := range []int{107, 108} {
+		need := strings.Repeat("n", total-fixed)
+		user := "manifest: 1\nid: com.example.user\nprotocol: 1\nneeds: [ \"unit:" + need + "\" ]\n" +
+			"uses: { " + need + ": { streams: [ d ] } }\n" +
+			"capabilities: [ { name: f, governs: { use: { need: " + need + ", stream: d } } } ]\n"
+		source := "manifest: 1\nid: com.example.source\nprotocol: 1\nstreams: [ { id: d } ]\ncapabilities: [ { name: p, governs: { stream: d } } ]\n"
+		dir := scanned(t, map[string]string{"com.example.user": user, "com.example.source": source})
+		r, _ := started(t, "units:\n  s: { kind: plugin, plugin: com.example.source }\n  u: { kind: plugin, plugin: com.example.user, bind: { "+need+": s } }\n", dir, h)
+		switch total {
+		case 107:
+			if len(r.Findings) != 0 {
+				t.Errorf("a need's channel of 107 gives %v", r.Findings)
+			}
+		case 108:
+			if got := codes(r); !slices.Equal(got, []string{"socket.path.ceiling"}) || !strings.Contains(r.Findings[0].Message, "/needs/u/") {
+				t.Errorf("a need's channel of 108 gives %v", r.Findings)
+			}
+		}
+	}
+}

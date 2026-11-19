@@ -108,3 +108,16 @@
 | **Precondition** | `yoke-core` built, its `core.yaml` naming a Plugin directory with one valid Manifest and one that does not parse; the composition in force running a oneshot that prints a line |
 | **Action** | start it, and stop it once it is ready and the line is there |
 | **Expected** | the Core is ready; its output holds a line naming the Manifest that did not parse, and the oneshot's line attributed to its unit; `registry.db` holds the valid plugin and not the other |
+
+## yoke:discovery.09 — a unit need resolves to the channel the Core binds for it, and is a dependency on the unit bound
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/14.56 · specs/14.57 · specs/28.58 · arch/35-units/02 §The order · arch/15-gate/03 §`units` |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a service-form trunk whose composition runs a plugin `source` and a plugin `sink` needing `unit:source`, bound to `source`, passing `${bind.source}` as an argument and depending on nothing |
+| **Action** | run the trunk to readiness |
+| **Expected** | `sink` is handed to the supervisor depending on `source`, its argument the path `needs/sink/source.sock` under the instance's runtime root, and a need of class `unit` at that path |

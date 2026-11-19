@@ -134,3 +134,29 @@
 | **Precondition** | a plugin unit whose Manifest declares a stream that tolerates loss, and an instance whose name makes the ring's label, `yoke-<instance>-<unit>-<stream>`, 255 characters long; then 256; then the 256 again with the stream tolerating nothing |
 | **Action** | check each at the start |
 | **Expected** | the first passes; the second gives `object.name.ceiling`, naming 256 and the ceiling of 255; the third passes, since no ring can carry that stream |
+
+## yoke:the-composition-document.11 — a `unit` need is bound to a Plugin unit that declares what it uses, and closes no cycle
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/12.51 · specs/14.53 · specs/14.54 · specs/14.55 · arch/15-gate/03 §`units` · arch/15-gate/06 §Phase 3 — cross-document |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a Plugin `source` declaring the stream `data`, and a Plugin `sink` needing `unit:source` and using `data`; compositions in which `sink` binds `source` to a unit of `source`; binds nothing; binds a name no unit bears; binds a managed interface; binds a unit of a Plugin that does not declare `data`; and two units of a Plugin that needs `unit:peer` binding each other; and a `needs: [ unit:x ]` on a oneshot |
+| **Action** | check each |
+| **Expected** | the first passes; then `unit.needs.unbound`, `bind.unit.unknown`, `bind.unit.kind`, `bind.unit.undeclared` naming `data`, `bind.unit.cycle` naming both units, and `needs.unit.no_manifest` |
+
+## yoke:the-composition-document.12 — a need's channel is one of the socket paths that must fit
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/14.57 · arch/15-gate/06 §The two ceilings · arch/70-interface-surface/10 §What it is |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a Plugin unit with a `unit` need whose name makes `needs/<unit>/<need>.sock` the longest path the deployment can produce, at 107 characters and then at 108 |
+| **Action** | check each at the start |
+| **Expected** | the first passes; the second gives `socket.path.ceiling`, naming the need's channel |

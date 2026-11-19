@@ -62,11 +62,119 @@ func (c *checker) crossDocument() bool {
 				c.manifests[u.Plugin] = m
 			}
 		}
-		if m := c.manifests[u.Plugin]; m != nil {
-			c.bindings(u, m)
+	}
+	for _, name := range c.deployment.Order {
+		if u := c.deployment.Units[name]; u.Kind == "plugin" {
+			if m := c.manifests[u.Plugin]; m != nil {
+				c.bindings(u, m)
+			}
 		}
 	}
+	c.unitCycles()
 	return true
+}
+
+// unitBindings are the units a plugin unit's unit needs are bound to, by need, for the units whose
+// Manifest was read.
+func (c *checker) unitBindings(u Unit) map[string]string {
+	out := map[string]string{}
+	if m := c.manifests[u.Plugin]; u.Kind == "plugin" && m != nil {
+		for _, n := range m.Needs {
+			if bound, there := u.Bind[n.Key()]; n.Class == "unit" && there {
+				out[n.Name] = bound
+			}
+		}
+	}
+	return out
+}
+
+// unitCycles refuses a set of unit-need bindings that closes a cycle, depends_on edges counted with them:
+// each unit on it would wait for itself.
+func (c *checker) unitCycles() {
+	d := c.deployment
+	edges := map[string][]string{}
+	viaNeed := map[[2]string]bool{}
+	for _, name := range d.Order {
+		u := d.Units[name]
+		edges[name] = append(edges[name], u.DependsOn...)
+		for _, bound := range c.unitBindings(u) {
+			edges[name] = append(edges[name], bound)
+			viaNeed[[2]string{name, bound}] = true
+		}
+	}
+	state := map[string]int{} // 0 unseen, 1 on the path, 2 done
+	var path []string
+	reported := false
+	var walk func(string)
+	walk = func(n string) {
+		if reported {
+			return
+		}
+		state[n] = 1
+		path = append(path, n)
+		for _, next := range edges[n] {
+			if _, there := d.Units[next]; !there {
+				continue
+			}
+			if state[next] == 1 {
+				start := slices.Index(path, next)
+				cycle := append(slices.Clone(path[start:]), next)
+				need := false
+				for i := 0; i+1 < len(cycle); i++ {
+					need = need || viaNeed[[2]string{cycle[i], cycle[i+1]}]
+				}
+				if need {
+					c.refuse("bind.unit.cycle", joined("units", next), "the units %s use one another in a cycle, and each would wait for itself", strings.Join(cycle, " → "))
+					reported = true
+					return
+				}
+				continue
+			}
+			if state[next] == 0 {
+				walk(next)
+			}
+		}
+		path = path[:len(path)-1]
+		state[n] = 2
+	}
+	for _, name := range d.Order {
+		if state[name] == 0 {
+			walk(name)
+		}
+	}
+}
+
+// unitBinding checks a unit need's binding: a Plugin unit of this document, declaring every question and
+// stream the need uses.
+func (c *checker) unitBinding(u Unit, m *Manifest, need, bound, at string) {
+	target, there := c.deployment.Units[bound]
+	switch {
+	case !there:
+		c.refuse("bind.unit.unknown", at, "the unit %s binds its need %s to %s, and no unit is named %s", u.Name, need, bound, bound)
+		return
+	case target.Kind != "plugin":
+		c.refuse("bind.unit.kind", at, "the unit %s binds its need %s to %s, which is of kind %s and answers nothing: only a Plugin unit meets a unit need", u.Name, need, bound, target.Kind)
+		return
+	}
+	other := c.manifests[target.Plugin]
+	if other == nil {
+		return
+	}
+	var streams []string
+	for _, s := range other.Streams {
+		streams = append(streams, s.ID)
+	}
+	use := m.Uses[need]
+	for _, q := range use.Questions {
+		if !slices.Contains(other.Queries, q) {
+			c.refuse("bind.unit.undeclared", at, "the unit %s uses the question %s of %s, which %s does not declare", u.Name, q, bound, other.ID)
+		}
+	}
+	for _, s := range use.Streams {
+		if !slices.Contains(streams, s) {
+			c.refuse("bind.unit.undeclared", at, "the unit %s uses the stream %s of %s, which %s does not declare", u.Name, s, bound, other.ID)
+		}
+	}
 }
 
 // bindings joins a plugin unit's binding to what its Manifest needs: every need but a secret is bound,
@@ -77,8 +185,12 @@ func (c *checker) bindings(u Unit, m *Manifest) {
 	needs := map[string]Need{}
 	for _, n := range m.Needs {
 		needs[n.Key()] = n
-		if _, bound := u.Bind[n.Key()]; !bound && n.Class == "device" {
+		bound, there := u.Bind[n.Key()]
+		if !there && (n.Class == "device" || n.Class == "unit") {
 			c.refuse("unit.needs.unbound", at, "the plugin %s needs %s, and the unit %s binds nothing to %s", m.ID, written(n), u.Name, n.Key())
+		}
+		if there && n.Class == "unit" {
+			c.unitBinding(u, m, n.Name, bound, joined(at, n.Key()))
 		}
 	}
 	for _, key := range sortedKeys(u.Bind) {
@@ -201,6 +313,9 @@ func (c *checker) hostFacts() bool {
 			}
 		}
 		fits(filepath.Join(h.RuntimeRoot, "plugins", name+".sock"))
+		for need := range c.unitBindings(u) {
+			fits(filepath.Join(h.RuntimeRoot, "needs", name, need+".sock"))
+		}
 		if c.doc.Kind == Descriptor {
 			// A descriptor names every program, a Plugin's included, inside its bundle.
 			executable, where = "", joined(location, "exec")
