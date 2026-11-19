@@ -108,3 +108,16 @@
 | **Precondition** | an open Session, and a question the Core asked with a wait of two seconds |
 | **Action** | the unit answers it with an error carrying its own code and a message; then answers it again |
 | **Expected** | the caller is handed, at once, the unit's failure with its code and message; the exchange is closed, so the second answer is refused as correlated to nothing awaiting one |
+
+## yoke:the-families.09 — a question delivered and not answered is outstanding, with its chain and its deadline
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/50.109 · specs/50.110 · arch/70-interface-surface/10 §A question asked on it |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an open Session of `acquire` |
+| **Action** | ask it a question carrying a chain and a deadline; read what is outstanding under the question's message identity, for it and for another unit; answer it; read again |
+| **Expected** | before the answer the question is outstanding with its chain and its deadline, and another unit has nothing under that identity; after it, nothing is |

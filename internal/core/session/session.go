@@ -16,6 +16,8 @@ package session
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -136,6 +138,9 @@ type exchange struct {
 	accepted    bool
 	handed      bool
 	waiter      chan *pluginv1.Envelope // nil once nobody is waiting
+	// For a question: its chain and its deadline, which a question it causes is derived from.
+	chain    string
+	deadline uint64
 }
 
 // Open serves one stream.
@@ -392,8 +397,8 @@ func (s *Service) queue(l *live, e *pluginv1.Envelope) string {
 	l.next++
 	e.MessageId, e.SessionId, e.SentAtUnixNano = fmt.Sprintf("c-%d", l.next), l.id, time.Now().UnixNano()
 	l.sent[e.MessageId] = true
-	if e.GetControl() != nil || e.GetQuery().GetQuestion() != nil {
-		l.exchanges[e.MessageId] = &exchange{instruction: e.GetControl() != nil}
+	if q := e.GetQuery().GetQuestion(); e.GetControl() != nil || q != nil {
+		l.exchanges[e.MessageId] = &exchange{instruction: e.GetControl() != nil, chain: q.GetChain(), deadline: q.GetDeadline()}
 	}
 	select {
 	case l.out <- e:
@@ -522,6 +527,29 @@ func (s *Service) Granted(unitID string) (streams, commands, queries []string) {
 		}
 	}
 	return nil, nil, nil
+}
+
+// NewChain is a chain's identity: 16 bytes from the host's random source, as 32 lower-case hex digits.
+func NewChain() string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+// Outstanding is the chain and the deadline of a question a unit was delivered on its open Session and
+// has not answered, named by the question's message identity.
+func (s *Service) Outstanding(unitID, messageID string) (chain string, deadline uint64, ok bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, l := range s.open {
+		if l.terms.Unit == unitID && !l.ended {
+			if ex := l.exchanges[messageID]; ex != nil && !ex.instruction {
+				return ex.chain, ex.deadline, true
+			}
+			return "", 0, false
+		}
+	}
+	return "", 0, false
 }
 
 // UseGranted says whether a unit's open Session was granted a use: the query or stream of the unit its
