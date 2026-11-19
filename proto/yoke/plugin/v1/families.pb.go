@@ -1090,9 +1090,18 @@ func (x *Control_Stop) GetStream() string {
 }
 
 type Query_Question struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Type          string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	Payload       []byte                 `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Type    string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Payload []byte                 `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`
+	// Who asked, filled by the Core from the channel the question came on and never from a request:
+	// unit:<unit> for a need's channel, channel:<name> for a declared one, operator:<person> for the
+	// administrative surface.
+	Asker string `protobuf:"bytes,3,opt,name=asker,proto3" json:"asker,omitempty"`
+	// The instant the asker stops waiting, in milliseconds since the epoch, filled by the Core.
+	Deadline uint64 `protobuf:"varint,4,opt,name=deadline,proto3" json:"deadline,omitempty"`
+	// The chain this question belongs to, 32 lower-case hex digits, filled by the Core: new for a
+	// question no other caused, its cause's otherwise.
+	Chain         string `protobuf:"bytes,5,opt,name=chain,proto3" json:"chain,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1139,6 +1148,27 @@ func (x *Query_Question) GetPayload() []byte {
 		return x.Payload
 	}
 	return nil
+}
+
+func (x *Query_Question) GetAsker() string {
+	if x != nil {
+		return x.Asker
+	}
+	return ""
+}
+
+func (x *Query_Question) GetDeadline() uint64 {
+	if x != nil {
+		return x.Deadline
+	}
+	return 0
+}
+
+func (x *Query_Question) GetChain() string {
+	if x != nil {
+		return x.Chain
+	}
+	return ""
 }
 
 type Query_Answer struct {
@@ -1324,13 +1354,16 @@ const file_yoke_plugin_v1_families_proto_rawDesc = "" +
 	"\x13OUTCOME_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10OUTCOME_ACCEPTED\x10\x01\x12\x10\n" +
 	"\fOUTCOME_DONE\x10\x02\x12\x12\n" +
-	"\x0eOUTCOME_FAILED\x10\x03\"\xe3\x01\n" +
+	"\x0eOUTCOME_FAILED\x10\x03\"\xac\x02\n" +
 	"\x05Query\x12<\n" +
 	"\bquestion\x18\x01 \x01(\v2\x1e.yoke.plugin.v1.Query.QuestionH\x00R\bquestion\x126\n" +
-	"\x06answer\x18\x02 \x01(\v2\x1c.yoke.plugin.v1.Query.AnswerH\x00R\x06answer\x1a8\n" +
+	"\x06answer\x18\x02 \x01(\v2\x1c.yoke.plugin.v1.Query.AnswerH\x00R\x06answer\x1a\x80\x01\n" +
 	"\bQuestion\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x18\n" +
-	"\apayload\x18\x02 \x01(\fR\apayload\x1a\"\n" +
+	"\apayload\x18\x02 \x01(\fR\apayload\x12\x14\n" +
+	"\x05asker\x18\x03 \x01(\tR\x05asker\x12\x1a\n" +
+	"\bdeadline\x18\x04 \x01(\x04R\bdeadline\x12\x14\n" +
+	"\x05chain\x18\x05 \x01(\tR\x05chain\x1a\"\n" +
 	"\x06Answer\x12\x18\n" +
 	"\apayload\x18\x01 \x01(\fR\apayloadB\x06\n" +
 	"\x04kind\"<\n" +

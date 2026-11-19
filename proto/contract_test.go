@@ -326,7 +326,7 @@ func TestEachPayloadCarriesWhatItsFamilyAnswers(t *testing.T) {
 		[]string{"OUTCOME_ACCEPTED", "OUTCOME_DONE", "OUTCOME_FAILED"})
 
 	same(t, "a query", union(t, message(t, files, "Query"), "kind"), []string{"question", "answer"})
-	same(t, "a question", fields(message(t, files, "Query.Question")), []string{"type", "payload"})
+	same(t, "a question", fields(message(t, files, "Query.Question")), []string{"type", "payload", "asker", "deadline", "chain"})
 	same(t, "an answer", fields(message(t, files, "Query.Answer")), []string{"payload"})
 
 	same(t, "data", fields(message(t, files, "Data")), []string{"sequence", "payload"})

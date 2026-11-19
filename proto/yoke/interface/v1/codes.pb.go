@@ -64,6 +64,16 @@ const (
 	Code_CODE_INSTANCE_STOPPING Code = 16
 	// The unit answered the Core's message with an error; the detail carries the unit's own code.
 	Code_CODE_UNIT_FAILED Code = 17
+	// A command on a need's channel: a unit never instructs another.
+	Code_CODE_USE_COMMAND Code = 18
+	// A question or a stream on a need's channel that the need's uses does not list.
+	Code_CODE_USE_UNDECLARED Code = 19
+	// A question on a need's channel names as its cause no question outstanding at that unit.
+	Code_CODE_USE_CAUSE_UNKNOWN Code = 20
+	// A question caused by another would have less than 100 ms left; the unit is never asked.
+	Code_CODE_DEADLINE_EXHAUSTED Code = 21
+	// A stop of a stream a need's channel holds, from another channel. The detail names the holding unit.
+	Code_CODE_STREAM_HELD Code = 22
 )
 
 // Enum value maps for Code.
@@ -87,6 +97,11 @@ var (
 		15: "CODE_UNIT_UNANSWERED",
 		16: "CODE_INSTANCE_STOPPING",
 		17: "CODE_UNIT_FAILED",
+		18: "CODE_USE_COMMAND",
+		19: "CODE_USE_UNDECLARED",
+		20: "CODE_USE_CAUSE_UNKNOWN",
+		21: "CODE_DEADLINE_EXHAUSTED",
+		22: "CODE_STREAM_HELD",
 	}
 	Code_value = map[string]int32{
 		"CODE_UNSPECIFIED":          0,
@@ -107,6 +122,11 @@ var (
 		"CODE_UNIT_UNANSWERED":      15,
 		"CODE_INSTANCE_STOPPING":    16,
 		"CODE_UNIT_FAILED":          17,
+		"CODE_USE_COMMAND":          18,
+		"CODE_USE_UNDECLARED":       19,
+		"CODE_USE_CAUSE_UNKNOWN":    20,
+		"CODE_DEADLINE_EXHAUSTED":   21,
+		"CODE_STREAM_HELD":          22,
 	}
 )
 
@@ -416,7 +436,7 @@ const file_yoke_interface_v1_codes_proto_rawDesc = "" +
 	"\n" +
 	"Suspension\x12\x14\n" +
 	"\x05grade\x18\x01 \x01(\tR\x05grade\x12\x0e\n" +
-	"\x02by\x18\x02 \x01(\tR\x02by*\xd1\x06\n" +
+	"\x02by\x18\x02 \x01(\tR\x02by*\xb4\b\n" +
 	"\x04Code\x12\x14\n" +
 	"\x10CODE_UNSPECIFIED\x10\x00\x125\n" +
 	"\x18CODE_OPERATION_MALFORMED\x10\x01\x1a\x17\x92\xb5\x18\x13operation.malformed\x121\n" +
@@ -436,7 +456,12 @@ const file_yoke_interface_v1_codes_proto_rawDesc = "" +
 	"\x14CODE_UNIT_NO_SESSION\x10\x0e\x1a\x13\x92\xb5\x18\x0funit.no_session\x12-\n" +
 	"\x14CODE_UNIT_UNANSWERED\x10\x0f\x1a\x13\x92\xb5\x18\x0funit.unanswered\x121\n" +
 	"\x16CODE_INSTANCE_STOPPING\x10\x10\x1a\x15\x92\xb5\x18\x11instance.stopping\x12%\n" +
-	"\x10CODE_UNIT_FAILED\x10\x11\x1a\x0f\x92\xb5\x18\vunit.failed:7\n" +
+	"\x10CODE_UNIT_FAILED\x10\x11\x1a\x0f\x92\xb5\x18\vunit.failed\x12%\n" +
+	"\x10CODE_USE_COMMAND\x10\x12\x1a\x0f\x92\xb5\x18\vuse.command\x12+\n" +
+	"\x13CODE_USE_UNDECLARED\x10\x13\x1a\x12\x92\xb5\x18\x0euse.undeclared\x121\n" +
+	"\x16CODE_USE_CAUSE_UNKNOWN\x10\x14\x1a\x15\x92\xb5\x18\x11use.cause.unknown\x123\n" +
+	"\x17CODE_DEADLINE_EXHAUSTED\x10\x15\x1a\x16\x92\xb5\x18\x12deadline.exhausted\x12%\n" +
+	"\x10CODE_STREAM_HELD\x10\x16\x1a\x0f\x92\xb5\x18\vstream.held:7\n" +
 	"\x04code\x12!.google.protobuf.EnumValueOptions\x18҆\x03 \x01(\tR\x04codeBBZ@github.com/yoke-project/yoke/proto/yoke/interface/v1;interfacev1b\x06proto3"
 
 var (

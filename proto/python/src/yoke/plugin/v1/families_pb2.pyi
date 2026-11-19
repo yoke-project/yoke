@@ -108,12 +108,18 @@ class Ack(_message.Message):
 class Query(_message.Message):
     __slots__ = ("question", "answer")
     class Question(_message.Message):
-        __slots__ = ("type", "payload")
+        __slots__ = ("type", "payload", "asker", "deadline", "chain")
         TYPE_FIELD_NUMBER: _ClassVar[int]
         PAYLOAD_FIELD_NUMBER: _ClassVar[int]
+        ASKER_FIELD_NUMBER: _ClassVar[int]
+        DEADLINE_FIELD_NUMBER: _ClassVar[int]
+        CHAIN_FIELD_NUMBER: _ClassVar[int]
         type: str
         payload: bytes
-        def __init__(self, type: _Optional[str] = ..., payload: _Optional[bytes] = ...) -> None: ...
+        asker: str
+        deadline: int
+        chain: str
+        def __init__(self, type: _Optional[str] = ..., payload: _Optional[bytes] = ..., asker: _Optional[str] = ..., deadline: _Optional[int] = ..., chain: _Optional[str] = ...) -> None: ...
     class Answer(_message.Message):
         __slots__ = ("payload",)
         PAYLOAD_FIELD_NUMBER: _ClassVar[int]

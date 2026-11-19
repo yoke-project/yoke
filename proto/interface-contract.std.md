@@ -61,14 +61,14 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | specs/70.4 · arch/70-interface-surface/04 §What is opaque, and what that costs the Core · arch/70-interface-surface/04 §The eleven |
+| **Cites** | specs/70.4 · specs/70.60 · arch/70-interface-surface/04 §What is opaque, and what that costs the Core · arch/70-interface-surface/04 §The eleven · arch/70-interface-surface/10 §A question asked on it |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
 | **Precondition** | the definitions of a command, a question, and their answers |
 | **Action** | read their fields |
-| **Expected** | a command and a question each name a unit and a type and carry bytes; a command's answer is the unit's acknowledgement — accepted, done or failed — with its line, and a question's is the unit's bytes; nothing in either names a channel |
+| **Expected** | a command and a question each name a unit and a type and carry bytes, and a question may name its cause, the question its asker is answering; a command's answer is the unit's acknowledgement — accepted, done or failed — with its line, and a question's is the unit's bytes; nothing in either names a channel |
 
 ## yoke:interface-contract.06 — where a stream's data arrives, and the frame that carries it on the connection
 
@@ -87,14 +87,14 @@
 
 | Field | Value |
 | --- | --- |
-| **Cites** | arch/70-interface-surface/08 §This surface's error codes · arch/00-system/05 §How a refusal travels |
+| **Cites** | arch/70-interface-surface/08 §This surface's error codes · arch/70-interface-surface/10 §What it sees, and what it may address · arch/00-system/05 §How a refusal travels |
 | **Level** | L1 |
 | **Method** | test |
 | **Not applicable in** | — |
 | **Label** | blocking |
 | **Precondition** | the interface contract's enumeration of codes |
 | **Action** | read each value's dotted name |
-| **Expected** | the seventeen codes of this surface, each under the grammar, and no other |
+| **Expected** | the twenty-two codes of this surface, each under the grammar, and no other |
 
 ## yoke:interface-contract.08 — a refusal is a code, a message and a typed detail
 
