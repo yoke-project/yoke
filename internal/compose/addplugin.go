@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -180,7 +181,36 @@ func take(dir, path string, t *taking, o TakeOptions) (string, error) {
 	if err := writePlugins(dir, append(entries, entry)); err != nil {
 		return "", err
 	}
+	if o.Out != nil {
+		saidUses(o.Out, unit, p.Declared)
+	}
 	return unit, nil
+}
+
+// saidUses says, of a Plugin taken, what it uses of the units its needs are bound to, and what grants a
+// use: an operator grants each, as any capability.
+func saidUses(out io.Writer, unit string, m *gate.Manifest) {
+	if m == nil {
+		return
+	}
+	for _, need := range slices.Sorted(maps.Keys(m.Uses)) {
+		use := m.Uses[need]
+		var objects []string
+		for _, q := range use.Questions {
+			objects = append(objects, "the question "+q)
+		}
+		for _, s := range use.Streams {
+			objects = append(objects, "the stream "+s)
+		}
+		var grants []string
+		for _, c := range m.Capabilities {
+			if c.Governs.Kind == "use" && c.Governs.Need == need {
+				grants = append(grants, c.Name)
+			}
+		}
+		fmt.Fprintf(out, "%s uses, of the unit its need %s is bound to, %s; an operator grants %s\n",
+			unit, need, strings.Join(objects, ", "), strings.Join(grants, ", "))
+	}
 }
 
 // ask shows the source, the commit and the command the author's build will run, and asks; Yes answers.

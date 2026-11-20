@@ -108,3 +108,16 @@
 | **Precondition** | a Plugin project whose Manifest declares `device:camera`, and an application project |
 | **Action** | `add plugin <source> --yes`, then `add plugin <source> --yes --bind camera=/dev/null` |
 | **Expected** | the first is refused with `unit.needs.unbound` and writes nothing; the second writes the unit binding `camera` to `/dev/null`, its program, its Manifest and its line in `plugins.yaml` |
+
+## yoke:taking-a-plugin.09 — a Plugin that uses another unit is taken with its need bound, and the take says what it uses and what grants it
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/14.53 · specs/42.27 · specs/42.31 · arch/20-composer/ · arch/50-plugin-surface/10 §The capabilities of a use |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the greeter's Manifest needing `unit:source` and using its question `ping` with the capability `query.ping.ask`; and, apart, the report of a unit `user` of such a Plugin |
+| **Action** | take it with no `--bind`; then say what the unit uses |
+| **Expected** | the take is refused naming `unit.needs.unbound` and leaves the tree as it was; the report says that `user` uses, of the unit its need `source` is bound to, the question `ping`, and that an operator grants `query.ping.ask` |
