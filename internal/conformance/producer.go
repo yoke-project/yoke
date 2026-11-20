@@ -61,7 +61,7 @@ func Produce() int {
 	resp, err := pluginv1.NewRegisterClient(conn).Register(context.Background(), &pluginv1.RegisterRequest{
 		Plugin: os.Getenv("YOKE_PLUGIN"), Unit: os.Getenv("YOKE_UNIT"), Token: os.Getenv("YOKE_TOKEN"), Protocol: 1,
 		Language: "go", SdkLine: "yoke-conformance producer",
-		Declared:   &pluginv1.Surface{Capabilities: []string{"stream.frames.publish", "stream.data.publish"}, Streams: []string{ProducedStream, "fixture.data"}},
+		Declared:   &pluginv1.Surface{Capabilities: []string{"stream.frames.publish", "stream.data.publish", "query.status.answer"}, Streams: []string{ProducedStream, "fixture.data"}, Queries: []string{FixtureQuery}},
 		Transports: []pluginv1.Control_Activate_Transport{pluginv1.Control_Activate_TRANSPORT_SHARED_OBJECT},
 	})
 	if err != nil || resp.SessionId == "" {

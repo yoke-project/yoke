@@ -262,6 +262,13 @@ func Execute(cfg Config) (Report, error) {
 	for k, v := range cfg.HarnessEnv {
 		env[k] = v
 	}
+	// A harness declaring that it rewrites the suite's secret is handed its path, its first value placed.
+	if contract == "plugin" && rewrites(text) {
+		if err := placeRewritten(paths["state"]); err != nil {
+			return report, err
+		}
+		env["CONFORMANCE_SECRET"] = "${bind." + Rewritten + "}"
+	}
 	units := map[string]any{"harness": map[string]any{"kind": "plugin", "plugin": head.ID, "env": env}}
 	if outside {
 		units = map[string]any{}
@@ -535,7 +542,7 @@ func (c *control) close() { c.listener.Close() }
 // may meet reads. A Core of an earlier release refuses a Manifest key it does not know, and a family's
 // own continuous integration runs the suite and the Core last published; a harness declares a feature
 // only where the suite running it names it, and a suite of an earlier release names none.
-const Features = "max_frame"
+const Features = "max_frame,rewrites"
 
 // launch starts the harness out of band, as the suite does to have it describe itself, and to have an
 // administrative harness administer the instance.

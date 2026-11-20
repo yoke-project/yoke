@@ -253,6 +253,32 @@
 | **Action** | `stream.start` of it; then `emit-sized` on it of 1572864 bytes |
 | **Expected** | an observation `activated` naming the stream; the emission answered with no refusal; the delivery carrying one frame of sequence 1 whose payload is 1572864 bytes, byte i being i mod 251 |
 
+## yoke:plugin.21 — a question carries who asked, its deadline and its chain, and the unit states none of them
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/50.107 · specs/50.108 · specs/50.110 · arch/50-plugin-surface/10 §The three fields of a question |
+| **Level** | L2 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the harness of case 8, its Session open, declaring a query |
+| **Action** | a question of the type its Manifest declares, asked of the unit on the administrative surface; then `answer` |
+| **Expected** | an observation `question` whose `asker` is `operator:` and a person, whose `deadline` is an instant in milliseconds later than the ask and no more than 31 s after it, and whose `chain` is 32 lower-case hex digits; the answer coming back |
+
+## yoke:plugin.22 — a unit replaces a secret it rewrites, in place, and is not restarted
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/42.30 · specs/80.56 · arch/80-security/06 §A secret the unit rewrites |
+| **Level** | L2 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the harness of case 8, declaring the need `secret:token` and `rewrites: [ token ]`, the secret's first value placed in the instance's store, and its path handed to the unit |
+| **Action** | `rewrite` of the secret with a new value |
+| **Expected** | the secret's file holding the new value, no `value.new` left beside it, and the unit at the incarnation it had before |
+
 ## yoke:plugin.12 — disabling the plugin revokes the Session, and the process ends
 
 | Field | Value |
