@@ -30,3 +30,16 @@
 | **Precondition** | the need's channel of `.01`, the use of `head-status` granted, and `archive` holding two outstanding questions: `c-1`, of chain `c0ffee`, with 10 s left, and `c-2` with 550 ms left; a declared channel `panel` over the same bench |
 | **Action** | on the need's channel ask `head-status` caused by `c-1`, then by `c-9`, then by `c-2`, and command `calibrate`; on `panel` ask `head-status` with no cause, then caused by `c-1` |
 | **Expected** | the first reaches `acquire` with chain `c0ffee` and a deadline 500 ms short of `c-1`'s, and `unit.question.chained` is published on `acquire` with the chain, `unit:archive` and the type and no payload; then `use.cause.unknown`, `deadline.exhausted` without `acquire` being asked, and `use.command` with `unit.use.refused` on `archive` naming the need, the command and the code; on `panel` the question carries a new chain of 32 hex digits and a deadline about 30 s ahead, and the caused one is refused `use.cause.unknown` |
+
+## yoke:a-need-s-channel.03 — a stream a need's channel follows is held against another channel's stop
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/70.58 · arch/70-interface-surface/10 §A stream it holds |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the need's channel of `archive`, using and granted `station.spectra` of `acquire`, and a declared channel `panel`, sharing one count of holds |
+| **Action** | on the need's channel subscribe to `station.spectra`; on `panel` stop it; on the need's channel unsubscribe; on `panel` stop it again |
+| **Expected** | the first stop is refused `stream.held`, naming `archive`; the second is answered |

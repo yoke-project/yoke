@@ -182,3 +182,56 @@ func TestACausedQuestionTakesItsChainAndDeadline(t *testing.T) {
 		t.Errorf("a cause on a declared channel was answered %v", ref)
 	}
 }
+
+// std: yoke:a-need-s-channel.03
+func TestAStreamANeedsChannelFollowsIsHeld(t *testing.T) {
+	w := newWorld()
+	r := root(t)
+	transports := streams.New(streams.Config{Root: r, Log: slog.New(slog.NewTextHandler(io.Discard, nil)), Publish: w.publish})
+	t.Cleanup(func() { transports.CloseAll("acquire", streams.UnitExited) })
+	manifest := &gate.Manifest{ID: "com.example.station", Streams: []gate.Stream{{ID: "station.spectra"}}}
+	holds := interfaces.NewHolds()
+	config := func(ch gate.Channel, use *interfaces.Use) interfaces.Config {
+		return interfaces.Config{Channel: ch, Bus: w.bus, Publish: w.publish, Units: bench{}, Sessions: &fakeSessions{}, Transports: transports,
+			Declared: func(id string) (*gate.Manifest, bool) { return manifest, benchUnits[id].kind == unit.Plugin },
+			Granted:  func(string) ([]string, []string, []string) { return []string{"station.spectra"}, nil, nil },
+			Use:      use, UseGranted: func(u, need, of, id string) bool { return true }, Holds: holds}
+	}
+	path := filepath.Join(r, "needs", "archive", "source.sock")
+	unbind, err := interfaces.BindNeed(path, interfaces.NewSurface(config(gate.Channel{Name: "need:archive/source", Transport: "local", Clients: "single"},
+		&interfaces.Use{Unit: "archive", Need: "source", Bound: "acquire", Streams: []string{"station.spectra"}})))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(unbind)
+	b, err := interfaces.BindServing(r, "", mode, []gate.Channel{{Name: "panel", Transport: "local", Clients: "single"}}, func(ch gate.Channel) interfacev1.InterfaceServer {
+		return interfaces.NewSurface(config(ch, nil))
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { b.Close() })
+	need, err := attachTo(t, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	need.next(t)
+	panel, err := attachTo(t, b.Address("panel"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	panel.next(t)
+	sub := need.answerTo(t, "s", &interfacev1.Request{Version: 1, Operation: &interfacev1.Request_StreamSubscribe{StreamSubscribe: &interfacev1.UnitStream{Unit: "acquire", Stream: "station.spectra"}}})
+	delivery := sub.GetAnswer().GetStreamSubscribe().GetDelivery()
+	if delivery == "" {
+		t.Fatalf("the subscription was answered %v", sub)
+	}
+	stop := &interfacev1.Request{Version: 1, Operation: &interfacev1.Request_StreamStop{StreamStop: &interfacev1.UnitStream{Unit: "acquire", Stream: "station.spectra"}}}
+	if ref := panel.answerTo(t, "1", stop).GetRefusal(); ref.GetCode() != "stream.held" || ref.GetItem() != "archive" {
+		t.Errorf("panel's stop of a held stream was answered %v", ref)
+	}
+	need.answerTo(t, "u", &interfacev1.Request{Version: 1, Operation: &interfacev1.Request_StreamUnsubscribe{StreamUnsubscribe: &interfacev1.StreamRelease{Delivery: delivery}}})
+	if f := panel.answerTo(t, "2", stop); f.GetRefusal() != nil {
+		t.Errorf("panel's stop of a stream no longer held was refused %v", f.GetRefusal())
+	}
+}
