@@ -201,13 +201,14 @@ func units(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), s
 		materialised := map[string]string{}
 		uses := map[string]string{} // a unit need's key, to the unit it is bound to
 		needs := u.Needs
-		if m, ok := manifest(u.Plugin); ok && u.Kind == "plugin" {
-			needs = m.Needs
+		var m *gate.Manifest
+		if found, ok := manifest(u.Plugin); ok && u.Kind == "plugin" {
+			m, needs = found, found.Needs
 		}
 		for _, n := range needs {
 			switch n.Class {
 			case "secret":
-				materialised[n.Key()] = filepath.Join(stateDir, "secrets", n.Name)
+				materialised[n.Key()] = gate.SecretPath(stateDir, n.Name, m.RewritesSecret(n.Name))
 			case "storage":
 				materialised[n.Key()] = filepath.Join(stateDir, "storage", n.Name)
 			case "unit":
@@ -241,8 +242,10 @@ func units(dep *gate.Deployment, manifest func(string) (*gate.Manifest, bool), s
 			switch n.Class {
 			case "device":
 				s.Needs = append(s.Needs, supervisor.Need{Class: n.Class, Path: resolve(u.Bind[n.Key()])})
-			case "storage", "secret":
+			case "storage":
 				s.Needs = append(s.Needs, supervisor.Need{Class: n.Class, Path: materialised[n.Key()]})
+			case "secret":
+				s.Needs = append(s.Needs, supervisor.Need{Class: n.Class, Path: materialised[n.Key()], Name: n.Name, Rewritten: m.RewritesSecret(n.Name)})
 			case "unit":
 				s.Needs = append(s.Needs, supervisor.Need{Class: n.Class, Path: materialised[n.Key()], Name: n.Name, Bound: uses[n.Key()]})
 			case "display", "audio", "network":

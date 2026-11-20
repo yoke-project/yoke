@@ -47,12 +47,20 @@ func (s *Supervisor) expand(u Unit, contained bool) (expansion, error) {
 			}
 		case "secret":
 			// The file the manager wrote: checked to be there, never opened, and mounted at its own path.
+			// A secret its unit rewrites is replaced within its own directory, which is mounted instead.
 			if _, err = os.Stat(n.Path); err == nil {
-				if contained {
+				switch {
+				case contained && n.Rewritten:
+					x.mounts = append(x.mounts, filepath.Dir(n.Path))
+				case contained:
 					x.mounts = append(x.mounts, n.Path)
 				}
 			} else {
-				err = fmt.Errorf("the secret %s is not in the instance's store at %s", filepath.Base(n.Path), n.Path)
+				name := n.Name
+				if name == "" {
+					name = filepath.Base(n.Path)
+				}
+				err = fmt.Errorf("the secret %s is not in the instance's store at %s", name, n.Path)
 			}
 		}
 		if err != nil {
