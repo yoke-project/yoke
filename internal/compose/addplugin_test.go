@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"go.yaml.in/yaml/v3"
+
+	"github.com/yoke-project/yoke/internal/gate"
 )
 
 var takenAt = time.Date(2026, 11, 4, 18, 20, 0, 0, time.UTC)
@@ -396,5 +398,27 @@ func TestAPluginThatNeedsADeviceIsTakenWithItsBinding(t *testing.T) {
 	}
 	if lines := taken(t, app); len(lines) != 1 {
 		t.Errorf("plugins.yaml holds %d lines", len(lines))
+	}
+}
+
+// std: yoke:taking-a-plugin.09
+func TestAPluginThatUsesAnotherUnitIsTakenWithItsNeedBound(t *testing.T) {
+	app, source := authored(t), greeterSource(t)
+	using := "manifest: 1\nid: com.example.greeter\nprotocol: 1\nneeds: [ \"unit:source\" ]\nuses: { source: { questions: [ ping ] } }\n" +
+		"capabilities: [ { name: query.ping.ask, governs: { use: { need: source, query: ping } } } ]\n"
+	os.WriteFile(filepath.Join(source, "plugin", "com.example.greeter.yaml"), []byte(using), 0o644)
+	git(t, source, "commit", "-q", "-am", "it uses a source")
+	before := snapshot(t, app)
+	if code, out := takePlugin(t, "", source, "--yes", "--dir", app); code == Done || !strings.Contains(out, "unit.needs.unbound") {
+		t.Fatalf("without --bind: %d %s", code, out)
+	}
+	if after := snapshot(t, app); len(after) != len(before) {
+		t.Errorf("a refused take left %d files where there were %d", len(after), len(before))
+	}
+	_, m := gate.CheckManifest(gate.Document{Path: "/x/com.example.greeter.yaml", Bytes: []byte(using)})
+	var said strings.Builder
+	saidUses(&said, "user", m)
+	if want := "user uses, of the unit its need source is bound to, the question ping; an operator grants query.ping.ask\n"; said.String() != want {
+		t.Errorf("the take says %q, want %q", said.String(), want)
 	}
 }
