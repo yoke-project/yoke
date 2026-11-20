@@ -318,3 +318,16 @@
 | **Precondition** | the account holding two instances, `bench-a` and `bench-b`; `YOKE_INSTANCE=bench-b` |
 | **Action** | parse a call with no `--instance`; one with `--instance bench-a`; one in a shell; then one with `YOKE_INSTANCE` unset |
 | **Expected** | `bench-b` is selected and its address is the one resolved; `bench-a` wins over the environment; in a shell nothing is selected; with neither, the two instances are refused, the refusal naming `YOKE_INSTANCE` beside `--instance` |
+
+## yoke:the-manager-command-line.25 — a secret a Plugin rewrites is written in a directory of its own
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/42.30 · specs/80.56 · arch/10-manager/07 · arch/80-security/06 §A secret the unit rewrites |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an installed application whose Plugin unit's Manifest needs `secret:refresh` and declares it rewrites it, and an instance of it |
+| **Action** | `yoke instance set-secret` the instance's `refresh` |
+| **Expected** | the value is `secrets/refresh/value`, `0600`, in a directory `secrets/refresh` that is `0700`, and no file `secrets/refresh` holds it |

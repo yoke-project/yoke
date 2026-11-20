@@ -134,3 +134,16 @@
 | **Precondition** | a supervisor whose binding of a need's channel is recorded; a unit that runs to completion with a need of class `unit`; then the same with the binding failing |
 | **Action** | launch each |
 | **Expected** | the first binds the need's channel, at its path and with the unit bound, before its process starts, and unbinds it once the unit has completed; the second never starts, and its failure names the need and its path |
+
+## yoke:what-a-need-expands-into.11 — a secret its unit rewrites is a file in a directory of its own, and the directory is mounted
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/42.30 · specs/80.56 · arch/80-security/06 §A secret the unit rewrites · arch/10-manager/07 |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a Plugin unit whose Manifest needs `secret:refresh` and rewrites it, passing `${bind.refresh}` as its argument; the value present in the store |
+| **Action** | resolve the deployment, and launch a unit with that need in a container |
+| **Expected** | the argument and the need are `secrets/refresh/value` under the state directory, marked rewritten; the container is created with the directory `secrets/refresh` mounted, and not the file alone |

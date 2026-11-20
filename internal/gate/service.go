@@ -342,7 +342,7 @@ func (c *checker) hostFacts() bool {
 					c.refuse("path.missing", joined(joined(location, "bind"), n.Key()), "the unit %s binds %s to %s, which does not exist on this host", name, n.Key(), path)
 				}
 			case n.Class == "secret" && at(Starting):
-				path := filepath.Join(h.StateDir, "secrets", n.Name)
+				path := SecretPath(h.StateDir, n.Name, c.manifests[u.Plugin].RewritesSecret(n.Name))
 				if _, err := os.Stat(path); err != nil {
 					c.refuse("secret.missing", location, "the unit %s needs the secret %s, and the instance's store holds none at %s", name, n.Name, path)
 				}

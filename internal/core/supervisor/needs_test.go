@@ -266,7 +266,7 @@ func TestASecretIsAFileCheckedAndMountedAtItsPath(t *testing.T) {
 	state := t.TempDir()
 	path := filepath.Join(state, "secrets", "token")
 	units := discovery.Units(dep, func(string) (*gate.Manifest, bool) { return nil, false }, "", state, "")
-	if len(units) != 1 || !slices.Equal(units[0].Args, []string{path}) || !slices.Equal(units[0].Needs, []supervisor.Need{{Class: "secret", Path: path}}) {
+	if len(units) != 1 || !slices.Equal(units[0].Args, []string{path}) || !slices.Equal(units[0].Needs, []supervisor.Need{{Class: "secret", Path: path, Name: "token"}}) {
 		t.Fatalf("resolved as %+v", units)
 	}
 	os.MkdirAll(filepath.Dir(path), 0o700)
@@ -351,5 +351,40 @@ func TestAUnitNeedsChannelIsBoundBeforeTheLaunchAndUnboundAtItsEnd(t *testing.T)
 	until(t, "the refused unit to fail", 3*time.Second, failed(s, "refused"))
 	if st := s.Status("refused"); !strings.Contains(st.Failure, "source") || !strings.Contains(st.Failure, channel) || st.PID != 0 {
 		t.Errorf("the failure is %q, with process %d", st.Failure, st.PID)
+	}
+}
+
+// std: yoke:what-a-need-expands-into.11
+func TestASecretItsUnitRewritesIsInADirectoryOfItsOwnMountedWhole(t *testing.T) {
+	_, dep := gate.Check(gate.Input{Document: gate.Document{Path: "bench.yaml", Kind: gate.Composition, Bytes: []byte(
+		"units:\n  accounts: { kind: plugin, plugin: com.example.accounts, args: [ \"${bind.refresh}\" ] }\n")}})
+	if dep == nil {
+		t.Fatal("the composition is refused")
+	}
+	m := &gate.Manifest{ID: "com.example.accounts", Needs: []gate.Need{{Class: "secret", Name: "refresh"}}, Rewrites: []string{"refresh"}}
+	state := t.TempDir()
+	path := filepath.Join(state, "secrets", "refresh", "value")
+	units := discovery.Units(dep, func(string) (*gate.Manifest, bool) { return m, true }, "", state, "")
+	if len(units) != 1 || !slices.Equal(units[0].Args, []string{path}) ||
+		!slices.Equal(units[0].Needs, []supervisor.Need{{Class: "secret", Path: path, Name: "refresh", Rewritten: true}}) {
+		t.Fatalf("resolved as %+v", units)
+	}
+	os.MkdirAll(filepath.Dir(path), 0o700)
+	os.WriteFile(path, []byte("value"), 0o600)
+	c := newContainers()
+	s, _ := underHost(t, newHost(t), c)
+	contained := imaged("contained", unit.Oneshot)
+	contained.Needs = units[0].Needs
+	s.Launch(contained)
+	until(t, "the container to be created", 3*time.Second, func() bool {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		return len(c.launched) == 1
+	})
+	c.mu.Lock()
+	created := c.launched[0]
+	c.mu.Unlock()
+	if !slices.Contains(created.Mounts, filepath.Dir(path)) || slices.Contains(created.Mounts, path) {
+		t.Errorf("the container was created with %v, not the directory %s", created.Mounts, filepath.Dir(path))
 	}
 }
