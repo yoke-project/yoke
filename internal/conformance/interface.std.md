@@ -122,3 +122,29 @@
 | **Precondition** | the producer's stream flowing, as case 8 left it |
 | **Action** | `stream-subscribe` of it naming `shared_object`; then `stream-stop` and `stream-start` of it |
 | **Expected** | the delivery arriving on `shared`; a frame read from the ring, whole; and after the stop and the start, a frame of sequence 1 on the same delivery, read from the next activation's ring |
+
+## yoke:interface.10 — a question names its cause, and a declared channel refuses it
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/70.60 · arch/70-interface-surface/10 §A question asked on it |
+| **Level** | L2 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the harness attached to `panel`, a declared channel; the producer running, declaring the query `fixture.status` |
+| **Action** | `query` of `fixture.status` of the producer, naming the cause `q-none` |
+| **Expected** | a refusal `use.cause.unknown` naming the item `q-none`: the cause reached the Core, and only a need's channel takes one |
+
+## yoke:interface.11 — a stream followed is subscribed again when its unit restarts
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/28.60 · arch/70-interface-surface/10 §When the unit bound restarts · arch/90-sdks/02 §What using a unit adds to every family |
+| **Level** | L2 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the producer's stream flowing, as case 9 left it |
+| **Action** | `stream-follow` of it; then, once a frame has arrived, the producer restarted on the administrative surface |
+| **Expected** | a frame on the follow before the restart; and after it, on the same follow and a delivery other than the first, a frame of the next incarnation, whole |

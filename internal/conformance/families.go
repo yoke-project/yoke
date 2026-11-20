@@ -65,6 +65,7 @@ func FamilyCases() []Case {
 			Run:          healthCarried},
 	}
 	cases = append(cases, StreamCases()...)
+	cases = append(cases, UsePluginCases()...)
 	return append(cases,
 		Case{Contract: "plugin", ID: "yoke:plugin.12", Title: "disabling the plugin revokes the Session, and the process ends",
 			Cites:        []string{"specs/50.49", "specs/50.51", "specs/60.29", "specs/90.29", "arch/50-plugin-surface/04 §Revocation"},
