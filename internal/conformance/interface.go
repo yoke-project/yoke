@@ -28,7 +28,7 @@ var (
 
 // InterfaceCases are the interface contract's cases, in the order a run performs them.
 func InterfaceCases() []Case {
-	return []Case{
+	return append([]Case{
 		{ID: "yoke:interface.01", Title: "attaching is given the opening: the version, the standing subscription and the channel's own record", Contract: "interface",
 			Cites:        []string{"specs/70.9", "specs/90.8", "arch/70-interface-surface/03 §The opening picture", "arch/70-interface-surface/08 §How this contract states its version"},
 			Precondition: "a Core started by the suite with the channels `panel` and `bench`, local and of one client each, `bench` prevailing over `panel`; and the harness launched by the suite with the instance's root in `CONFORMANCE_INSTANCE`",
@@ -83,7 +83,7 @@ func InterfaceCases() []Case {
 			Issues:       "`stream-subscribe` of it naming `shared_object`; then `stream-stop` and `stream-start` of it",
 			Requires:     "the delivery arriving on `shared`; a frame read from the ring, whole; and after the stop and the start, a frame of sequence 1 on the same delivery, read from the next activation's ring",
 			Run:          readTheRingItself},
-	}
+	}, UseInterfaceCases()...)
 }
 
 // producing grants the run's producer its stream, once, and starts the stream: what the cases on streams
