@@ -47,6 +47,10 @@ func TestMain(m *testing.M) {
 		os.Exit(acknowledgeCommands())
 	case "streamer":
 		os.Exit(emitWhenActivated())
+	case "answerer":
+		os.Exit(answerHeadStatus())
+	case "relayer":
+		os.Exit(relayThroughTheNeed())
 	}
 	os.Exit(m.Run())
 }
@@ -135,6 +139,20 @@ func startCoreIn(t *testing.T, dir, configured, composition string) (string, <-c
 		"commands: [ { id: calibrate } ]\nstreams: [ { id: station.data } ]\n"+
 		"capabilities: [ { name: command.calibrate.accept, governs: { command: calibrate } }, { name: stream.data.publish, governs: { stream: station.data } } ]\n"), 0o644)
 	os.Symlink(self, filepath.Join(executables, "com.example.station"))
+	// Two more, for a unit that uses another: source answers head-status, and archive answers relay by
+	// asking source's head-status through its need.
+	for id, manifest := range map[string]string{
+		"com.example.source": "manifest: 1\nid: com.example.source\nprotocol: 1\nqueries: [ { id: head-status } ]\n" +
+			"capabilities: [ { name: query.head-status.answer, governs: { query: head-status } } ]\n",
+		"com.example.archive": "manifest: 1\nid: com.example.archive\nprotocol: 1\nneeds: [ \"unit:source\" ]\n" +
+			"queries: [ { id: relay } ]\nuses: { source: { questions: [ head-status ] } }\n" +
+			"capabilities: [ { name: query.relay.answer, governs: { query: relay } }, " +
+			"{ name: query.head-status.ask, governs: { use: { need: source, query: head-status } } } ]\n",
+	} {
+		os.MkdirAll(filepath.Join(manifests, id), 0o755)
+		os.WriteFile(filepath.Join(manifests, id, "manifest.yaml"), []byte(manifest), 0o644)
+		os.Symlink(self, filepath.Join(executables, id))
+	}
 	path := filepath.Join(dir, "bench.yaml")
 	os.WriteFile(path, []byte(fmt.Sprintf(composition, self, role)), 0o644)
 	core := filepath.Join(dir, "core.yaml")
@@ -927,4 +945,106 @@ channels:
 	if frame, err := events(t, address, session); err != nil || !strings.Contains(frame, "opening") {
 		t.Errorf("attaching with the cookie: %v %s", err, frame)
 	}
+}
+
+// servePlugin registers with the surface given, opens its Session, reports its health every second, and
+// hands every question to answer, which returns the answer's payload.
+func servePlugin(declared *pluginv1.Surface, answer func(e *pluginv1.Envelope) []byte) int {
+	conn, err := grpc.NewClient("unix://"+os.Getenv("YOKE_SOCKET"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return 1
+	}
+	defer conn.Close()
+	resp, err := pluginv1.NewRegisterClient(conn).Register(context.Background(), &pluginv1.RegisterRequest{
+		Plugin: os.Getenv("YOKE_PLUGIN"), Unit: os.Getenv("YOKE_UNIT"), Token: os.Getenv("YOKE_TOKEN"), Protocol: 1, Declared: declared,
+	})
+	if err != nil || resp.SessionId == "" {
+		fmt.Println("not admitted:", err, resp)
+		return 1
+	}
+	s, err := pluginv1.NewSessionClient(conn).Open(context.Background())
+	if err != nil {
+		return 1
+	}
+	var mu sync.Mutex
+	n := 0
+	send := func(fill func(*pluginv1.Envelope)) {
+		mu.Lock()
+		defer mu.Unlock()
+		n++
+		e := &pluginv1.Envelope{MessageId: fmt.Sprint("u-", n), SessionId: resp.SessionId, SentAtUnixNano: time.Now().UnixNano()}
+		fill(e)
+		s.Send(e)
+	}
+	send(func(e *pluginv1.Envelope) {
+		e.Payload = &pluginv1.Envelope_Session{Session: &pluginv1.SessionMessage{Kind: &pluginv1.SessionMessage_Open_{Open: &pluginv1.SessionMessage_Open{}}}}
+	})
+	go func() {
+		for {
+			send(func(e *pluginv1.Envelope) {
+				e.Payload = &pluginv1.Envelope_Health{Health: &pluginv1.Health{Grade: 10, Line: "ready"}}
+			})
+			time.Sleep(time.Second)
+		}
+	}()
+	for {
+		e, err := s.Recv()
+		if err != nil {
+			return 0
+		}
+		if e.GetQuery().GetQuestion() != nil {
+			go func() {
+				payload := answer(e)
+				send(func(a *pluginv1.Envelope) {
+					a.CorrelationId = e.MessageId
+					a.Payload = &pluginv1.Envelope_Query{Query: &pluginv1.Query{Kind: &pluginv1.Query_Answer_{Answer: &pluginv1.Query_Answer{Payload: payload}}}}
+				})
+			}()
+		}
+	}
+}
+
+// answerHeadStatus answers head-status with the secret its environment holds, who asked and the chain.
+func answerHeadStatus() int {
+	return servePlugin(&pluginv1.Surface{Capabilities: []string{"query.head-status.answer"}, Queries: []string{"head-status"}},
+		func(e *pluginv1.Envelope) []byte {
+			q := e.GetQuery().GetQuestion()
+			return []byte(os.Getenv("SECRET") + " " + q.GetAsker() + " " + q.GetChain())
+		})
+}
+
+// relayThroughTheNeed answers relay by asking source's head-status on the channel of its need, named by
+// its first argument, with the question it is answering as the cause; and answers with what came back.
+func relayThroughTheNeed() int {
+	need := os.Args[len(os.Args)-1]
+	return servePlugin(&pluginv1.Surface{Capabilities: []string{"query.relay.answer", "query.head-status.ask"}, Queries: []string{"relay"}},
+		func(e *pluginv1.Envelope) []byte {
+			conn, err := grpc.NewClient("unix://"+need, grpc.WithTransportCredentials(insecure.NewCredentials()))
+			if err != nil {
+				return []byte("no channel")
+			}
+			defer conn.Close()
+			stream, err := interfacev1.NewInterfaceClient(conn).Attach(context.Background())
+			if err != nil {
+				return []byte("not attached")
+			}
+			if _, err := stream.Recv(); err != nil {
+				return []byte("no opening")
+			}
+			stream.Send(&interfacev1.ClientFrame{Call: "q", Carries: &interfacev1.ClientFrame_Request{Request: &interfacev1.Request{Version: 1,
+				Operation: &interfacev1.Request_Query{Query: &interfacev1.Question{Unit: "source", Type: "head-status", Cause: e.MessageId}}}}})
+			for {
+				f, err := stream.Recv()
+				if err != nil {
+					return []byte("ended")
+				}
+				if f.GetCall() != "q" {
+					continue
+				}
+				if ref := f.GetRefusal(); ref != nil {
+					return []byte("refused " + ref.GetCode())
+				}
+				return f.GetAnswer().GetQuery().GetPayload()
+			}
+		})
 }

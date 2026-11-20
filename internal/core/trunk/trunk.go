@@ -656,7 +656,9 @@ func channels(st *State) error {
 // tells each managed interface where its channel is. Binding is fatal: a channel that failed to bind
 // would change which channel prevails.
 func interfaceChannels(st *State) error {
-	if st.Deployment == nil || len(st.Deployment.Channels) == 0 {
+	// A deployment that declares no channel may still have units that use others, whose channels are
+	// served by the same surface.
+	if st.Deployment == nil {
 		return nil
 	}
 	var declared []gate.Channel
