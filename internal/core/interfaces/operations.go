@@ -313,6 +313,12 @@ func (s *Surface) streamStop(ctx context.Context, r *interfacev1.Request) (*inte
 	if _, _, ref := s.stream(id, stream); ref != nil {
 		return nil, ref
 	}
+	// A stream a need's channel follows is held: no other channel stops it.
+	for _, holder := range s.cfg.Holds.Holders(id, stream) {
+		if s.cfg.Use == nil || holder != s.cfg.Use.Unit {
+			return nil, aboutItem("stream.held", holder, "the stream "+stream+" of "+id+" is held by "+holder+", which follows it through its need")
+		}
+	}
 	if !slices.Contains(s.cfg.Transports.Active(id), stream) {
 		return answer(done()), nil
 	}

@@ -684,6 +684,7 @@ func interfaceChannels(st *State) error {
 		}
 		return verdict, err
 	}
+	holds := interfaces.NewHolds()
 	configOf := func(ch gate.Channel) interfaces.Config {
 		return interfaces.Config{
 			Channel: ch, Authenticate: authenticate, Root: st.Paths.Root, Bus: st.Bus, Publish: st.publish, Confirm: confirm, Units: supervised{st}, Active: transports.Active,
@@ -714,6 +715,7 @@ func interfaceChannels(st *State) error {
 			UseGranted: func(unitID, need, of, id string) bool {
 				return st.Session != nil && st.Session.UseGranted(unitID, need, of, id)
 			},
+			Holds: holds,
 		}
 	}
 	surface := func(ch gate.Channel) interfacev1.InterfaceServer { return interfaces.NewSurface(configOf(ch)) }

@@ -246,11 +246,18 @@ func (s *Surface) subscribeStream(r *interfacev1.Request, a *attachment) (*inter
 	done := make(chan struct{})
 	var once sync.Once
 	var closer func()
+	holding := s.cfg.Use != nil && s.cfg.Holds != nil
+	if holding {
+		s.cfg.Holds.hold(id, stream, s.cfg.Use.Unit)
+	}
 	release := func() {
 		once.Do(func() {
 			close(done)
 			if closer != nil {
 				closer()
+			}
+			if holding {
+				s.cfg.Holds.drop(id, stream, s.cfg.Use.Unit)
 			}
 		})
 	}

@@ -106,6 +106,8 @@ type Config struct {
 	// Outstanding is the chain and the deadline of a question a unit was delivered and has not answered,
 	// by its message identity: what a question caused by it is derived from. Nil knows of none.
 	Outstanding func(unit, messageID string) (chain string, deadline uint64, ok bool)
+	// Holds are the streams need's channels hold, shared by every surface of the instance. Optional.
+	Holds *Holds
 	// UseGranted says whether the using unit was granted a use; nil grants none. Read on a need's channel.
 	UseGranted func(unit, need, of, id string) bool
 	// Use makes this surface a need's channel: one unit's client of the unit its need is bound to, seeing
