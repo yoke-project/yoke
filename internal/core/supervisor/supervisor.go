@@ -62,6 +62,8 @@ type Need struct {
 	Path  string
 	Name  string
 	Bound string
+	// Rewritten is a secret its unit replaces itself: its directory, not its file, is mounted.
+	Rewritten bool
 }
 
 // Policy holds the deployment's figures.

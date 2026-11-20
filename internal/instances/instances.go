@@ -529,9 +529,16 @@ func Remove(o Options, name string) error {
 // Secrets are the secrets an instance's version declares, each with the units that need it: from the
 // units' own needs and, for a Plugin unit, its Manifest's. Which exist is the directory's to say.
 func Secrets(o Options, name string) (map[string][]string, error) {
+	declared, _, err := secretsOf(o, name)
+	return declared, err
+}
+
+// secretsOf are the secrets an instance's description declares, with the units declaring each, and those
+// a Plugin declares it rewrites.
+func secretsOf(o Options, name string) (map[string][]string, map[string]bool, error) {
 	r, err := instancerecord.Read(o.Instances, name)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	bundle := filepath.Join(o.InstallRoot, r.ID, r.Version, "bundle")
 	if r.Source != "" {
@@ -540,15 +547,18 @@ func Secrets(o Options, name string) (map[string][]string, error) {
 	report, d := gate.Check(gate.Input{Document: gate.Read(filepath.Join(bundle, "yoke.yaml"), gate.Descriptor), Moment: gate.Creating,
 		Manifests: filepath.Join(bundle, "manifests")})
 	if d == nil {
-		return nil, refused("the descriptor of "+r.ID+" "+r.Version, report.Findings)
+		return nil, nil, refused("the descriptor of "+r.ID+" "+r.Version, report.Findings)
 	}
-	out := map[string][]string{}
+	out, rewritten := map[string][]string{}, map[string]bool{}
 	for _, unit := range d.Order {
 		u := d.Units[unit]
 		needs := u.Needs
 		if u.Kind == "plugin" {
 			if _, m := gate.CheckManifest(gate.Read(gate.BundleManifestPath(filepath.Join(bundle, "manifests"), u.Plugin), gate.Composition)); m != nil {
 				needs = m.Needs
+				for _, s := range m.Rewrites {
+					rewritten[s] = true
+				}
 			}
 		}
 		for _, n := range needs {
@@ -557,12 +567,14 @@ func Secrets(o Options, name string) (map[string][]string, error) {
 			}
 		}
 	}
-	return out, nil
+	return out, rewritten, nil
 }
 
-// SecretPath is where an instance's secret is: `<instance state>/secrets/<secret>`.
+// SecretPath is where an instance's secret is: `<instance state>/secrets/<secret>`, or, for one a Plugin
+// rewrites, `<instance state>/secrets/<secret>/value`.
 func SecretPath(o Options, name, secret string) string {
-	return filepath.Join(instancerecord.StateDir(o.Instances, name), "secrets", secret)
+	_, rewritten, _ := secretsOf(o, name)
+	return gate.SecretPath(instancerecord.StateDir(o.Instances, name), secret, rewritten[secret])
 }
 
 // SetSecret writes a secret into the instance's state, mode 0600 in a directory of mode 0700, replacing

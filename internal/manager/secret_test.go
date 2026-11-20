@@ -129,3 +129,30 @@ func TestASecretSetOnARunningInstanceRestartsTheUnitsThatNeedIt(t *testing.T) {
 		t.Errorf("other was touched:\n%s", out)
 	}
 }
+
+// std: yoke:the-manager-command-line.25
+func TestASecretAPluginRewritesIsWrittenInADirectoryOfItsOwn(t *testing.T) {
+	vars := account(t, "")
+	bundle := filepath.Join(installRoot(t, vars), "com.yoke.station", "2.1.0", "bundle")
+	os.WriteFile(filepath.Join(bundle, "components", "linger"), []byte(linger), 0o755)
+	os.MkdirAll(filepath.Join(bundle, "manifests"), 0o755)
+	os.WriteFile(filepath.Join(bundle, "manifests", "com.yoke.station.accounts.yaml"), []byte("manifest: 1\nid: com.yoke.station.accounts\nprotocol: 1\n"+
+		"needs: [ \"secret:refresh\" ]\nrewrites: [ refresh ]\n"), 0o644)
+	os.WriteFile(filepath.Join(bundle, "yoke.yaml"), []byte(fmt.Sprintf("model: 1\nid: com.yoke.station\nversion: 2.1.0\narch: %s\ncore: \">=0.0.0-0\"\n"+
+		"units:\n  accounts: { kind: plugin, plugin: com.yoke.station.accounts, exec: components/linger, digest: \"sha256:%x\" }\n",
+		compose.HostArch(), sha256.Sum256([]byte(linger)))), 0o644)
+	expectDone(t, vars, "instance", "create", "com.yoke.station", "--name", "bench-a")
+	stdin = strings.NewReader("refresh-value\n")
+	t.Cleanup(func() { stdin = os.Stdin })
+	expectDone(t, vars, "instance", "set-secret", "bench-a", "refresh")
+	root := instancerecord.Root(environment(vars))
+	path := filepath.Join(instancerecord.StateDir(root, "bench-a"), "secrets", "refresh", "value")
+	if data, err := os.ReadFile(path); err != nil || string(data) != "refresh-value" {
+		t.Fatalf("the secret holds %q: %v", data, err)
+	}
+	for p, mode := range map[string]os.FileMode{path: 0o600, filepath.Dir(path): 0o700} {
+		if info, err := os.Stat(p); err != nil || info.Mode().Perm() != mode {
+			t.Errorf("%s: %v %v, want %v", p, info.Mode(), err, mode)
+		}
+	}
+}

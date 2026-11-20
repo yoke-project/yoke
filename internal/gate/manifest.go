@@ -36,6 +36,20 @@ type Manifest struct {
 	Rewrites []string
 }
 
+// SecretPath is where a secret is under a state directory: `secrets/<name>`, or, for a secret a Plugin
+// rewrites, `secrets/<name>/value` in a directory of its own, which its unit replaces it within.
+func SecretPath(stateDir, name string, rewritten bool) string {
+	if rewritten {
+		return filepath.Join(stateDir, "secrets", name, "value")
+	}
+	return filepath.Join(stateDir, "secrets", name)
+}
+
+// RewritesSecret says whether the Plugin declares that it rewrites the secret named.
+func (m *Manifest) RewritesSecret(name string) bool {
+	return m != nil && slices.Contains(m.Rewrites, name)
+}
+
 // Use is what a Plugin uses of another unit's contract: questions it asks and streams it follows, named in
 // that unit's vocabulary. There are no commands: a unit never instructs another.
 type Use struct {
