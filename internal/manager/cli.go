@@ -109,10 +109,17 @@ func reported(err error, stderr io.Writer) int {
 	if err == nil {
 		return Done
 	}
-	fmt.Fprintln(stderr, "yoke:", err)
 	var r refusal
 	var b *base.Refusal
-	if errors.As(err, &r) || errors.As(err, &b) {
+	refused := errors.As(err, &r) || errors.As(err, &b)
+	said := err.Error()
+	if b != nil && b.Code == "unit.failed" && b.Item != "" {
+		// A unit's own error reaches the operator as unit.failed with the unit's code as the item: the
+		// code is what the person or a script acts on, so it is printed beside the Core's.
+		said = strings.Replace(said, b.Error(), "unit.failed ("+b.Item+"): "+b.Message, 1)
+	}
+	fmt.Fprintln(stderr, "yoke:", said)
+	if refused {
 		return Refused
 	}
 	return Fault
