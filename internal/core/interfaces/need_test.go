@@ -12,6 +12,7 @@ import (
 	interfacev1 "github.com/yoke-project/yoke/proto/yoke/interface/v1"
 	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
 
+	"github.com/yoke-project/yoke/internal/core/event"
 	"github.com/yoke-project/yoke/internal/core/interfaces"
 	"github.com/yoke-project/yoke/internal/core/streams"
 	"github.com/yoke-project/yoke/internal/core/unit"
@@ -83,6 +84,38 @@ func TestANeedsChannelAnswersForTheUnitBoundAndWhatTheNeedUses(t *testing.T) {
 	authenticate := &interfacev1.Request{Version: 1, Operation: &interfacev1.Request_Authenticate{Authenticate: &interfacev1.Authenticate{}}}
 	if ref := a.answerTo(t, "auth", authenticate).GetRefusal(); ref.GetCode() != "operation.unknown" {
 		t.Errorf("authenticate on a need's channel was answered %v", ref)
+	}
+}
+
+// std: yoke:a-need-s-channel.04
+func TestANeedsChannelOpensOnTheUnitBoundAndObservesItAlone(t *testing.T) {
+	w := newWorld()
+	r := root(t)
+	path := filepath.Join(r, "needs", "archive", "source.sock")
+	unbind, err := interfaces.BindNeed(path, interfaces.NewSurface(interfaces.Config{
+		Channel: gate.Channel{Name: "need:archive/source", Transport: "local", Clients: "single"},
+		Bus:     w.bus, Publish: w.publish, Units: bench{}, Sessions: &fakeSessions{}, Wait: 200 * time.Millisecond,
+		Instance: func() *interfacev1.InstanceRecord { return &interfacev1.InstanceRecord{Ready: true} },
+		Use:      &interfaces.Use{Unit: "archive", Need: "source", Bound: "acquire", Questions: []string{"head-status"}},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(unbind)
+	a, err := attachTo(t, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, rec := range a.next(t).GetOpening().GetPicture().GetRecords() {
+		if rec.GetInstance() != nil || (rec.GetUnit() != nil && rec.GetUnit().GetDeclared().GetIdentity() != "acquire") {
+			t.Errorf("the opening holds %v, and a need's channel opens on the unit bound alone", rec)
+		}
+	}
+	w.publish(event.InstanceStopping("bench"))
+	w.publish(event.StateChanged("idle", 1, unit.Running, unit.Stopped))
+	w.publish(event.StateChanged("acquire", 2, unit.Running, unit.Stopped))
+	if e := a.next(t).GetEvent(); e.GetSubject().GetIdentity() != "acquire" {
+		t.Errorf("the first event observed is %v, want acquire's", e)
 	}
 }
 

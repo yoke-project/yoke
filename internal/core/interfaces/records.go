@@ -15,15 +15,11 @@ import (
 // read, a snapshot and the opening picture are all made of them.
 func (s *Surface) records() []*interfacev1.Record {
 	var out []*interfacev1.Record
-	if s.cfg.Instance != nil {
-		out = append(out, &interfacev1.Record{Subject: &interfacev1.Record_Instance{Instance: s.cfg.Instance()}})
+	for _, kind := range observed {
+		records, _ := s.recordsOf(kind, "")
+		out = append(out, records...)
 	}
-	if s.cfg.Units != nil {
-		for _, id := range s.cfg.Units.IDs() {
-			out = append(out, &interfacev1.Record{Subject: &interfacev1.Record_Unit{Unit: s.unitRecord(id)}})
-		}
-	}
-	return append(out, &interfacev1.Record{Subject: &interfacev1.Record_Channel{Channel: s.channelRecord()}})
+	return out
 }
 
 // unitRecord is one unit as the channel sees it, and on a Plugin unit what the channel may address: the
@@ -85,8 +81,11 @@ func (s *Surface) observes(e event.Event) bool {
 		}
 	}
 	switch e.Subject.Kind {
-	case event.Unit, event.Instance:
-		return true
+	case event.Unit:
+		// A need's channel observes the unit bound and nothing else, as it reads it alone.
+		return s.cfg.Use == nil || e.Subject.ID == s.cfg.Use.Bound
+	case event.Instance:
+		return s.cfg.Use == nil
 	case event.Channel:
 		return e.Subject.ID == s.cfg.Channel.Name
 	}
