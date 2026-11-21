@@ -43,3 +43,16 @@
 | **Precondition** | the need's channel of `archive`, using and granted `station.spectra` of `acquire`, and a declared channel `panel`, sharing one count of holds |
 | **Action** | on the need's channel subscribe to `station.spectra`; on `panel` stop it; on the need's channel unsubscribe; on `panel` stop it again |
 | **Expected** | the first stop is refused `stream.held`, naming `archive`; the second is answered |
+
+## yoke:a-need-s-channel.04 — a need's channel opens on the unit bound and observes it alone
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/70.56 · arch/70-interface-surface/10 §What it sees, and what it may address |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a need's channel of the unit `archive`, its need `source` bound to `acquire`, over a bench of several Plugin units and an instance |
+| **Action** | attach; then the instance begins to stop, `idle` stops and `acquire` stops |
+| **Expected** | the opening holds no instance and no unit but `acquire`; the first event the standing subscription carries is `acquire`'s |
