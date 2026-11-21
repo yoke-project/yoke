@@ -331,3 +331,16 @@
 | **Precondition** | an installed application whose Plugin unit's Manifest needs `secret:refresh` and declares it rewrites it, and an instance of it |
 | **Action** | `yoke instance set-secret` the instance's `refresh` |
 | **Expected** | the value is `secrets/refresh/value`, `0600`, in a directory `secrets/refresh` that is `0700`, and no file `secrets/refresh` holds it |
+
+## yoke:the-manager-command-line.26 — a unit's own code is printed beside `unit.failed`
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/15.6 · arch/10-manager/01 §What it reports · arch/60-administrative-surface/07 |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a client verb answered with the refusal `unit.failed` whose item is the unit's code `scope.missing` |
+| **Action** | report it |
+| **Expected** | the line reads `yoke: unit.failed (scope.missing): <the unit's message>`, and the exit status is the refusal's |
