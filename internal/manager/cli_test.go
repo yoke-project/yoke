@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/yoke-project/yoke-sdk-go/admin"
+	"github.com/yoke-project/yoke-sdk-go/base"
 )
 
 func yoke(vars map[string]string, args ...string) (int, string) {
@@ -30,6 +31,18 @@ func TestAnExitStatusTellsARefusalFromAFault(t *testing.T) {
 	code, out = yoke(map[string]string{"XDG_RUNTIME_DIR": run}, "frobnicate")
 	if code != 1 || !strings.Contains(out, "frobnicate") || !strings.Contains(out, "plugin") {
 		t.Errorf("no such verb: %d %s", code, out)
+	}
+}
+
+// std: yoke:the-manager-command-line.26
+func TestAUnitsOwnCodeIsPrintedBesideUnitFailed(t *testing.T) {
+	var out bytes.Buffer
+	failed := &base.Refusal{Code: "unit.failed", Item: "scope.missing", Message: "google:ada was not granted calendar"}
+	if code := reported(failed, &out); code != Refused {
+		t.Errorf("exit status %d", code)
+	}
+	if want := "yoke: unit.failed (scope.missing): google:ada was not granted calendar\n"; out.String() != want {
+		t.Errorf("printed %q, want %q", out.String(), want)
 	}
 }
 
