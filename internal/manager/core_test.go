@@ -27,6 +27,9 @@ func TestMain(m *testing.M) {
 	if os.Getenv(role) == "claim" {
 		os.Exit(holdClaim())
 	}
+	if os.Getenv(role) == "rewriter" {
+		os.Exit(runRewriter())
+	}
 	os.Exit(m.Run())
 }
 

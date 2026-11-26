@@ -120,6 +120,65 @@ func TestServiceSetSecretWritesIntoTheDeploymentsArea(t *testing.T) {
 	}
 }
 
+// std: yoke:the-service-regime.09
+func TestServiceSetSecretWritesASecretAPluginRewritesInADirectoryOfItsOwn(t *testing.T) {
+	vars, _, _ := serviceForm(t)
+	dir := filepath.Dir(vars["YOKE_CONFIG"])
+	state := filepath.Join(dir, "state")
+	os.MkdirAll(filepath.Join(dir, "plugins.d", "com.yoke.accounts"), 0o755)
+	os.WriteFile(filepath.Join(dir, "plugins.d", "com.yoke.accounts", "manifest.yaml"), []byte("manifest: 1\nid: com.yoke.accounts\nprotocol: 1\n"+
+		"needs: [ \"secret:tokens\", \"secret:clients\" ]\nrewrites: [ tokens ]\n"), 0o644)
+	composition := filepath.Join(dir, "accounts.yaml")
+	os.WriteFile(composition, []byte("units:\n  accounts: { kind: plugin, plugin: com.yoke.accounts }\n"), 0o644)
+	vars["YOKE_COMPOSITION"] = composition
+	t.Cleanup(func() { stdin = os.Stdin })
+	if _, out := yoke(vars, "service", "check"); !strings.Contains(out, "secret tokens") {
+		t.Fatalf("before the verb, the gate does not find tokens missing:\n%s", out)
+	}
+
+	stdin = strings.NewReader("tokens-value\n")
+	expectDone(t, vars, "service", "set-secret", "tokens")
+	tokens := filepath.Join(state, "secrets", "tokens", "value")
+	if data, err := os.ReadFile(tokens); err != nil || string(data) != "tokens-value" {
+		t.Fatalf("the rewritten secret holds %q: %v", data, err)
+	}
+	for p, mode := range map[string]os.FileMode{tokens: 0o600, filepath.Dir(tokens): 0o700} {
+		if info, err := os.Stat(p); err != nil || info.Mode().Perm() != mode {
+			t.Errorf("%s: %v %v, want %v", p, info.Mode(), err, mode)
+		}
+	}
+	if _, out := yoke(vars, "service", "check"); strings.Contains(out, "secret tokens") {
+		t.Errorf("the gate still finds tokens missing:\n%s", out)
+	}
+
+	stdin = strings.NewReader("clients-value\n")
+	expectDone(t, vars, "service", "set-secret", "clients")
+	clients := filepath.Join(state, "secrets", "clients")
+	if data, err := os.ReadFile(clients); err != nil || string(data) != "clients-value" {
+		t.Fatalf("the plain secret holds %q: %v", data, err)
+	}
+
+	// A layout that is the other's is refused, naming the path, and left as it was.
+	os.RemoveAll(filepath.Dir(tokens))
+	os.WriteFile(filepath.Dir(tokens), []byte("left"), 0o600)
+	stdin = strings.NewReader("again\n")
+	if code, out := yoke(vars, "service", "set-secret", "tokens"); code != Refused || !strings.Contains(out, filepath.Dir(tokens)) {
+		t.Errorf("a file where the directory belongs exited %d:\n%s", code, out)
+	}
+	if data, _ := os.ReadFile(filepath.Dir(tokens)); string(data) != "left" {
+		t.Errorf("the file found was changed to %q", data)
+	}
+	os.Remove(clients)
+	os.MkdirAll(clients, 0o700)
+	stdin = strings.NewReader("again\n")
+	if code, out := yoke(vars, "service", "set-secret", "clients"); code != Refused || !strings.Contains(out, clients) {
+		t.Errorf("a directory where the file belongs exited %d:\n%s", code, out)
+	}
+	if entries, _ := os.ReadDir(clients); len(entries) != 0 {
+		t.Errorf("the directory found was written into: %v", entries)
+	}
+}
+
 // std: yoke:the-service-regime.05
 func TestServiceExecGatesAndThenExecutesTheCoreInItsPlace(t *testing.T) {
 	vars, refused, clean := serviceForm(t)

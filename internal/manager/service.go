@@ -232,7 +232,9 @@ func (c *call) serviceExec() error {
 }
 
 // serviceSetSecret reads a value without echoing it and writes it into the deployment's own area,
-// `<state_dir>/secrets/<secret>`, mode 0600 in a directory of mode 0700, and reports only its presence.
+// `<state_dir>/secrets/<secret>`, mode 0600 in a directory of mode 0700, and reports only its presence. A
+// secret a Plugin of the composition in force rewrites is written at `<state_dir>/secrets/<secret>/value`,
+// where the gate and the Core read it; a layout on disk that is the other's is refused and left as it is.
 func (c *call) serviceSetSecret() error {
 	if _, _, _, err := c.flags(nil); err != nil {
 		return err
@@ -248,11 +250,19 @@ func (c *call) serviceSetSecret() error {
 	if err != nil {
 		return refusal{err}
 	}
+	rewritten, err := c.rewrittenInForce(cfg, name)
+	if err != nil {
+		return err
+	}
+	path := gate.SecretPath(cfg.StateDir, name, rewritten)
+	if err := otherLayout(cfg.StateDir, name, rewritten); err != nil {
+		return err
+	}
 	value, err := readSecret(stdin)
 	if err != nil {
 		return err
 	}
-	dir := filepath.Join(cfg.StateDir, "secrets")
+	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
 	}
@@ -275,10 +285,50 @@ func (c *call) serviceSetSecret() error {
 	if err := tmp.Close(); err != nil {
 		return err
 	}
-	if err := os.Rename(tmp.Name(), filepath.Join(dir, name)); err != nil {
+	if err := os.Rename(tmp.Name(), path); err != nil {
 		return err
 	}
 	fmt.Fprintf(c.out, "the secret %s is present\n", name)
+	return nil
+}
+
+// rewrittenInForce says whether a Plugin unit of the composition in force declares the secret in its
+// Manifest's `rewrites`. It reads the documents and the Manifests alone: the gate at starting refuses a
+// missing secret, which is the one this verb is about to supply.
+func (c *call) rewrittenInForce(cfg config.Config, secret string) (bool, error) {
+	path := config.Composition("", c.getenv)
+	report, d := gate.Check(gate.Input{Document: gate.Read(path, gate.Composition), Moment: gate.Composing, Manifests: cfg.Plugins.Manifests})
+	if d == nil {
+		c.findings(path, report)
+		return false, refusef("the composition %s is refused, so which secrets its Plugins rewrite is not known", path)
+	}
+	for _, unit := range d.Order {
+		u := d.Units[unit]
+		if u.Kind != "plugin" {
+			continue
+		}
+		if _, m := gate.CheckManifest(gate.Read(gate.ManifestPath(cfg.Plugins.Manifests, u.Plugin), gate.Composition)); m.RewritesSecret(secret) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// otherLayout refuses a secret whose place on disk is the other layout's — a file where a rewritten
+// secret's directory belongs, or a directory where a plain secret's file does — naming the path. What is
+// there is left for the operator: a unit may own it.
+func otherLayout(stateDir, secret string, rewritten bool) error {
+	at := filepath.Join(stateDir, "secrets", secret)
+	info, err := os.Lstat(at)
+	if err != nil {
+		return nil
+	}
+	switch {
+	case rewritten && !info.IsDir():
+		return refusef("the secret %s is rewritten by its unit and belongs in the directory %s, which is a file; remove it to supply the value", secret, at)
+	case !rewritten && info.IsDir():
+		return refusef("the secret %s belongs in the file %s, which is a directory; remove it to supply the value", secret, at)
+	}
 	return nil
 }
 
