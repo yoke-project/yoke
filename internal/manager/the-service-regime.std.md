@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Feature** | `yoke service`: `start`, `stop`, `restart` and `status` asking the init system about `yoke.service` and starting nothing; `status` naming a disagreement between the init system and the instance rather than choosing; `check` running the gate over the composition in force; `set-secret` writing into the deployment's own area without displaying the value; `exec`, which the unit names, gating and then executing the Core in one process; and the unit itself |
+| **Feature** | `yoke service`: `start`, `stop`, `restart` and `status` asking the init system about `yoke.service` and starting nothing; `status` naming a disagreement between the init system and the instance rather than choosing; `check` running the gate over the composition in force; `set-secret` writing into the deployment's own area without displaying the value, a secret a Plugin rewrites in a directory of its own; `exec`, which the unit names, gating and then executing the Core in one process; and the unit itself |
 | **Planning item** | yoke-project/yoke#242 |
 
 ## yoke:the-service-regime.01 — `start`, `stop` and `restart` ask the init system and start nothing
@@ -109,3 +109,29 @@
 | **Action** | run `yoke service start`, then `restart`, then `stop` |
 | **Expected** | `start` and `restart` each exit 1 naming both findings and saying the init system was not asked; `systemctl` was asked only to `stop` |
 
+
+## yoke:the-service-regime.09 — `set-secret` writes a secret a Plugin rewrites where the gate and the Core read it
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/15.57 · arch/10-manager/07 §Supplying a secret |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a composition in force with one Plugin unit needing the secrets `tokens` and `clients`, whose Manifest under `plugins.manifests` declares `tokens` in `rewrites`; a value on the standard input |
+| **Action** | run `yoke service set-secret tokens`, then `set-secret clients`; then, with a file left at `<state_dir>/secrets/tokens` and the directory removed, `set-secret tokens` again; then, with a directory at `<state_dir>/secrets/clients`, `set-secret clients` again |
+| **Expected** | the first writes `<state_dir>/secrets/tokens/value`, mode `0600`, in a directory `tokens/` of mode `0700`, and `service check` no longer names `tokens` missing; the second writes `<state_dir>/secrets/clients` as before; each of the last two exits 2 naming the path it found, and leaves what was there unchanged |
+
+## yoke:the-service-regime.10 — a service deployment starts on a rewritten secret the verb supplied, and its unit replaces it without a restart
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/15.57 · arch/10-manager/07 §Supplying a secret |
+| **Level** | L3 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a service form whose composition runs one Plugin unit needing `secret:tokens`, whose Manifest declares `tokens` in `rewrites`; the unit, once running, writes `value.new` beside the value it was handed and renames it over `value` |
+| **Action** | run `yoke service set-secret tokens` with a value on the standard input; then start the Core over that composition |
+| **Expected** | the Core comes up with the unit `Running`, not refused `secret.missing`; `<state_dir>/secrets/tokens/value` comes to hold the unit's replacement of the value the verb wrote, with no `value.new` left; the unit is still in its first incarnation |
