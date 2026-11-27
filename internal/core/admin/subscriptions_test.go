@@ -227,3 +227,37 @@ func TestAShellConnectionHoldsAtMostEight(t *testing.T) {
 		t.Errorf("the connection's subscriptions are %v, want the standing one and seven naming unit", subs)
 	}
 }
+
+// std: yoke:subscriptions.07
+func TestAnEventASubscriptionCarriesHoldsItsProducersLine(t *testing.T) {
+	b := newBench(t, map[string]*fakeUnit{"acquire": running(station, 1)}, map[string]string{})
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	stream, err := b.operator.Watch(ctx, subscribeTo(&administrativev1.Filter{SubjectKind: "unit"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := stream.Recv(); err != nil {
+		t.Fatal(err)
+	}
+	next := func() *administrativev1.Event {
+		t.Helper()
+		f, err := stream.Recv()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return f.GetSubscribe().GetEvent()
+	}
+	b.publish(t, event.OccurrenceReported("acquire", 1, &pluginv1.Event{Occurrence: "calibration.drift", Severity: 70, Line: "drifting"}))
+	if e := next(); e.GetType() != "unit.occurrence.reported" || e.GetLine() != "drifting" {
+		t.Errorf("the occurrence was carried as %v", e)
+	}
+	b.publish(t, event.ConditionChanged("acquire", 1, nil, 30, "the head is cold"))
+	if e := next(); e.GetType() != "unit.condition.changed" || e.GetLine() != "the head is cold" {
+		t.Errorf("the report was carried as %v", e)
+	}
+	b.publish(t, event.StateChanged("acquire", 1, unit.Running, unit.Stopped))
+	if e := next(); e.GetType() != "unit.state.changed" || e.GetLine() != "" {
+		t.Errorf("the change of state was carried as %v", e)
+	}
+}

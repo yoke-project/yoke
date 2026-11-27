@@ -69,3 +69,29 @@
 | **Precondition** | `yoke-core` built, with a composition declaring two local channels and a unit that runs to completion |
 | **Action** | attach to one channel and read its own record and the other's; read the channel kind on the operator projection |
 | **Expected** | the client reads its own record attached by its account and is refused the other's with `subject.unknown`; the operator reads both channels, the one attached by that account and the other not |
+
+## yoke:what-a-channel-sees.06 — an event a subscription carries holds the line its producer wrote
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/31.3 · arch/45-events/01 §The nine fields |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an attachment, with two units in the deployment, subscribed to one of them |
+| **Action** | publish an occurrence the unit reported with a line, a report of how well it is with a line, and a change of its state |
+| **Expected** | the occurrence and the report each carry the unit's line, the occurrence's detail as it arrived; the change of state carries none |
+
+## yoke:what-a-channel-sees.07 — through the Core, a unit's line reaches an interface client and an operator
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/31.3 · arch/45-events/01 §The nine fields · arch/70-interface-surface/05 §What a subscription promises · arch/60-administrative-surface/06 §Who subscribes differs; what is promised does not |
+| **Level** | L3 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | `yoke-core` built, with a composition declaring a local channel and a Plugin unit that reports how well it is with a line |
+| **Action** | subscribe on the channel to the unit, and on the operator projection to the unit; wait for the unit's report |
+| **Expected** | both subscriptions carry `unit.condition.changed` about the unit with the line it wrote |
