@@ -229,7 +229,7 @@ func TestAShellConnectionHoldsAtMostEight(t *testing.T) {
 }
 
 // std: yoke:subscriptions.07
-func TestAnEventASubscriptionCarriesHoldsItsProducersLine(t *testing.T) {
+func TestAnEventAnOperatorsSubscriptionCarriesHoldsItsProducersLine(t *testing.T) {
 	b := newBench(t, map[string]*fakeUnit{"acquire": running(station, 1)}, map[string]string{})
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
