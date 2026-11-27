@@ -35,6 +35,10 @@ const (
 	templateID      = "@YOKE_ID@"
 	templateProgram = "@YOKE_PROGRAM@"
 	templateRoot    = "template/"
+	// templateEnding ends the name of a file the template keeps under another name than it is written as:
+	// one the family's own tools would read in its repository and fail on, such as a Cargo.toml whose
+	// package is named @YOKE_PROGRAM@.
+	templateEnding = ".yoke-template"
 )
 
 // NewOptions are what `new plugin` is asked for besides the identity.
@@ -244,8 +248,8 @@ func fetch(url string) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-// unpack writes the archive's template/ into dest, the two values substituted in contents and names.
-// Nothing else of the archive is read or changed.
+// unpack writes the archive's template/ into dest, the two values substituted in contents and names, and
+// a file's name ending in .yoke-template written without it. Nothing else of the archive is read or changed.
 func unpack(body []byte, dest, id, program string) error {
 	zr, err := gzip.NewReader(bytes.NewReader(body))
 	if err != nil {
@@ -270,6 +274,11 @@ func unpack(body []byte, dest, id, program string) error {
 			continue
 		}
 		rel := substitute.Replace(strings.TrimPrefix(name, templateRoot))
+		if h.Typeflag == tar.TypeReg && strings.HasSuffix(rel, templateEnding) {
+			if rel = strings.TrimSuffix(rel, templateEnding); rel == "" || strings.HasSuffix(rel, "/") {
+				return refusef("the template's entry %s names no file once %s is taken off", name, templateEnding)
+			}
+		}
 		if path.IsAbs(rel) || slices.Contains(strings.Split(rel, "/"), "..") {
 			return refusef("the template's entry %s leaves the destination", name)
 		}

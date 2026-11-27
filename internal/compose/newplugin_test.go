@@ -353,3 +353,24 @@ func TestANewPluginAFailedTake(t *testing.T) {
 		t.Errorf("a unit is declared:\n%s", data)
 	}
 }
+
+// std: yoke:a-new-plugin.09
+func TestANewPluginWritesAYokeTemplateFileWithoutItsEnding(t *testing.T) {
+	files := templateFiles(templateBuild)
+	files["template/plugin/Cargo.toml.yoke-template"] = "[package]\nname = \"@YOKE_PROGRAM@\"\n"
+	files["template/plugin/a.yoke-template.md"] = "kept\n"
+	path := carried(t, files)
+	asComposer(t, "(devel)")
+	dir := within(t)
+	if code, out := newPlugin(t, "com.example.greeter", "--language", "go", "--template", path); code != Done {
+		t.Fatalf("new plugin --template: %d\n%s", code, out)
+	}
+	plugin := filepath.Join(dir, "greeter", "plugin")
+	if got := raw(t, filepath.Join(plugin, "Cargo.toml")); got != "[package]\nname = \"greeter\"\n" {
+		t.Errorf("Cargo.toml is %q", got)
+	}
+	absent(t, filepath.Join(plugin, "Cargo.toml.yoke-template"))
+	if got := raw(t, filepath.Join(plugin, "a.yoke-template.md")); got != "kept\n" {
+		t.Errorf("a.yoke-template.md is %q", got)
+	}
+}

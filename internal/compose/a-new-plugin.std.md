@@ -108,3 +108,16 @@
 | **Precondition** | a carried archive like `.01`'s whose build fails |
 | **Action** | `new plugin com.example.greeter --language go --template <file>` |
 | **Expected** | exit 1; `greeter/` holds the Plugin project and `try/yoke.yaml`, with no unit declared and no `plugins.yaml`; the output names `add plugin ..` run in `greeter/try` as the command that repeats the take |
+
+## yoke:a-new-plugin.09 — a file named with `.yoke-template` is written without that ending
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/20-composer/07 §The template |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | a carried archive like `.01`'s, also holding `plugin/Cargo.toml.yoke-template`, whose package is named `@YOKE_PROGRAM@`, and `plugin/a.yoke-template.md` |
+| **Action** | `new plugin com.example.greeter --language go --template <file>` |
+| **Expected** | `greeter/plugin/Cargo.toml` names the package `greeter`, and no `Cargo.toml.yoke-template` is written; `a.yoke-template.md` is written as it is named, the ending being only at the end of a name |
