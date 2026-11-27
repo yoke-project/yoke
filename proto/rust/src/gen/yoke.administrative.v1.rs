@@ -181,6 +181,10 @@ pub struct Event {
     /// Typed per type, and skippable: a consumer decodes only what it knows.
     #[prost(bytes = "vec", tag = "9")]
     pub detail: ::prost::alloc::vec::Vec<u8>,
+    /// A sentence for a person, where the producer wrote one: a unit's occurrence, a unit's report of how well
+    /// it is. Not an axis: nothing filters on it, and the Core reads it no more than it reads the detail.
+    #[prost(string, tag = "10")]
+    pub line: ::prost::alloc::string::String,
 }
 /// Who caused an event, established by the Core and never claimed.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]

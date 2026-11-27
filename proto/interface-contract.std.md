@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Feature** | the definitions of the interface surface at `v1`: one service, `Interface`, with one bidirectional method, carrying one operation union; the eleven operations and their answers; the frames an attachment is made of, the Core's first carrying the opening picture; the records a read, a snapshot and the opening picture are made of, over the three subject kinds a channel observes; where a stream's data arrives, and the frame that carries it on the connection; the version every request states; and this surface's codes, each refusal a code, a message and a typed detail |
+| **Feature** | the definitions of the interface surface at `v1`: one service, `Interface`, with one bidirectional method, carrying one operation union; the eleven operations and their answers; the frames an attachment is made of, the Core's first carrying the opening picture; the records a read, a snapshot and the opening picture are made of, over the three subject kinds a channel observes; the event it delivers, carrying the producer's line beside its detail; where a stream's data arrives, and the frame that carries it on the connection; the version every request states; and this surface's codes, each refusal a code, a message and a typed detail |
 | **Planning item** | yoke-project/yoke#136 |
 
 ## yoke:interface-contract.01 — one service with one bidirectional method, and no second
@@ -108,3 +108,16 @@
 | **Precondition** | the definition of a refusal |
 | **Action** | read its fields and its detail's union |
 | **Expected** | a code and a message, both strings, and a detail that is one of: the subject named — its kind and its identity; the item withheld or undeclared; or the suspension — its grade and the channel that prevails |
+
+## yoke:interface-contract.09 — an event carries the producer's line beside its detail
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/31.3 · arch/45-events/01 §The nine fields |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the definition of the event the interface surface delivers |
+| **Action** | read its fields |
+| **Expected** | its sequence, and the nine fields of the envelope: its type, its subject, its time, its actor, its severity, its occurrence, its cause, its detail, and `line`, a string: the sentence for a person a unit wrote with an occurrence or a report of how well it is, beside a detail that stays bytes |
