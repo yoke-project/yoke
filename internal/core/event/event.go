@@ -84,8 +84,8 @@ type Event struct {
 	// Cause is the sequence of the event this one follows from, zero where there is none.
 	Cause  uint64
 	Detail []byte
-	// Line is the sentence a unit's report carried for a person. It is none of the eight fields: the
-	// durable counterpart keeps it as its message.
+	// Line is the sentence a unit's report carried for a person, where it wrote one. Both surfaces carry it,
+	// and the durable counterpart keeps it as its message; nothing filters on it.
 	Line string
 }
 

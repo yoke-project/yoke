@@ -7,6 +7,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	interfacev1 "github.com/yoke-project/yoke/proto/yoke/interface/v1"
+	pluginv1 "github.com/yoke-project/yoke/proto/yoke/plugin/v1"
 
 	"github.com/yoke-project/yoke/internal/core/event"
 	"github.com/yoke-project/yoke/internal/core/unit"
@@ -136,5 +137,35 @@ func TestASubscriptionOpensWithWhatItSelectsThenItsEvents(t *testing.T) {
 		case <-deadline:
 			return
 		}
+	}
+}
+
+// std: yoke:what-a-channel-sees.06
+func TestAnEventASubscriptionCarriesHoldsItsProducersLine(t *testing.T) {
+	w, a := twoChannels(t)
+	a.next(t)
+	next := func() *interfacev1.Event {
+		for {
+			if f := a.next(t); f.GetCall() == "one" {
+				return f.GetAnswer().GetSubscribe().GetEvent()
+			}
+		}
+	}
+	a.call(t, "one", &interfacev1.Request{Version: 1, Operation: &interfacev1.Request_Subscribe{Subscribe: &interfacev1.Subscribe{
+		Filter: &interfacev1.Filter{SubjectKind: "unit", SubjectIdentity: "acquire"}}}})
+	if next().GetSeq() != 0 {
+		t.Fatal("the subscription did not open with its snapshot")
+	}
+	w.bus.Publish(event.OccurrenceReported("acquire", 2, &pluginv1.Event{Occurrence: "calibration.drift", Severity: 70, Line: "drifting", Detail: []byte("raw")}))
+	if e := next(); e.GetType() != "unit.occurrence.reported" || e.GetLine() != "drifting" || string(e.GetDetail()) != "raw" {
+		t.Errorf("the occurrence was carried as %v", e)
+	}
+	w.bus.Publish(event.ConditionChanged("acquire", 2, nil, 30, "the head is cold"))
+	if e := next(); e.GetType() != "unit.condition.changed" || e.GetLine() != "the head is cold" {
+		t.Errorf("the report was carried as %v", e)
+	}
+	w.bus.Publish(event.StateChanged("acquire", 2, unit.Running, unit.Stopped))
+	if e := next(); e.GetType() != "unit.state.changed" || e.GetLine() != "" {
+		t.Errorf("the change of state was carried as %v", e)
 	}
 }
