@@ -196,6 +196,12 @@ func UpdatePlugin(dir, id, tag string, o TakeOptions) error {
 			return err
 		}
 	}
+	// A checkout holds neither directory where the project does not commit them: git keeps no empty one.
+	for _, d := range []string{filepath.Dir(program), filepath.Dir(manifest)} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			return err
+		}
+	}
 	oldProgram, hadProgram := os.ReadFile(program)
 	oldManifest, _ := os.ReadFile(manifest)
 	restore := func() {

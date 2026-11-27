@@ -270,3 +270,32 @@ func TestUpdatePluginOfARepositoryStillRequiresATag(t *testing.T) {
 		t.Errorf("no --to on a repository: %d %s", code, out)
 	}
 }
+
+// std: yoke:a-plugin-at-a-tag.07
+func TestACheckoutWithoutThePluginsDirectoriesHasThemCreated(t *testing.T) {
+	url, builds := taggedGreeter(t)
+	app := authored(t)
+	if code, out := takePlugin(t, "", url+"@v1.0.0", "--yes", "--dir", app); code != Done {
+		t.Fatalf("add plugin: %d %s", code, out)
+	}
+	os.RemoveAll(filepath.Join(app, Components, "plugins"))
+	os.RemoveAll(filepath.Join(app, Manifests))
+	if code, out := updating(t, time.Now(), "com.example.greeter", "--to", "v1.1.0", "--yes", "--dir", app); code != Done {
+		t.Fatalf("update plugin in a checkout without its directories: %d %s", code, out)
+	}
+	if raw(t, filepath.Join(app, Components, "plugins", "greeter")) != builds["v1.1.0"] {
+		t.Errorf("the executable is not v1.1.0's")
+	}
+	if _, err := os.Stat(filepath.Join(app, Manifests, "com.example.greeter.yaml")); err != nil {
+		t.Errorf("the Manifest was not placed: %v", err)
+	}
+
+	fresh := authored(t)
+	os.RemoveAll(filepath.Join(fresh, Manifests))
+	if code, out := takePlugin(t, "", url+"@v1.0.0", "--yes", "--dir", fresh); code != Done {
+		t.Fatalf("add plugin in a project without manifests/: %d %s", code, out)
+	}
+	if _, err := os.Stat(filepath.Join(fresh, Manifests, "com.example.greeter.yaml")); err != nil {
+		t.Errorf("the Manifest was not placed: %v", err)
+	}
+}
