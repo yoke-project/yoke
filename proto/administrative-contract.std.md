@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Feature** | the definitions of the administrative surface at `v1`: two services carrying one operation union — `Operator` with a unary call and a stream of answers, `Shell` with one stream of frames in each direction; the sixteen operations and their answers, every change answering what it replaced, when it takes effect and what it did to each unit; the records a read and a snapshot are made of; the frame a held connection adds; the version every request states; and this surface's codes, each refusal a code, a message and a typed detail |
+| **Feature** | the definitions of the administrative surface at `v1`: two services carrying one operation union — `Operator` with a unary call and a stream of answers, `Shell` with one stream of frames in each direction; the sixteen operations and their answers, every change answering what it replaced, when it takes effect and what it did to each unit; the records a read and a snapshot are made of; the event it delivers, carrying the producer's line beside its detail; the frame a held connection adds; the version every request states; and this surface's codes, each refusal a code, a message and a typed detail |
 | **Planning item** | yoke-project/yoke#91 |
 
 ## yoke:administrative-contract.01 — two services over one union, and no third
@@ -95,3 +95,16 @@
 | **Precondition** | the definition of a refusal |
 | **Action** | read its fields and its detail's union |
 | **Expected** | a code and a message, both strings, and a detail that is one of: the subject named — its kind and its identity — or the item that was withheld or undeclared |
+
+## yoke:administrative-contract.08 — an event carries the producer's line beside its detail
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/31.3 · arch/45-events/01 §The nine fields |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the definition of the event the administrative surface delivers |
+| **Action** | read its fields |
+| **Expected** | its sequence, and the nine fields of the envelope: its type, its subject, its time, its actor, its severity, its occurrence, its cause, its detail, and `line`, a string: the sentence for a person a unit wrote with an occurrence or a report of how well it is, beside a detail that stays bytes |

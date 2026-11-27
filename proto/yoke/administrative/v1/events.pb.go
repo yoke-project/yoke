@@ -42,7 +42,10 @@ type Event struct {
 	// The event this one follows from; zero where there is none.
 	Cause uint64 `protobuf:"varint,8,opt,name=cause,proto3" json:"cause,omitempty"`
 	// Typed per type, and skippable: a consumer decodes only what it knows.
-	Detail        []byte `protobuf:"bytes,9,opt,name=detail,proto3" json:"detail,omitempty"`
+	Detail []byte `protobuf:"bytes,9,opt,name=detail,proto3" json:"detail,omitempty"`
+	// A sentence for a person, where the producer wrote one: a unit's occurrence, a unit's report of how well
+	// it is. Not an axis: nothing filters on it, and the Core reads it no more than it reads the detail.
+	Line          string `protobuf:"bytes,10,opt,name=line,proto3" json:"line,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -138,6 +141,13 @@ func (x *Event) GetDetail() []byte {
 		return x.Detail
 	}
 	return nil
+}
+
+func (x *Event) GetLine() string {
+	if x != nil {
+		return x.Line
+	}
+	return ""
 }
 
 // Who caused an event, established by the Core and never claimed.
@@ -297,7 +307,7 @@ var File_yoke_administrative_v1_events_proto protoreflect.FileDescriptor
 
 const file_yoke_administrative_v1_events_proto_rawDesc = "" +
 	"\n" +
-	"#yoke/administrative/v1/events.proto\x12\x16yoke.administrative.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\"yoke/administrative/v1/codes.proto\"\xb7\x02\n" +
+	"#yoke/administrative/v1/events.proto\x12\x16yoke.administrative.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\"yoke/administrative/v1/codes.proto\"\xcb\x02\n" +
 	"\x05Event\x12\x10\n" +
 	"\x03seq\x18\x01 \x01(\x04R\x03seq\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x129\n" +
@@ -309,7 +319,9 @@ const file_yoke_administrative_v1_events_proto_rawDesc = "" +
 	"occurrence\x18\a \x01(\tR\n" +
 	"occurrence\x12\x14\n" +
 	"\x05cause\x18\b \x01(\x04R\x05cause\x12\x16\n" +
-	"\x06detail\x18\t \x01(\fR\x06detail\"5\n" +
+	"\x06detail\x18\t \x01(\fR\x06detail\x12\x12\n" +
+	"\x04line\x18\n" +
+	" \x01(\tR\x04line\"5\n" +
 	"\x05Actor\x12\x14\n" +
 	"\x05class\x18\x01 \x01(\tR\x05class\x12\x16\n" +
 	"\x06person\x18\x02 \x01(\tR\x06person\"\xee\x01\n" +

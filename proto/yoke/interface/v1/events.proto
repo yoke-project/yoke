@@ -27,6 +27,9 @@ message Event {
   uint64 cause = 8;
   // Typed per type, and skippable: a consumer decodes only what it knows.
   bytes detail = 9;
+  // A sentence for a person, where the producer wrote one: a unit's occurrence, a unit's report of how well
+  // it is. Not an axis: nothing filters on it, and the Core reads it no more than it reads the detail.
+  string line = 10;
 }
 
 // Who caused an event, established by the Core and never claimed.

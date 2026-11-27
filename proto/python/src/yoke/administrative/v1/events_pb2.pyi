@@ -10,7 +10,7 @@ from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class Event(_message.Message):
-    __slots__ = ("seq", "type", "subject", "time", "actor", "severity", "occurrence", "cause", "detail")
+    __slots__ = ("seq", "type", "subject", "time", "actor", "severity", "occurrence", "cause", "detail", "line")
     SEQ_FIELD_NUMBER: _ClassVar[int]
     TYPE_FIELD_NUMBER: _ClassVar[int]
     SUBJECT_FIELD_NUMBER: _ClassVar[int]
@@ -20,6 +20,7 @@ class Event(_message.Message):
     OCCURRENCE_FIELD_NUMBER: _ClassVar[int]
     CAUSE_FIELD_NUMBER: _ClassVar[int]
     DETAIL_FIELD_NUMBER: _ClassVar[int]
+    LINE_FIELD_NUMBER: _ClassVar[int]
     seq: int
     type: str
     subject: _codes_pb2.Subject
@@ -29,7 +30,8 @@ class Event(_message.Message):
     occurrence: str
     cause: int
     detail: bytes
-    def __init__(self, seq: _Optional[int] = ..., type: _Optional[str] = ..., subject: _Optional[_Union[_codes_pb2.Subject, _Mapping]] = ..., time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., actor: _Optional[_Union[Actor, _Mapping]] = ..., severity: _Optional[int] = ..., occurrence: _Optional[str] = ..., cause: _Optional[int] = ..., detail: _Optional[bytes] = ...) -> None: ...
+    line: str
+    def __init__(self, seq: _Optional[int] = ..., type: _Optional[str] = ..., subject: _Optional[_Union[_codes_pb2.Subject, _Mapping]] = ..., time: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., actor: _Optional[_Union[Actor, _Mapping]] = ..., severity: _Optional[int] = ..., occurrence: _Optional[str] = ..., cause: _Optional[int] = ..., detail: _Optional[bytes] = ..., line: _Optional[str] = ...) -> None: ...
 
 class Actor(_message.Message):
     __slots__ = ("person",)
