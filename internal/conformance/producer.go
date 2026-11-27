@@ -89,7 +89,7 @@ func Produce() int {
 	go func() {
 		for {
 			send(func(e *pluginv1.Envelope) {
-				e.Payload = &pluginv1.Envelope_Health{Health: &pluginv1.Health{Grade: 0, Line: "producing"}}
+				e.Payload = &pluginv1.Envelope_Health{Health: &pluginv1.Health{Grade: 0, Line: ProducerLine}}
 			})
 			time.Sleep(Beat)
 		}
