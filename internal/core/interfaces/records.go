@@ -95,7 +95,7 @@ func (s *Surface) observes(e event.Event) bool {
 // eventOf is an event as a channel receives it.
 func eventOf(e event.Event) *interfacev1.Event {
 	return &interfacev1.Event{Seq: e.Seq, Type: e.Type, Time: timestamppb.New(e.Time), Severity: uint32(e.Severity), Occurrence: e.Occurrence,
-		Cause: e.Cause, Detail: e.Detail, Subject: &interfacev1.Subject{Kind: string(e.Subject.Kind), Identity: e.Subject.ID, Incarnation: e.Subject.Incarnation},
+		Cause: e.Cause, Detail: e.Detail, Line: e.Line, Subject: &interfacev1.Subject{Kind: string(e.Subject.Kind), Identity: e.Subject.ID, Incarnation: e.Subject.Incarnation},
 		Actor: &interfacev1.Actor{Class: string(e.Actor.Class), Person: e.Actor.Person}}
 }
 

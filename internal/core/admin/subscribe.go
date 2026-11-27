@@ -22,7 +22,7 @@ func filterOf(f *administrativev1.Filter) event.Filter {
 // eventOf is an event as it travels.
 func eventOf(e event.Event) *administrativev1.Event {
 	return &administrativev1.Event{Seq: e.Seq, Type: e.Type, Time: stamp(e.Time), Severity: uint32(e.Severity), Occurrence: e.Occurrence,
-		Cause: e.Cause, Detail: e.Detail, Subject: &administrativev1.Subject{Kind: string(e.Subject.Kind), Identity: e.Subject.ID, Incarnation: e.Subject.Incarnation},
+		Cause: e.Cause, Detail: e.Detail, Line: e.Line, Subject: &administrativev1.Subject{Kind: string(e.Subject.Kind), Identity: e.Subject.ID, Incarnation: e.Subject.Incarnation},
 		Actor: &administrativev1.Actor{Class: string(e.Actor.Class), Person: e.Actor.Person}}
 }
 

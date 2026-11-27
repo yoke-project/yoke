@@ -1048,3 +1048,75 @@ func relayThroughTheNeed() int {
 			}
 		})
 }
+
+// std: yoke:what-a-channel-sees.07
+func TestThroughTheCoreAUnitsLineReachesAnInterfaceClientAndAnOperator(t *testing.T) {
+	run, lines := startCore(t, `units:
+  acquire: { kind: plugin, plugin: com.example.station, env: { %[2]s: streamer } }
+channels:
+  panel: { transport: local, clients: single }
+# %[1]s
+`)
+	opened := make(chan struct{}, 4)
+	go func() {
+		for line := range lines {
+			if strings.Contains(line, "msg=session") && strings.Contains(line, "event=opened") {
+				opened <- struct{}{}
+			}
+		}
+	}()
+	select {
+	case <-opened:
+	case <-time.After(20 * time.Second):
+		t.Fatal("no Session within twenty seconds")
+	}
+	a, err := attachTo(t, filepath.Join(run, "interfaces", "panel.sock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.next(t)
+	a.call(t, "unit", &interfacev1.Request{Version: 1, Operation: &interfacev1.Request_Subscribe{Subscribe: &interfacev1.Subscribe{
+		Filter: &interfacev1.Filter{SubjectKind: "unit", SubjectIdentity: "acquire", Type: "unit.condition.changed"}}}})
+	conn, err := grpc.NewClient("unix://"+filepath.Join(run, "operator.sock"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	operator := administrativev1.NewOperatorClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	watch, err := operator.Watch(ctx, &administrativev1.Request{Version: 1, Operation: &administrativev1.Request_Subscribe{Subscribe: &administrativev1.Subscribe{
+		Filter: &administrativev1.Filter{SubjectKind: "unit", SubjectIdentity: "acquire", Type: "unit.condition.changed"}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := watch.Recv(); err != nil {
+		t.Fatal(err)
+	}
+	// The unit's next life reports how well it is again, after both subscriptions are open.
+	if _, err := operator.Call(ctx, &administrativev1.Request{Version: 1,
+		Operation: &administrativev1.Request_UnitRestart{UnitRestart: &administrativev1.UnitAct{Unit: "acquire"}}}); err != nil {
+		t.Fatal(err)
+	}
+	for {
+		f, err := watch.Recv()
+		if err != nil {
+			t.Fatalf("the operator saw no report: %v", err)
+		}
+		if e := f.GetSubscribe().GetEvent(); e != nil && e.GetLine() != "" {
+			if e.GetLine() != "ready" {
+				t.Errorf("the operator saw %v", e)
+			}
+			break
+		}
+	}
+	for {
+		f := a.next(t)
+		if e := f.GetAnswer().GetSubscribe().GetEvent(); f.GetCall() == "unit" && e != nil && e.GetLine() != "" {
+			if e.GetLine() != "ready" {
+				t.Errorf("the client saw %v", e)
+			}
+			return
+		}
+	}
+}

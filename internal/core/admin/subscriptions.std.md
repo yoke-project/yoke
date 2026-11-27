@@ -82,3 +82,16 @@
 | **Precondition** | `yoke-core` built and started in the service form, with one Manifest in its Plugin directory |
 | **Action** | open a shell connection; disable the plugin by `Call` |
 | **Expected** | the standing snapshot holds the instance's record, ready; then an event frame carries `plugin.policy.changed` about the plugin, with the operator as its actor |
+
+## yoke:subscriptions.07 — an event a subscription carries holds the line its producer wrote
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/31.3 · arch/45-events/01 §The nine fields |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | an operator subscribed to the unit kind |
+| **Action** | publish an occurrence a unit reported with a line, a report of how well it is with a line, and a change of its state |
+| **Expected** | the occurrence and the report each carry the unit's line; the change of state carries none |
