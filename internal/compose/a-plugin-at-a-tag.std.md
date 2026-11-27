@@ -84,3 +84,16 @@
 | **Action** | `update plugin com.example.greeter --yes` |
 | **Expected** | it is refused naming `--to`, and nothing changes |
 
+
+## yoke:a-plugin-at-a-tag.07 — a checkout without the directories a Plugin is placed in has them created
+
+| Field | Value |
+| --- | --- |
+| **Cites** | arch/20-composer/07 §Taking a Plugin into an application · arch/20-composer/07 §The verbs |
+| **Level** | L1 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the project of `.01` after `v1.0.0` was taken, then `components/plugins/` and `manifests/` removed, as a checkout of a project that does not commit them leaves it; and a second project, with no Plugin taken yet and no `manifests/` |
+| **Action** | `update plugin com.example.greeter --to v1.1.0 --yes` in the first; `add plugin` of `v1.0.0` in the second |
+| **Expected** | both succeed: the first places `v1.1.0`'s executable and Manifest in the two directories it created; the second places `v1.0.0`'s in a `manifests/` it created |

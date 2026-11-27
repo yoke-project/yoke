@@ -142,8 +142,11 @@ func take(dir, path string, t *taking, o TakeOptions) (string, error) {
 		}
 		program, image = imagePlace(p, imageSum)
 	}
-	if err := os.MkdirAll(filepath.Dir(filepath.Join(dir, filepath.FromSlash(program))), 0o755); err != nil {
-		return "", err
+	// A checkout holds neither directory where the project does not commit them: git keeps no empty one.
+	for _, at := range []string{program, manifest} {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(dir, filepath.FromSlash(at))), 0o755); err != nil {
+			return "", err
+		}
 	}
 	if err := copyExecutable(built, filepath.Join(dir, filepath.FromSlash(program))); err != nil {
 		return "", err
