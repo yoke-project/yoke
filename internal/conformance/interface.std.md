@@ -148,3 +148,16 @@
 | **Precondition** | the producer's stream flowing, as case 9 left it |
 | **Action** | `stream-follow` of it; then, once a frame has arrived, the producer restarted on the administrative surface |
 | **Expected** | a frame on the follow before the restart; and after it, on the same follow and a delivery other than the first, a frame of the next incarnation, whole |
+
+## yoke:interface.12 — an event carries the line its producer wrote
+
+| Field | Value |
+| --- | --- |
+| **Cites** | specs/31.3 · arch/45-events/01 §The nine fields · arch/90-sdks/02 §What a change to a contract costs |
+| **Level** | L2 |
+| **Method** | test |
+| **Not applicable in** | — |
+| **Label** | blocking |
+| **Precondition** | the harness attached to `panel`; the producer, which reports how well it is with the line `producing` |
+| **Action** | `subscribe` to the producer's `unit.condition.changed`; then the producer restarted on the administrative surface |
+| **Expected** | an event `unit.condition.changed` about the producer, carrying the line `producing` |

@@ -65,6 +65,12 @@ func UseInterfaceCases() []Case {
 			Issues:       "`stream-follow` of it; then, once a frame has arrived, the producer restarted on the administrative surface",
 			Requires:     "a frame on the follow before the restart; and after it, on the same follow and a delivery other than the first, a frame of the next incarnation, whole",
 			Run:          followedAcrossARestart},
+		{ID: "yoke:interface.12", Title: "an event carries the line its producer wrote", Contract: "interface",
+			Cites:        []string{"specs/31.3", "arch/45-events/01 §The nine fields", "arch/90-sdks/02 §What a change to a contract costs"},
+			Precondition: "the harness attached to `panel`; the producer, which reports how well it is with the line `producing`",
+			Issues:       "`subscribe` to the producer's `unit.condition.changed`; then the producer restarted on the administrative surface",
+			Requires:     "an event `unit.condition.changed` about the producer, carrying the line `producing`",
+			Run:          eventCarriesItsLine},
 	}
 }
 
@@ -280,4 +286,50 @@ func followedAcrossARestart(r *Run) Outcome {
 		}
 	}
 	return Fail("the producer restarted", "a frame of the next incarnation, whole, on the same follow and another delivery", "none within 30 s")
+}
+
+// ProducerLine is the line the producer reports how well it is with.
+const ProducerLine = "producing"
+
+// std: yoke:interface.12
+func eventCarriesItsLine(r *Run) Outcome {
+	h, _, absent := attached(r, "`subscribe`")
+	if absent != nil {
+		return *absent
+	}
+	res := h.Do("subscribe", map[string]any{"subject_kind": "unit", "subject_identity": Producer, "type": "unit.condition.changed"})
+	if res.Unrecognised {
+		return Absent("subscribe")
+	}
+	if res.Refusal != "" {
+		return Fail("`subscribe` to the producer's condition", "a subscription", res.Refusal)
+	}
+	op, err := r.Operator()
+	if err != nil {
+		return Fail("the restart", "the operator projection", err.Error())
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if _, err := op.Call(ctx, request(&administrativev1.Request{Operation: &administrativev1.Request_UnitRestart{UnitRestart: &administrativev1.UnitAct{Unit: Producer}}})); err != nil {
+		return Fail("the producer restarted", "the restart answered", err.Error())
+	}
+	reported := func(o Observation) bool {
+		return o.Kind == "event" && o.Fields["type"] == "unit.condition.changed" && o.Fields["subject"] == Producer
+	}
+	var seen []any
+	deadline := time.Now().Add(30 * time.Second)
+	for time.Now().Before(deadline) {
+		o, ok := h.Observe(time.Until(deadline))
+		if !ok {
+			break
+		}
+		if !reported(o) {
+			continue
+		}
+		if o.Fields["line"] == ProducerLine {
+			return Pass()
+		}
+		seen = append(seen, o.Fields["line"])
+	}
+	return Fail("the producer's report, after its restart", "an event `unit.condition.changed` carrying the line `"+ProducerLine+"`", fmt.Sprintf("lines %v", seen))
 }
