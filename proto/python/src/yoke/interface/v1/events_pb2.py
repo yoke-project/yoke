@@ -26,7 +26,7 @@ from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__
 from yoke.interface.v1 import codes_pb2 as yoke_dot_interface_dot_v1_dot_codes__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1eyoke/interface/v1/events.proto\x12\x11yoke.interface.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1dyoke/interface/v1/codes.proto\"\xe7\x01\n\x05\x45vent\x12\x0b\n\x03seq\x18\x01 \x01(\x04\x12\x0c\n\x04type\x18\x02 \x01(\t\x12+\n\x07subject\x18\x03 \x01(\x0b\x32\x1a.yoke.interface.v1.Subject\x12(\n\x04time\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\'\n\x05\x61\x63tor\x18\x05 \x01(\x0b\x32\x18.yoke.interface.v1.Actor\x12\x10\n\x08severity\x18\x06 \x01(\r\x12\x12\n\noccurrence\x18\x07 \x01(\t\x12\r\n\x05\x63\x61use\x18\x08 \x01(\x04\x12\x0e\n\x06\x64\x65tail\x18\t \x01(\x0c\"&\n\x05\x41\x63tor\x12\r\n\x05\x63lass\x18\x01 \x01(\t\x12\x0e\n\x06person\x18\x02 \x01(\t\"\x99\x01\n\x06\x46ilter\x12\x14\n\x0csubject_kind\x18\x01 \x01(\t\x12\x18\n\x10subject_identity\x18\x02 \x01(\t\x12\r\n\x05\x66loor\x18\x03 \x01(\r\x12\x0c\n\x04type\x18\x04 \x01(\t\x12\x13\n\x0btype_prefix\x18\x05 \x01(\x08\x12\x12\n\noccurrence\x18\x06 \x01(\t\x12\x19\n\x11occurrence_prefix\x18\x07 \x01(\x08\x42\x42Z@github.com/yoke-project/yoke/proto/yoke/interface/v1;interfacev1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1eyoke/interface/v1/events.proto\x12\x11yoke.interface.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1dyoke/interface/v1/codes.proto\"\xf5\x01\n\x05\x45vent\x12\x0b\n\x03seq\x18\x01 \x01(\x04\x12\x0c\n\x04type\x18\x02 \x01(\t\x12+\n\x07subject\x18\x03 \x01(\x0b\x32\x1a.yoke.interface.v1.Subject\x12(\n\x04time\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\'\n\x05\x61\x63tor\x18\x05 \x01(\x0b\x32\x18.yoke.interface.v1.Actor\x12\x10\n\x08severity\x18\x06 \x01(\r\x12\x12\n\noccurrence\x18\x07 \x01(\t\x12\r\n\x05\x63\x61use\x18\x08 \x01(\x04\x12\x0e\n\x06\x64\x65tail\x18\t \x01(\x0c\x12\x0c\n\x04line\x18\n \x01(\t\"&\n\x05\x41\x63tor\x12\r\n\x05\x63lass\x18\x01 \x01(\t\x12\x0e\n\x06person\x18\x02 \x01(\t\"\x99\x01\n\x06\x46ilter\x12\x14\n\x0csubject_kind\x18\x01 \x01(\t\x12\x18\n\x10subject_identity\x18\x02 \x01(\t\x12\r\n\x05\x66loor\x18\x03 \x01(\r\x12\x0c\n\x04type\x18\x04 \x01(\t\x12\x13\n\x0btype_prefix\x18\x05 \x01(\x08\x12\x12\n\noccurrence\x18\x06 \x01(\t\x12\x19\n\x11occurrence_prefix\x18\x07 \x01(\x08\x42\x42Z@github.com/yoke-project/yoke/proto/yoke/interface/v1;interfacev1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -35,9 +35,9 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'Z@github.com/yoke-project/yoke/proto/yoke/interface/v1;interfacev1'
   _globals['_EVENT']._serialized_start=118
-  _globals['_EVENT']._serialized_end=349
-  _globals['_ACTOR']._serialized_start=351
-  _globals['_ACTOR']._serialized_end=389
-  _globals['_FILTER']._serialized_start=392
-  _globals['_FILTER']._serialized_end=545
+  _globals['_EVENT']._serialized_end=363
+  _globals['_ACTOR']._serialized_start=365
+  _globals['_ACTOR']._serialized_end=403
+  _globals['_FILTER']._serialized_start=406
+  _globals['_FILTER']._serialized_end=559
 # @@protoc_insertion_point(module_scope)

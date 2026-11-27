@@ -214,3 +214,8 @@ func TestAnAdministrativeRefusalIsACodeAMessageAndATypedDetail(t *testing.T) {
 	same(t, "the detail", union(t, refusal, "detail"), []string{"subject", "item"})
 	same(t, "a subject", fields(adm(t, files, "Subject")), []string{"kind", "identity", "incarnation"})
 }
+
+// std: yoke:administrative-contract.08
+func TestAnAdministrativeEventCarriesTheProducersLine(t *testing.T) {
+	theEventCarriesALine(t, adm(t, definitions(t), "Event"))
+}

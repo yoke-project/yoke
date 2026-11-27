@@ -238,3 +238,22 @@ func TestAnInterfaceRefusalIsACodeAMessageAndATypedDetail(t *testing.T) {
 	same(t, "a subject", fields(ifc(t, files, "Subject")), []string{"kind", "identity", "incarnation"})
 	same(t, "a suspension", fields(ifc(t, files, "Suspension")), []string{"grade", "by"})
 }
+
+// std: yoke:interface-contract.09
+func TestAnInterfaceEventCarriesTheProducersLine(t *testing.T) {
+	theEventCarriesALine(t, ifc(t, definitions(t), "Event"))
+}
+
+// theEventCarriesALine reads an event's fields: the sequence, the nine of the envelope, and a line that is
+// a string beside a detail that stays bytes.
+func theEventCarriesALine(t *testing.T, md protoreflect.MessageDescriptor) {
+	t.Helper()
+	same(t, "an event", fields(md),
+		[]string{"seq", "type", "subject", "time", "actor", "severity", "occurrence", "cause", "detail", "line"})
+	if f := md.Fields().ByName("line"); f == nil || f.Kind() != protoreflect.StringKind {
+		t.Errorf("an event's line is not a string")
+	}
+	if f := md.Fields().ByName("detail"); f == nil || f.Kind() != protoreflect.BytesKind {
+		t.Errorf("an event's detail is not bytes")
+	}
+}
